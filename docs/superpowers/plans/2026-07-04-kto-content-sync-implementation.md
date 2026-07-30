@@ -31,7 +31,7 @@
 - Create: `src/lib/env/server.ts`
 - Modify: `package.json`
 
-- [ ] **Step 1: Update `.env.local.example` with server-only keys**
+- [x] **Step 1: Update `.env.local.example` with server-only keys**
 
 Add these lines below the existing public Supabase values:
 
@@ -42,7 +42,7 @@ KTO_SERVICE_KEY=your-kto-service-key
 SYNC_JOB_TOKEN=your-internal-sync-token
 ```
 
-- [ ] **Step 2: Replace hardcoded KTO key in `test_kto_api.py`**
+- [x] **Step 2: Replace hardcoded KTO key in `test_kto_api.py`**
 
 Replace the top of the file with:
 
@@ -68,7 +68,7 @@ with:
 print(f"[Request URL]: {endpoint}?query=[REDACTED]&serviceKey=[REDACTED]")
 ```
 
-- [ ] **Step 3: Create `src/lib/env/server.ts`**
+- [x] **Step 3: Create `src/lib/env/server.ts`**
 
 ```ts
 const REQUIRED_SERVER_ENV_KEYS = [
@@ -90,7 +90,7 @@ export function getRequiredServerEnv(key: RequiredServerEnvKey): string {
 }
 ```
 
-- [ ] **Step 4: Add scripts to `package.json`**
+- [x] **Step 4: Add scripts to `package.json`**
 
 Add these scripts while keeping the existing ones:
 
@@ -108,7 +108,7 @@ If `tsx` is not installed, add it to `devDependencies`:
 "tsx": "^4.20.6"
 ```
 
-- [ ] **Step 5: Verify env hygiene**
+- [x] **Step 5: Verify env hygiene**
 
 Run:
 
@@ -118,7 +118,7 @@ npm run typecheck
 
 Expected: TypeScript completes without errors after later TypeScript files are added. If `tsx` was newly added, run `npm install` before this check.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add .env.local.example test_kto_api.py src/lib/env/server.ts package.json package-lock.json
@@ -130,7 +130,7 @@ git commit -m "chore: move KTO key to server env"
 **Files:**
 - Create: `supabase/migrations/20260704082448_create_kto_content_schema.sql`
 
-- [ ] **Step 1: Create schema migration**
+- [x] **Step 1: Create schema migration**
 
 Create `supabase/migrations/20260704082448_create_kto_content_schema.sql` with:
 
@@ -234,7 +234,7 @@ grant usage on schema serving to anon, authenticated;
 grant select on serving.v_imported_places to anon, authenticated;
 ```
 
-- [ ] **Step 2: Verify SQL syntax locally**
+- [x] **Step 2: Verify SQL syntax locally**
 
 Run:
 
@@ -249,7 +249,7 @@ supabase start
 supabase db reset --local
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add supabase/migrations/20260704082448_create_kto_content_schema.sql
@@ -263,7 +263,7 @@ git commit -m "feat: add KTO content schema"
 - Create: `src/lib/kto/client.ts`
 - Create: `src/lib/kto/normalize.ts`
 
-- [ ] **Step 1: Create `src/lib/kto/types.ts`**
+- [x] **Step 1: Create `src/lib/kto/types.ts`**
 
 ```ts
 export type KtoListItem = {
@@ -330,7 +330,7 @@ export type NormalizedPlace = {
 };
 ```
 
-- [ ] **Step 2: Create `src/lib/kto/client.ts`**
+- [x] **Step 2: Create `src/lib/kto/client.ts`**
 
 ```ts
 import type { KtoApiResponse, KtoDetailItem, KtoImageItem, KtoListItem } from './types';
@@ -423,7 +423,7 @@ export class KtoClient {
 }
 ```
 
-- [ ] **Step 3: Create `src/lib/kto/normalize.ts`**
+- [x] **Step 3: Create `src/lib/kto/normalize.ts`**
 
 ```ts
 import type { KtoDetailItem, KtoImageItem, KtoListItem, NormalizedPlace } from './types';
@@ -522,7 +522,7 @@ export function normalizeImages(
 }
 ```
 
-- [ ] **Step 4: Run TypeScript check**
+- [x] **Step 4: Run TypeScript check**
 
 Run:
 
@@ -532,7 +532,7 @@ npm run typecheck
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/kto/types.ts src/lib/kto/client.ts src/lib/kto/normalize.ts
@@ -544,7 +544,7 @@ git commit -m "feat: add KTO API client"
 **Files:**
 - Create: `scripts/import-kto-content.ts`
 
-- [ ] **Step 1: Create `scripts/import-kto-content.ts`**
+- [x] **Step 1: Create `scripts/import-kto-content.ts`**
 
 ```ts
 import { createClient } from '@supabase/supabase-js';
@@ -670,7 +670,7 @@ main().catch((error) => {
 });
 ```
 
-- [ ] **Step 2: Run import**
+- [x] **Step 2: Run import**
 
 Run:
 
@@ -688,7 +688,7 @@ Imported 연무대(동장대)
 
 If the command fails with `Invalid API key`, update `.env.local` with the current Supabase anon/service-role keys and rerun.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add scripts/import-kto-content.ts
@@ -700,7 +700,7 @@ git commit -m "feat: import KTO places into Supabase"
 **Files:**
 - Create: `scripts/verify-kto-serving.ts`
 
-- [ ] **Step 1: Create `scripts/verify-kto-serving.ts`**
+- [x] **Step 1: Create `scripts/verify-kto-serving.ts`**
 
 ```ts
 import { createClient } from '@supabase/supabase-js';
@@ -740,7 +740,7 @@ main().catch((error) => {
 });
 ```
 
-- [ ] **Step 2: Run serving verification**
+- [x] **Step 2: Run serving verification**
 
 Run:
 
@@ -755,7 +755,7 @@ Serving rows: 5
 연무대(동장대) | 1064469 | https://...
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add scripts/verify-kto-serving.ts
@@ -767,7 +767,7 @@ git commit -m "test: verify KTO serving reads"
 **Files:**
 - Create: `docs/kto-content-direction-summary.md`
 
-- [ ] **Step 1: Create summary document**
+- [x] **Step 1: Create summary document**
 
 ```md
 # 달빛수원 KTO 콘텐츠 적용 방향
@@ -797,7 +797,7 @@ git commit -m "test: verify KTO serving reads"
 - 공공데이터 개요는 참고 원문으로 보존하고, 노출 문구는 editorial에서 작성한다.
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add docs/kto-content-direction-summary.md
@@ -809,7 +809,7 @@ git commit -m "docs: summarize KTO content direction"
 **Files:**
 - No new files
 
-- [ ] **Step 1: Run lint**
+- [x] **Step 1: Run lint**
 
 Run:
 
@@ -819,7 +819,7 @@ npm run lint
 
 Expected: PASS.
 
-- [ ] **Step 2: Run typecheck**
+- [x] **Step 2: Run typecheck**
 
 Run:
 
@@ -829,7 +829,7 @@ npm run typecheck
 
 Expected: PASS.
 
-- [ ] **Step 3: Run KTO import**
+- [x] **Step 3: Run KTO import**
 
 Run:
 
@@ -839,7 +839,7 @@ npm run kto:import
 
 Expected: KTO places imported into Supabase without logging secrets.
 
-- [ ] **Step 4: Run serving verification**
+- [ ] **Step 4: Run serving verification** (2026-07-30 재검증 미완: 샌드박스 환경에서 tsx IPC 소켓 생성 불가)
 
 Run:
 
@@ -849,7 +849,7 @@ npm run kto:verify
 
 Expected: `serving.v_imported_places` returns imported rows.
 
-- [ ] **Step 5: Commit any verification fixes**
+- [x] **Step 5: Commit any verification fixes**
 
 ```bash
 git status --short

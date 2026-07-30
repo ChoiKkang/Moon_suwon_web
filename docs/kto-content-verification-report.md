@@ -45,6 +45,24 @@
 - `/admin`: 하드코딩 사용자 지표 대신 공개 KTO 스팟 수, hero 이미지 보유 수, 주소 보유 수, 운영 문구 보유 수를 표시한다.
 - 홈 랜딩: 메뉴와 CTA를 `/courses`, `#kto-spots`, `/admin`, `/places/[slug]` 실제 동선으로 연결한다.
 
+## 2026-07-30 재점검
+
+| 항목 | 결과 |
+| --- | --- |
+| `npm run typecheck` | 통과 |
+| `npm run lint` | 에러 0건, 경고 9건 |
+| `npm run build` | 미검증 (샌드박스 네트워크 차단으로 `next/font` Google Fonts 다운로드 실패) |
+| `npm run kto:verify` | 미검증 (샌드박스에서 tsx IPC 소켓 생성 불가) |
+
+수정 내용은 다음과 같다.
+
+- `.gitignore`에 `!.env.local.example` 예외를 추가해 예제 환경 파일을 저장소에 포함했다.
+- `src/app/actions/kto.ts`의 `catch (error: any)` 3곳을 `unknown`으로 바꾸고 `toErrorMessage` 헬퍼로 메시지를 추출한다.
+- `src/app/admin/page.tsx`의 큰따옴표를 HTML 엔티티로 이스케이프했다.
+- 전체 소스 137개 파일을 `codex/kto-content-sync` 브랜치에 최초 커밋했다.
+
+남은 경고 9건은 `<img>` 사용 7건과 `next/font` 로딩 방식 2건이다. `public/assets` 이미지가 확장자 없는 파일명이라 `next/image` 전환은 별도 검증이 필요하다.
+
 ## 다음 실행
 
 재검증이 필요할 때 아래 명령을 실행한다.
