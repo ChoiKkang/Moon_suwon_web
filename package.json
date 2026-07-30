@@ -11,7 +11,8 @@
     "kto:preview": "tsx scripts/preview-kto-content.ts",
     "kto:import": "tsx scripts/import-kto-content.ts",
     "kto:sql": "tsx scripts/export-kto-content-sql.ts",
-    "kto:verify": "tsx scripts/verify-kto-serving.ts"
+    "kto:verify": "tsx scripts/verify-kto-serving.ts",
+    "apple:secret": "tsx scripts/generate-apple-client-secret.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

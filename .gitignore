@@ -34,6 +34,10 @@ yarn-error.log*
 .env*
 !.env.local.example
 
+# Apple Sign In 개인키 등 자격증명 파일
+/secrets
+*.p8
+
 # vercel
 .vercel
 

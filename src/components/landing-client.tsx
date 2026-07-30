@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { type User } from '@supabase/supabase-js';
 import { LoginModal } from '@/components/auth/login-modal';
 import { signOut } from '@/app/actions/auth';
-import { Moon, Menu, Sparkles, Heart, Camera, Utensils, LogOut, LayoutDashboard } from 'lucide-react';
+import { Moon, Menu, Sparkles, Heart, Camera, Utensils, LogOut, LayoutDashboard, ShieldAlert, UserCog, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import type { ImportedPlace } from '@/lib/places/types';
 
@@ -12,9 +12,17 @@ interface LandingClientProps {
   initialUser: User | null;
   importedPlaces: ImportedPlace[];
   placesError: string | null;
+  hasAuthError: boolean;
+  hasAccountDeleted: boolean;
 }
 
-export function LandingClient({ initialUser, importedPlaces, placesError }: LandingClientProps) {
+export function LandingClient({
+  initialUser,
+  importedPlaces,
+  placesError,
+  hasAuthError,
+  hasAccountDeleted,
+}: LandingClientProps) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -24,6 +32,28 @@ export function LandingClient({ initialUser, importedPlaces, placesError }: Land
 
   return (
     <div className="bg-[#0b1326] text-[#dae2fd] font-sans overflow-x-hidden min-h-screen flex flex-col selection:bg-yellow-500/20 selection:text-yellow-200">
+      {/* OAuth 콜백 실패 알림. /auth/callback이 auth-error 파라미터를 붙여 되돌린다. */}
+      {hasAuthError && (
+        <div
+          role="alert"
+          className="fixed top-20 inset-x-0 z-[60] mx-auto w-[min(92%,32rem)] flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/90 px-4 py-3 text-sm text-red-200 shadow-lg backdrop-blur-md"
+        >
+          <ShieldAlert className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+          <span>로그인을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.</span>
+        </div>
+      )}
+
+      {/* 회원 탈퇴 완료 알림 */}
+      {hasAccountDeleted && (
+        <div
+          role="status"
+          className="fixed top-20 inset-x-0 z-[60] mx-auto w-[min(92%,32rem)] flex items-start gap-3 rounded-xl border border-[#ffd700]/40 bg-[#171f33]/95 px-4 py-3 text-sm text-[#fff6df] shadow-lg backdrop-blur-md"
+        >
+          <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#ffd700]" aria-hidden="true" />
+          <span>계정이 삭제되었습니다. 이용해 주셔서 감사합니다.</span>
+        </div>
+      )}
+
       {/* TopNavBar */}
       <nav className="fixed top-0 w-full z-50 bg-[#0b1326]/80 backdrop-blur-xl border-b border-[#4d4732]/20 shadow-sm">
         <div className="flex justify-between items-center w-full px-6 md:px-20 py-4 max-w-[1440px] mx-auto">
@@ -48,6 +78,13 @@ export function LandingClient({ initialUser, importedPlaces, placesError }: Land
                 >
                   <LayoutDashboard className="w-3.5 h-3.5 text-[#ffd700]" />
                   <span>관리자 콘솔</span>
+                </Link>
+                <Link
+                  href="/account"
+                  className="flex items-center gap-2 px-5 py-2 bg-[#171f33] border border-[#3e495d] text-white text-xs font-bold rounded-full hover:bg-[#222a3d] transition-all"
+                >
+                  <UserCog className="w-3.5 h-3.5 text-[#ffd700]" />
+                  <span>계정 설정</span>
                 </Link>
                 <button 
                   onClick={handleSignOut}
@@ -91,6 +128,13 @@ export function LandingClient({ initialUser, importedPlaces, placesError }: Land
                   className="w-full text-center py-2.5 bg-[#171f33] text-white text-sm font-bold rounded-xl border border-[#3e495d]"
                 >
                   관리자 콘솔
+                </Link>
+                <Link
+                  href="/account"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full text-center py-2.5 bg-[#171f33] text-white text-sm font-bold rounded-xl border border-[#3e495d]"
+                >
+                  계정 설정
                 </Link>
                 <button 
                   onClick={() => {
