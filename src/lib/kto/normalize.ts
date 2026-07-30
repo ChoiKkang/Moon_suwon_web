@@ -1,0 +1,94 @@
+import type { KtoDetailItem, KtoImageItem, KtoListItem, NormalizedPlace } from './types';
+
+export function normalizeSlug(title: string, contentId: string): string {
+  const base = title
+    .normalize('NFKD')
+    .replace(/[^\p{Letter}\p{Number}]+/gu, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+
+  return `${base || 'place'}-${contentId}`;
+}
+
+export function parseKtoTimestamp(value?: string): string | null {
+  if (!value || !/^\d{14}$/.test(value)) {
+    return null;
+  }
+
+  const year = value.slice(0, 4);
+  const month = value.slice(4, 6);
+  const day = value.slice(6, 8);
+  const hour = value.slice(8, 10);
+  const minute = value.slice(10, 12);
+  const second = value.slice(12, 14);
+
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}+09:00`;
+}
+
+export function normalizePlace(listItem: KtoListItem, detail: KtoDetailItem | null): NormalizedPlace {
+  const lat = Number(listItem.mapy);
+  const lng = Number(listItem.mapx);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    throw new Error(`Invalid coordinates for KTO content ${listItem.contentid}`);
+  }
+
+  const address = [listItem.addr1, listItem.addr2].filter(Boolean).join(' ').trim();
+  const phone = (detail?.tel ?? listItem.tel)?.trim() || null;
+
+  return {
+    slug: normalizeSlug(listItem.title, listItem.contentid),
+    official_name: listItem.title,
+    address_full: address || null,
+    lat,
+    lng,
+    contact_phone: phone,
+    source_overview_raw: detail?.overview?.trim() || null,
+    source_modified_at: parseKtoTimestamp(detail?.modifiedtime ?? listItem.modifiedtime),
+    category: null,
+    kto_content_id: listItem.contentid,
+    kto_content_type_id: listItem.contenttypeid,
+  };
+}
+
+export function normalizeImages(
+  placeId: string,
+  listItem: KtoListItem,
+  imageItems: KtoImageItem[],
+) {
+  const rows = [];
+
+  if (listItem.firstimage) {
+    rows.push({
+      place_id: placeId,
+      image_url: listItem.firstimage,
+      thumbnail_url: listItem.firstimage2 || null,
+      alt_text: listItem.title,
+      copyright_type: null,
+      source_provider: 'KTO',
+      source_image_id: `${listItem.contentid}:firstimage`,
+      is_hero: true,
+      display_order: 0,
+    });
+  }
+
+  for (const [index, item] of imageItems.entries()) {
+    if (!item.originimgurl) {
+      continue;
+    }
+
+    rows.push({
+      place_id: placeId,
+      image_url: item.originimgurl,
+      thumbnail_url: item.smallimageurl || null,
+      alt_text: item.imgname || listItem.title,
+      copyright_type: item.cpyrhtDivCd || null,
+      source_provider: 'KTO',
+      source_image_id: item.serialnum || `${item.contentid}:image:${index}`,
+      is_hero: false,
+      display_order: index + 1,
+    });
+  }
+
+  return rows;
+}

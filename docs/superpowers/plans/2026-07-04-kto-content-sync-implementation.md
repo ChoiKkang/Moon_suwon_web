@@ -12,7 +12,7 @@
 
 ## File Structure
 
-- Create `supabase/migrations/001_create_kto_content_schema.sql`: Creates `core`, `editorial`, `serving`, and the Phase 1 tables/views needed for KTO content.
+- Create `supabase/migrations/20260704082448_create_kto_content_schema.sql`: Creates `core`, `editorial`, `serving`, and the Phase 1 tables/views needed for KTO content.
 - Create `src/lib/env/server.ts`: Server-only environment helper for required secrets.
 - Create `src/lib/kto/types.ts`: Type definitions for KTO list/detail/image items and normalized import records.
 - Create `src/lib/kto/client.ts`: KTO API client with safe URL construction and no secret logging.
@@ -128,11 +128,11 @@ git commit -m "chore: move KTO key to server env"
 ## Task 2: Supabase Schema Migration
 
 **Files:**
-- Create: `supabase/migrations/001_create_kto_content_schema.sql`
+- Create: `supabase/migrations/20260704082448_create_kto_content_schema.sql`
 
 - [ ] **Step 1: Create schema migration**
 
-Create `supabase/migrations/001_create_kto_content_schema.sql` with:
+Create `supabase/migrations/20260704082448_create_kto_content_schema.sql` with:
 
 ```sql
 create schema if not exists core;
@@ -198,7 +198,8 @@ create table if not exists editorial.place_copy (
   updated_at timestamptz default now()
 );
 
-create or replace view serving.v_imported_places as
+create or replace view serving.v_imported_places
+with (security_invoker = true) as
 select
   p.id,
   p.slug,
@@ -251,7 +252,7 @@ supabase db reset --local
 - [ ] **Step 3: Commit**
 
 ```bash
-git add supabase/migrations/001_create_kto_content_schema.sql
+git add supabase/migrations/20260704082448_create_kto_content_schema.sql
 git commit -m "feat: add KTO content schema"
 ```
 
@@ -453,9 +454,8 @@ export function parseKtoTimestamp(value?: string): string | null {
 }
 
 export function normalizePlace(listItem: KtoListItem, detail: KtoDetailItem | null): NormalizedPlace {
-  const source = detail ?? listItem;
-  const lat = Number(source.mapy);
-  const lng = Number(source.mapx);
+  const lat = Number(listItem.mapy);
+  const lng = Number(listItem.mapx);
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     throw new Error(`Invalid coordinates for KTO content ${source.contentid}`);
@@ -655,17 +655,17 @@ async function main() {
   const attractions = await kto.fetchSuwonAttractions();
   const selected = attractions.filter((item) => SELECTED_TITLES.has(item.title));
 
-  console.log(`Fetched ${attractions.length} KTO Suwon attractions`);
-  console.log(`Selected ${selected.length} places for import`);
+  process.stdout.write(`Fetched ${attractions.length} KTO Suwon attractions\n`);
+  process.stdout.write(`Selected ${selected.length} places for import\n`);
 
   for (const item of selected) {
     const name = await upsertPlace(item);
-    console.log(`Imported ${name}`);
+    process.stdout.write(`Imported ${name}\n`);
   }
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
   process.exit(1);
 });
 ```
@@ -727,15 +727,15 @@ async function main() {
     throw new Error('serving.v_imported_places returned 0 rows');
   }
 
-  console.log(`Serving rows: ${data.length}`);
+  process.stdout.write(`Serving rows: ${data.length}\n`);
 
   for (const row of data) {
-    console.log(`${row.display_name} | ${row.kto_content_id} | ${row.hero_image_url ?? 'no image'}`);
+    process.stdout.write(`${row.display_name} | ${row.kto_content_id} | ${row.hero_image_url ?? 'no image'}\n`);
   }
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
   process.exit(1);
 });
 ```

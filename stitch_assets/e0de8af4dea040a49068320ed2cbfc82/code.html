@@ -1,0 +1,254 @@
+<!DOCTYPE html><html class="dark" lang="ko"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>Course Progress - Mission</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="assets/css2-ffa763fed5309ca9944616a4e7394b27" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<style>
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "on-tertiary-container": "#b47300",
+                  "on-secondary-fixed-variant": "#524600",
+                  "surface-container-highest": "#323537",
+                  "on-primary-container": "#798098",
+                  "primary": "#bec6e0",
+                  "surface-container-high": "#272a2c",
+                  "on-tertiary-fixed-variant": "#653e00",
+                  "primary-fixed": "#dae2fd",
+                  "inverse-on-surface": "#2d3133",
+                  "error": "#ffb4ab",
+                  "on-primary-fixed-variant": "#3f465c",
+                  "outline-variant": "#45464d",
+                  "primary-fixed-dim": "#bec6e0",
+                  "surface-dim": "#101415",
+                  "surface": "#101415",
+                  "moonlight-gold": "#FDE047",
+                  "surface-container": "#1d2022",
+                  "on-secondary-container": "#483d00",
+                  "on-surface-variant": "#c6c6cd",
+                  "on-secondary": "#393000",
+                  "surface-variant": "#323537",
+                  "surface-container-low": "#191c1e",
+                  "error-container": "#93000a",
+                  "on-primary-fixed": "#131b2e",
+                  "secondary-fixed-dim": "#e2c62d",
+                  "surface-bright": "#363a3b",
+                  "inverse-surface": "#e0e3e5",
+                  "tertiary-fixed": "#ffddb8",
+                  "secondary-container": "#c1a800",
+                  "tertiary-fixed-dim": "#ffb95f",
+                  "on-primary": "#283044",
+                  "secondary-fixed": "#ffe24c",
+                  "inverse-primary": "#565e74",
+                  "midnight-surface": "#1E293B",
+                  "outline": "#909097",
+                  "on-surface": "#e0e3e5",
+                  "on-background": "#e0e3e5",
+                  "secondary": "#e2c62d",
+                  "glass-border": "rgba(255, 255, 255, 0.12)",
+                  "surface-container-lowest": "#0b0f10",
+                  "on-tertiary": "#472a00",
+                  "background": "#101415",
+                  "on-error": "#690005",
+                  "midnight-deep": "#0F172A",
+                  "tertiary-container": "#251400",
+                  "primary-container": "#0f172a",
+                  "on-tertiary-fixed": "#2a1700",
+                  "surface-tint": "#bec6e0",
+                  "on-secondary-fixed": "#211b00",
+                  "soft-amber": "#F59E0B",
+                  "tertiary": "#ffb95f",
+                  "on-error-container": "#ffdad6"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "stack-gap": "16px",
+                  "section-gap": "40px",
+                  "container-margin": "20px",
+                  "card-padding": "24px"
+          },
+          "fontFamily": {
+                  "headline-lg-mobile": [
+                          "Manrope"
+                  ],
+                  "body-md": [
+                          "Manrope"
+                  ],
+                  "headline-md": [
+                          "Manrope"
+                  ],
+                  "label-sm": [
+                          "Hanken Grotesk"
+                  ],
+                  "body-lg": [
+                          "Manrope"
+                  ],
+                  "headline-lg": [
+                          "Manrope"
+                  ],
+                  "label-md": [
+                          "Hanken Grotesk"
+                  ]
+          },
+          "fontSize": {
+                  "headline-lg-mobile": [
+                          "24px",
+                          {
+                                  "lineHeight": "1.2",
+                                  "fontWeight": "700"
+                          }
+                  ],
+                  "body-md": [
+                          "16px",
+                          {
+                                  "lineHeight": "1.6",
+                                  "fontWeight": "400"
+                          }
+                  ],
+                  "headline-md": [
+                          "20px",
+                          {
+                                  "lineHeight": "1.4",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "label-sm": [
+                          "12px",
+                          {
+                                  "lineHeight": "1",
+                                  "fontWeight": "500"
+                          }
+                  ],
+                  "body-lg": [
+                          "18px",
+                          {
+                                  "lineHeight": "1.6",
+                                  "fontWeight": "400"
+                          }
+                  ],
+                  "headline-lg": [
+                          "32px",
+                          {
+                                  "lineHeight": "1.2",
+                                  "letterSpacing": "-0.02em",
+                                  "fontWeight": "700"
+                          }
+                  ],
+                  "label-md": [
+                          "14px",
+                          {
+                                  "lineHeight": "1",
+                                  "letterSpacing": "0.05em",
+                                  "fontWeight": "600"
+                          }
+                  ]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-midnight-deep text-on-surface antialiased overflow-hidden min-h-screen relative flex flex-col items-center justify-center">
+<!-- Map Background Placeholder -->
+<div class="absolute inset-0 z-0 bg-cover bg-center opacity-40" data-alt="A stylized night map of Suwon Hwaseong fortress, featuring softly glowing pathways winding through historic structures against a deep midnight blue background. The map is designed with a modern minimalist aesthetic, using subtle amber highlights to indicate points of interest. The overall mood is calm, romantic, and immersive, fitting a premium night-walk experience. High-fidelity glassmorphic accents are subtly integrated into the dark theme, enhancing the feeling of a moonlit journey." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCnIfM0T1nuq-r6G1cOJmlwIrG0NT3-mHKpa8qVXIGO-nVueNQLwMOQPYZzrM5mJVdBxFWTFp9JdPLvJIucwvq4a-fpdW9grC9qsj7hpmTkZwdPqbcvOfc4o5iUSwMhawZ5izw0yLqG5UpeVRevyI5XTxHvI58gvb8A6mFDNVyEz1SnsPoXafyv0UTPbFs7ON4it-ynLFOyV1OfNys2Mwq5F6aIJj6Gd6_TWgxdfwJK0oISmy_p3T9ElL0YmmbegWrVqMbjEZP2T4Lc');">
+<!-- Map Overlay Gradient -->
+<div class="absolute inset-0 bg-gradient-to-t from-midnight-deep via-midnight-deep/80 to-transparent"></div>
+</div>
+<!-- App Container -->
+<div class="relative z-10 w-full h-full max-w-[600px] flex flex-col justify-between">
+<!-- Top App Bar - Progress Header -->
+<header class="fixed top-0 w-full max-w-[600px] z-50 bg-transparent backdrop-blur-xl border-b border-glass-border">
+<div class="flex justify-between items-center px-container-margin py-4">
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity duration-300 flex items-center justify-center p-2 rounded-full bg-surface-container/50 backdrop-blur-md">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+<div class="flex flex-col items-center">
+<span class="font-label-sm text-label-sm text-moonlight-gold tracking-widest uppercase mb-1">Current Progress</span>
+<h1 class="font-headline-md text-headline-md text-on-surface">1 / 3 스팟</h1>
+</div>
+<button class="text-moonlight-gold hover:opacity-80 transition-opacity duration-300 flex items-center justify-center p-2 rounded-full bg-surface-container/50 backdrop-blur-md">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">map</span>
+</button>
+</div>
+</header>
+<!-- Map Markers & Route (Stylized) -->
+<div class="absolute top-[30%] left-1/2 transform -translate-x-1/2 flex flex-col items-center pointer-events-none">
+<!-- Target Marker -->
+<div class="relative flex flex-col items-center animate-pulse">
+<div class="w-12 h-12 bg-moonlight-gold/20 rounded-full flex items-center justify-center absolute -top-2">
+<div class="w-8 h-8 bg-moonlight-gold/40 rounded-full flex items-center justify-center">
+<div class="w-4 h-4 bg-moonlight-gold rounded-full shadow-[0_0_15px_#FDE047]"></div>
+</div>
+</div>
+<div class="mt-10 px-3 py-1 bg-surface-container/80 backdrop-blur-md border border-glass-border rounded-full shadow-lg">
+<span class="font-label-md text-label-md text-on-surface">방화수류정</span>
+</div>
+</div>
+</div>
+<!-- Main Content Area (Bottom Anchored) -->
+<main class="mt-auto flex flex-col gap-stack-gap px-container-margin pb-[100px] z-20">
+<!-- Mission Card Overlay -->
+<div class="w-full bg-surface/80 backdrop-blur-xl border border-glass-border rounded-xl p-card-padding shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transform translate-y-0 transition-transform duration-500 relative overflow-hidden">
+<!-- Glow Effect Behind Card -->
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-moonlight-gold/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="flex flex-col gap-4 relative z-10">
+<!-- Status Badge -->
+<div class="flex items-center gap-2 mb-2">
+<div class="flex items-center justify-center w-6 h-6 rounded-full bg-moonlight-gold/20">
+<span class="material-symbols-outlined text-moonlight-gold text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<span class="font-label-sm text-label-sm text-moonlight-gold">위치 확인 완료</span>
+</div>
+<!-- Mission Text -->
+<div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-2">방화수류정에 도착했습니다!</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">정자와 수면이 함께 보이는 지점을 찾아보세요.</p>
+</div>
+<!-- Actions -->
+<div class="flex flex-col gap-3 mt-4">
+<button class="w-full bg-moonlight-gold hover:bg-secondary-fixed-dim text-midnight-deep font-headline-md text-headline-md py-4 rounded-xl shadow-[0_0_20px_rgba(253,224,71,0.2)] transition-all duration-300 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">photo_camera</span>
+              포토 미션 확인하기
+            </button>
+<button class="w-full bg-transparent border border-soft-amber text-soft-amber hover:bg-soft-amber/10 font-label-md text-label-md py-4 rounded-xl transition-colors duration-300 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">navigation</span>
+              다음 스팟 길찾기
+            </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

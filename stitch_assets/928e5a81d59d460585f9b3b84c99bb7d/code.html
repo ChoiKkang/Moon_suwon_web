@@ -1,0 +1,273 @@
+<!DOCTYPE html><html class="dark" lang="ko"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>Course Detail - 야경 사진 집중 코스</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="assets/css2-0ecb35cf84ec821ae88317ea8ffa5864" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-container": "#b47300",
+                      "on-secondary-fixed-variant": "#524600",
+                      "surface-container-highest": "#323537",
+                      "on-primary-container": "#798098",
+                      "primary": "#bec6e0",
+                      "surface-container-high": "#272a2c",
+                      "on-tertiary-fixed-variant": "#653e00",
+                      "primary-fixed": "#dae2fd",
+                      "inverse-on-surface": "#2d3133",
+                      "error": "#ffb4ab",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "outline-variant": "#45464d",
+                      "primary-fixed-dim": "#bec6e0",
+                      "surface-dim": "#101415",
+                      "surface": "#101415",
+                      "moonlight-gold": "#FDE047",
+                      "surface-container": "#1d2022",
+                      "on-secondary-container": "#483d00",
+                      "on-surface-variant": "#c6c6cd",
+                      "on-secondary": "#393000",
+                      "surface-variant": "#323537",
+                      "surface-container-low": "#191c1e",
+                      "error-container": "#93000a",
+                      "on-primary-fixed": "#131b2e",
+                      "secondary-fixed-dim": "#e2c62d",
+                      "surface-bright": "#363a3b",
+                      "inverse-surface": "#e0e3e5",
+                      "tertiary-fixed": "#ffddb8",
+                      "secondary-container": "#c1a800",
+                      "tertiary-fixed-dim": "#ffb95f",
+                      "on-primary": "#283044",
+                      "secondary-fixed": "#ffe24c",
+                      "inverse-primary": "#565e74",
+                      "midnight-surface": "#1E293B",
+                      "outline": "#909097",
+                      "on-surface": "#e0e3e5",
+                      "on-background": "#e0e3e5",
+                      "secondary": "#e2c62d",
+                      "glass-border": "rgba(255, 255, 255, 0.12)",
+                      "surface-container-lowest": "#0b0f10",
+                      "on-tertiary": "#472a00",
+                      "background": "#101415",
+                      "on-error": "#690005",
+                      "midnight-deep": "#0F172A",
+                      "tertiary-container": "#251400",
+                      "primary-container": "#0f172a",
+                      "on-tertiary-fixed": "#2a1700",
+                      "surface-tint": "#bec6e0",
+                      "on-secondary-fixed": "#211b00",
+                      "soft-amber": "#F59E0B",
+                      "tertiary": "#ffb95f",
+                      "on-error-container": "#ffdad6"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-gap": "16px",
+                      "section-gap": "40px",
+                      "container-margin": "20px",
+                      "card-padding": "24px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Manrope"
+                      ],
+                      "body-md": [
+                              "Manrope"
+                      ],
+                      "headline-md": [
+                              "Manrope"
+                      ],
+                      "label-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-lg": [
+                              "Manrope"
+                      ],
+                      "headline-lg": [
+                              "Manrope"
+                      ],
+                      "label-md": [
+                              "Hanken Grotesk"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glow-effect {
+            box-shadow: 0 0 20px 8px rgba(245, 158, 11, 0.2);
+        }
+        .timeline-line {
+            width: 2px;
+            background-image: linear-gradient(to bottom, #FDE047 50%, transparent 50%);
+            background-size: 2px 8px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-midnight-deep text-on-surface antialiased min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-transparent backdrop-blur-xl border-b border-glass-border fixed top-0 w-full z-50">
+<div class="flex justify-between items-center px-container-margin py-4 max-w-[600px] mx-auto">
+<button aria-label="Back" class="text-on-surface-variant hover:opacity-80 transition-opacity duration-300 p-2 -ml-2 rounded-full">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-moonlight-gold tracking-tight">Dalbit Suwon</h1>
+<button aria-label="Notifications" class="text-on-surface-variant hover:opacity-80 transition-opacity duration-300 p-2 -mr-2 rounded-full">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">bookmark</span>
+</button>
+</div>
+</header>
+<main class="max-w-[600px] mx-auto">
+<!-- Hero Section -->
+<section class="relative h-[530px] w-full">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A breathtaking night view of Suwon Hwaseong Fortress in South Korea. The traditional Korean architecture is beautifully illuminated with warm golden lights against the deep midnight blue sky. A serene pond reflects the glowing structures, creating a romantic and peaceful atmosphere. The image captures the essence of a tranquil night walk with a modern, high-fidelity aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDNlcH55voAlP-lNzivgq_skgDEPKYDZJuzmTXYj4lj4zPx8eBGfemD6zgHvFaLSEBa-lIUZ5IWZ9CBH1usjQihaepMagkrQB1isKNNKkpkj8eZYpjqwFdHtJ6jwwI7hlQPj9TsodA4HiQ63AzesyfRU1F9f2xmNC1AWfZ8u9EVxIpFT198ENMfn12cBEEIUXXAQo22TbYqjmKt3XBLGGMxVZ2rKpkyfiyN0D5gl0Ie8yRWtWy6hyN1LiIw16FdIMdaMw2zIe17M2vV');"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-midnight-deep via-midnight-deep/60 to-transparent"></div>
+<div class="absolute bottom-0 left-0 w-full px-container-margin pb-section-gap">
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-panel mb-4">
+<span class="material-symbols-outlined text-[16px] text-moonlight-gold">photo_camera</span>
+<span class="font-label-md text-label-md text-on-surface">사진 명소</span>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-moonlight-gold mb-4">야경 사진 집중 코스</h2>
+<div class="flex items-center gap-4 text-on-surface-variant font-body-md text-body-md">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+<span>120분</span>
+</div>
+<span>•</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">route</span>
+<span>2.8km</span>
+</div>
+<span>•</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">wb_twilight</span>
+<span>19:00 권장 시작</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Content Canvas -->
+<div class="px-container-margin mt-stack-gap">
+<!-- Description -->
+<p class="font-body-lg text-body-lg text-on-surface/90 leading-relaxed mb-section-gap">
+                방화수류정과 용연을 중심으로 인생샷을 남길 수 있는 사진 작가 추천 코스입니다. 은은한 조명과 함께 고궁의 로맨틱한 밤을 담아보세요.
+            </p>
+<!-- Course Timeline -->
+<section class="mb-section-gap">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-stack-gap">코스 안내</h3>
+<div class="relative pl-6">
+<!-- Vertical Line -->
+<div class="absolute left-2.5 top-2 bottom-6 timeline-line"></div>
+<!-- Spot 1 -->
+<div class="relative mb-8">
+<div class="absolute -left-6 top-1 w-3 h-3 rounded-full bg-moonlight-gold ring-4 ring-midnight-deep z-10 shadow-[0_0_8px_rgba(253,224,71,0.6)]"></div>
+<div class="glass-panel rounded-xl p-4 ml-4">
+<h4 class="font-headline-md text-[18px] text-on-surface mb-1">1. 방화수류정</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">수원화성 야경의 꽃</p>
+</div>
+</div>
+<!-- Spot 2 -->
+<div class="relative mb-8">
+<div class="absolute -left-6 top-1 w-3 h-3 rounded-full bg-surface-variant ring-4 ring-midnight-deep z-10 border border-glass-border"></div>
+<div class="glass-panel rounded-xl p-4 ml-4 opacity-70">
+<h4 class="font-headline-md text-[18px] text-on-surface mb-1">2. 용연</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">수면에 비친 달빛</p>
+</div>
+</div>
+<!-- Spot 3 -->
+<div class="relative">
+<div class="absolute -left-6 top-1 w-3 h-3 rounded-full bg-surface-variant ring-4 ring-midnight-deep z-10 border border-glass-border"></div>
+<div class="glass-panel rounded-xl p-4 ml-4 opacity-70">
+<h4 class="font-headline-md text-[18px] text-on-surface mb-1">3. 화홍문</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">7개의 물줄기 위 조명</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Sticky Bottom CTA -->
+<div class="fixed bottom-0 left-0 w-full glass-panel border-t border-glass-border p-container-margin z-40 pb-safe">
+<div class="max-w-[600px] mx-auto">
+<button class="w-full bg-moonlight-gold text-midnight-deep font-label-md text-label-md py-4 rounded-xl glow-effect hover:bg-soft-amber transition-colors duration-300 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">play_arrow</span>
+<span>코스 시작하기</span>
+</button>
+</div>
+</div>
+</body></html>

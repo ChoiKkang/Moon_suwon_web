@@ -1,0 +1,229 @@
+<!DOCTYPE html><html class="dark" lang="ko"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>방화수류정 - Spot Detail</title>
+<!-- Google Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="assets/css2-0ecb35cf84ec821ae88317ea8ffa5864" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary-container": "#b47300",
+                        "on-secondary-fixed-variant": "#524600",
+                        "surface-container-highest": "#323537",
+                        "on-primary-container": "#798098",
+                        "primary": "#bec6e0",
+                        "surface-container-high": "#272a2c",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "primary-fixed": "#dae2fd",
+                        "inverse-on-surface": "#2d3133",
+                        "error": "#ffb4ab",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "outline-variant": "#45464d",
+                        "primary-fixed-dim": "#bec6e0",
+                        "surface-dim": "#101415",
+                        "surface": "#101415",
+                        "moonlight-gold": "#FDE047",
+                        "surface-container": "#1d2022",
+                        "on-secondary-container": "#483d00",
+                        "on-surface-variant": "#c6c6cd",
+                        "on-secondary": "#393000",
+                        "surface-variant": "#323537",
+                        "surface-container-low": "#191c1e",
+                        "error-container": "#93000a",
+                        "on-primary-fixed": "#131b2e",
+                        "secondary-fixed-dim": "#e2c62d",
+                        "surface-bright": "#363a3b",
+                        "inverse-surface": "#e0e3e5",
+                        "tertiary-fixed": "#ffddb8",
+                        "secondary-container": "#c1a800",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "on-primary": "#283044",
+                        "secondary-fixed": "#ffe24c",
+                        "inverse-primary": "#565e74",
+                        "midnight-surface": "#1E293B",
+                        "outline": "#909097",
+                        "on-surface": "#e0e3e5",
+                        "on-background": "#e0e3e5",
+                        "secondary": "#e2c62d",
+                        "glass-border": "rgba(255, 255, 255, 0.12)",
+                        "surface-container-lowest": "#0b0f10",
+                        "on-tertiary": "#472a00",
+                        "background": "#101415",
+                        "on-error": "#690005",
+                        "midnight-deep": "#0F172A",
+                        "tertiary-container": "#251400",
+                        "primary-container": "#0f172a",
+                        "on-tertiary-fixed": "#2a1700",
+                        "surface-tint": "#bec6e0",
+                        "on-secondary-fixed": "#211b00",
+                        "soft-amber": "#F59E0B",
+                        "tertiary": "#ffb95f",
+                        "on-error-container": "#ffdad6"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "stack-gap": "16px",
+                        "section-gap": "40px",
+                        "container-margin": "20px",
+                        "card-padding": "24px"
+                    },
+                    fontFamily: {
+                        "headline-lg-mobile": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-lg": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "label-md": ["Hanken Grotesk"]
+                    },
+                    fontSize: {
+                        "headline-lg-mobile": ["24px", { lineHeight: "1.2", fontWeight: "700" }],
+                        "body-md": ["16px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "headline-md": ["20px", { lineHeight: "1.4", fontWeight: "600" }],
+                        "label-sm": ["12px", { lineHeight: "1", fontWeight: "500" }],
+                        "body-lg": ["18px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "headline-lg": ["32px", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "label-md": ["14px", { lineHeight: "1", letterSpacing: "0.05em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Hide scrollbar for horizontal scrolling areas */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased selection:bg-moonlight-gold/30">
+<main class="relative w-full max-w-[600px] mx-auto min-h-screen pb-[100px]">
+<!-- Contextual Header (Detail Screen - Overlaid) -->
+<header class="fixed top-0 w-full max-w-[600px] z-50 flex justify-between items-center px-container-margin py-4">
+<button class="w-10 h-10 rounded-full bg-surface-container/50 backdrop-blur-md border border-glass-border flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<button class="w-10 h-10 rounded-full bg-surface-container/50 backdrop-blur-md border border-glass-border flex items-center justify-center text-on-surface hover:text-error transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">favorite</span>
+</button>
+</header>
+<!-- Hero Image Section -->
+<section class="relative w-full h-[486px]">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A breathtaking, highly detailed nighttime photograph of the Banghwasuryujeong pavilion in Suwon, South Korea. The elegant, curved rooflines of the traditional architecture are softly illuminated with warm yellow and amber architectural lighting, standing out against a deep, dark midnight blue sky. Below the pavilion, a dark, mirror-like pond perfectly reflects the glowing structure and surrounding silhouette of weeping willow trees. The scene evokes a calm, romantic, and serene atmosphere, fitting a premium night-walk application." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCvt-8qOtha-Zr10buBMyIFDjShZLLu9plZWs0jJHpK8u1Y2JeKj2E2cu8JmByDBBqxpNlyJOhX865sq4CUNsrFBOO3cSF2xeWYcVyJjZ2rNRmPG69mzPL76bDElgwWXeVgKZEO8X4vHndh7ov2uWAudVqtvvnOBBPJOsyzxW3If7rwfAsH93J9fXs0t99q5v2wwE3C_RWf7vh8v4sLmaxWRNmuEFX4pyo5AZVG4EDml98EsnVrFeGb5R-Adbpxk_4Pml1Y6XvGfd47');">
+</div>
+<!-- Gradient Overlay for smooth transition to content -->
+<div class="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent"></div>
+</section>
+<!-- Content Canvas -->
+<section class="relative z-10 -mt-12 bg-background rounded-t-[32px] px-container-margin pt-8 flex flex-col gap-section-gap">
+<!-- Title & Description -->
+<div class="flex flex-col gap-stack-gap">
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-high border border-glass-border w-max flex-wrap">
+<span class="material-symbols-outlined text-[16px] text-soft-amber" style="font-variation-settings: 'FILL' 1;">location_on</span>
+<span class="font-label-md text-label-md text-on-surface-variant">수원 화성</span>
+</div><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-high border border-glass-border w-max ml-2">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">pets</span>
+<span class="font-label-md text-label-md text-on-surface-variant">반려동물: 실외 이동 가능 (리드줄 필수)</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">방화수류정</h1>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                    보물 제1709호. 평소에는 군사 시설이었으나 그 아름다움 덕에 정자로 더 사랑받는 곳입니다.
+                </p>
+</div>
+<!-- Bento Grid: Highlights & Tips -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Highlight Card -->
+<div class="bg-surface-container rounded-2xl p-card-padding border border-glass-border flex flex-col gap-3 relative overflow-hidden">
+<div class="absolute -top-4 -right-4 w-20 h-20 bg-moonlight-gold/10 rounded-full blur-xl"></div>
+<div class="flex items-center gap-3 text-moonlight-gold">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">wb_twilight</span>
+<h3 class="font-headline-md text-headline-md">Night Highlights</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface">수면 반사와 정자 조명이 함께 보이는 구간.</p>
+</div>
+<!-- Photo Tip Card -->
+<div class="bg-surface-container rounded-2xl p-card-padding border border-glass-border flex flex-col gap-3">
+<div class="flex items-center gap-3 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">photo_camera</span>
+<h3 class="font-headline-md text-headline-md">Photo Tip</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface">난간 대신 정자와 수면을 함께 넣는 구도가 가장 예뻐요.</p>
+</div>
+</div>
+<!-- Experience Card (Romantic Focus) -->
+<div class="relative bg-surface-container-high rounded-2xl p-card-padding border border-soft-amber/30 shadow-[0_4px_20px_rgba(245,158,11,0.05)] overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-soft-amber"></div>
+<div class="flex gap-4 items-start">
+<div class="w-10 h-10 rounded-full bg-soft-amber/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-soft-amber" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">낭만적인 순간</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">연인과 함께 성곽길을 따라 걸으며 서로의 첫인상을 이야기해보세요.</p>
+</div>
+</div>
+</div>
+<!-- Nearby Spots (Horizontal Scroll) -->
+<div class="flex flex-col gap-stack-gap mb-8">
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant">explore</span>
+                    주변 추천 스팟
+                </h3>
+<div class="flex overflow-x-auto gap-4 no-scrollbar pb-4 -mx-container-margin px-container-margin">
+<!-- Spot 1 -->
+<div class="w-[200px] shrink-0 bg-surface-container rounded-xl overflow-hidden border border-glass-border flex flex-col group cursor-pointer hover:border-moonlight-gold/50 transition-colors">
+<div class="h-24 bg-surface-container-highest relative">
+<div class="absolute inset-0 bg-cover bg-center opacity-70 group-hover:opacity-100 transition-opacity" data-alt="A warm, dimly lit interior of a cozy local cafe in Suwon. Dark wooden furniture, soft ambient lighting from pendant lamps, and an atmospheric mood suitable for a late evening date." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC0S33tImL1YLfQciYXXpEdYvFc9mJGTT1keQMljAA-hDdfYWk0vihV4zhekbC2tnmx_kmMEGfzhis2_9e-DhnNLnhD20ZwW2qdwSROWqKRUer8uoDgSHIxzztGT6wE4ZfGq8FNL0qrxaD2Hfyt_OTMkvbxnmy66DApgqZYvAgfdB1rC80sJb5QPFdrAVosSog0VI7--uOf-7a63Ko8TeY9NOQxLyNpf714LQ7uaK_sy_3OAwnMVGffMxenmBe1MG53P1g8Zu3JKlqy');">
+</div>
+</div>
+<div class="p-3 flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-soft-amber uppercase tracking-wider">Cafe</span>
+<span class="font-body-md text-body-md text-on-surface truncate">행리단길 카페 '메이븐'</span>
+</div>
+</div>
+<!-- Spot 2 -->
+<div class="w-[200px] shrink-0 bg-surface-container rounded-xl overflow-hidden border border-glass-border flex flex-col group cursor-pointer hover:border-moonlight-gold/50 transition-colors">
+<div class="h-24 bg-surface-container-highest relative">
+<div class="absolute inset-0 bg-cover bg-center opacity-70 group-hover:opacity-100 transition-opacity" data-alt="A sophisticated craft beer pub setting at night. Close up on a glass of golden amber beer sitting on a dark wooden counter, illuminated by subtle, warm background bar lights." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDyFN474vFqJMtaEVwyD0hG0ZHaHVh_9QvTr7a9MveV5YbI2ZD8LkMOnPLrXl2crRhNYn9zd-rl4W9-FYqEtmSh5eahJrEyqnaRxvbjcgGV86Vrlogbrd0PHgAjbwvozzZxiZO8TyAMMcj23AK0V8MFhn3O23ZIKQsFjkguItr2U7pURAhaPc_aIigiU7zhvyiv8rdAoTsklIXh4ubCRWPkSE6vWZ2UF_othGMUqfDuPMhaja_rNLMnw1VxT1Q9uvrBJmNzJSybF9h5');">
+</div>
+</div>
+<div class="p-3 flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider">Pub</span>
+<span class="font-body-md text-body-md text-on-surface truncate">수원맥주</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Fixed Bottom CTA (Task-Focused / Transactional action) -->
+<div class="fixed bottom-0 w-full max-w-[600px] px-container-margin py-4 pb-safe bg-background/80 backdrop-blur-xl border-t border-glass-border z-50">
+<button class="w-full bg-moonlight-gold text-on-secondary py-4 rounded-xl font-headline-md text-headline-md flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(253,224,71,0.15)] hover:bg-secondary transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">map</span>
+                카카오맵으로 길찾기
+            </button>
+</div>
+</main>
+</body></html>

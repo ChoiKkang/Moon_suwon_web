@@ -1,0 +1,229 @@
+<!DOCTYPE html><html class="dark" lang="ko"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Course Completion - Dalbit Suwon</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="assets/css2-0ecb35cf84ec821ae88317ea8ffa5864" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#565e74",
+                        "outline-variant": "#45464d",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "moonlight-gold": "#FDE047",
+                        "on-tertiary-container": "#b47300",
+                        "tertiary-fixed": "#ffddb8",
+                        "midnight-deep": "#0F172A",
+                        "secondary-container": "#c1a800",
+                        "on-surface-variant": "#c6c6cd",
+                        "surface-container-high": "#272a2c",
+                        "surface": "#101415",
+                        "on-tertiary-fixed": "#2a1700",
+                        "outline": "#909097",
+                        "on-background": "#e0e3e5",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-secondary-fixed": "#211b00",
+                        "error-container": "#93000a",
+                        "primary-container": "#0f172a",
+                        "background": "#101415",
+                        "secondary-fixed": "#ffe24c",
+                        "midnight-surface": "#1E293B",
+                        "on-error-container": "#ffdad6",
+                        "surface-container": "#1d2022",
+                        "secondary": "#e2c62d",
+                        "inverse-on-surface": "#2d3133",
+                        "on-error": "#690005",
+                        "on-secondary": "#393000",
+                        "on-surface": "#e0e3e5",
+                        "soft-amber": "#F59E0B",
+                        "surface-dim": "#101415",
+                        "on-secondary-container": "#483d00",
+                        "on-primary-container": "#798098",
+                        "tertiary": "#ffb95f",
+                        "surface-tint": "#bec6e0",
+                        "surface-container-highest": "#323537",
+                        "primary": "#bec6e0",
+                        "error": "#ffb4ab",
+                        "surface-variant": "#323537",
+                        "on-primary-fixed": "#131b2e",
+                        "surface-container-lowest": "#0b0f10",
+                        "on-tertiary": "#472a00",
+                        "tertiary-container": "#251400",
+                        "on-secondary-fixed-variant": "#524600",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "surface-container-low": "#191c1e",
+                        "glass-border": "rgba(255, 255, 255, 0.12)",
+                        "surface-bright": "#363a3b",
+                        "primary-fixed": "#dae2fd",
+                        "on-primary": "#283044",
+                        "inverse-surface": "#e0e3e5",
+                        "secondary-fixed-dim": "#e2c62d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-gap": "16px",
+                        "section-gap": "40px",
+                        "card-padding": "24px",
+                        "container-margin": "20px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-md": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "1", "fontWeight": "500" }],
+                        "label-md": ["14px", { "lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["20px", { "lineHeight": "1.4", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glow-amber {
+            box-shadow: 0 0 16px rgba(245, 158, 11, 0.2);
+        }
+        .text-gradient-gold {
+            background: linear-gradient(to right, #FDE047, #F59E0B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-midnight-deep text-on-surface min-h-screen flex flex-col md:items-center">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-transparent backdrop-blur-xl border-b border-glass-border flex justify-between items-center px-container-margin py-4 max-w-[600px] md:mx-auto transition-opacity duration-300">
+<button class="text-on-surface-variant hover:opacity-80 flex items-center justify-center p-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-moonlight-gold tracking-tight">Dalbit Suwon</h1>
+<div class="w-10"></div> <!-- Placeholder for balance -->
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 w-full max-w-[600px] mx-auto pt-24 pb-32 px-container-margin flex flex-col gap-section-gap overflow-y-auto">
+<!-- Celebration Header -->
+<section class="text-center flex flex-col items-center gap-4 animate-fade-in-up">
+<div class="w-16 h-16 rounded-full glass-panel flex items-center justify-center glow-amber mb-2">
+<span class="material-symbols-outlined text-soft-amber text-4xl" style="font-variation-settings: 'FILL' 1;">stars</span>
+</div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">
+                코스 완주를<br><span class="text-gradient-gold">축하합니다!</span>
+</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-xs mx-auto">
+                Night Photo Focus Course
+            </p>
+</section>
+<!-- Memory Card -->
+<section class="glass-panel rounded-xl overflow-hidden shadow-2xl relative group">
+<div class="relative h-64 md:h-80 w-full overflow-hidden">
+<img alt="Hwaseong Haenggung illuminated at night, viewed from an elevated angle, showing the majestic traditional Korean architecture glowing with warm light against the deep blue night sky. The scene is romantic and serene, capturing the essence of the 'Romantic Night Walk' theme." class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" data-alt="A breathtaking night photograph of traditional Korean palace architecture, reminiscent of Hwaseong Haenggung. The elegant curved roofs and wooden structures are bathed in warm, amber light, creating a striking contrast against the rich, deep midnight blue sky. The composition is highly aesthetic and premium, capturing a mood of serene romance and historic beauty. The visual style aligns with a high-fidelity 'Romantic Night Walk' experience, blending modern minimalism with a deep, nocturnal foundation." src="assets/AB6AXuAhATMW_wTxzELISnLI9-E_1lJcvNooCKCiqB6d2zLwP9DDioo2Ruud3PInIay8p4dK-O1mI2HuhjNeV6yr5_rnUjRVyW69-e1418eeceaa79740012027198562dff5">
+<div class="absolute inset-0 bg-gradient-to-t from-midnight-deep via-transparent to-transparent opacity-90"></div>
+<div class="absolute bottom-0 left-0 w-full p-card-padding">
+<div class="flex justify-between items-end">
+<div>
+<p class="font-label-sm text-label-sm text-moonlight-gold mb-1 uppercase tracking-wider">Completion Record</p>
+<h3 class="font-headline-md text-headline-md text-on-surface">10월 24일의 밤</h3>
+</div>
+<div class="glass-panel px-3 py-1.5 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-soft-amber" style="font-size: 16px; font-variation-settings: 'FILL' 1;">local_fire_department</span>
+<span class="font-label-sm text-label-sm text-on-surface">Perfect</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Summary Stats -->
+<div class="bg-midnight-surface/80 p-card-padding border-t border-glass-border">
+<div class="grid grid-cols-3 gap-4 divide-x divide-glass-border">
+<div class="flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-outline-variant mb-2" style="font-variation-settings: 'FILL' 0;">timer</span>
+<span class="font-headline-md text-headline-md text-on-surface mb-1">1h 45m</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">소요 시간</span>
+</div>
+<div class="flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-outline-variant mb-2" style="font-variation-settings: 'FILL' 0;">directions_walk</span>
+<span class="font-headline-md text-headline-md text-on-surface mb-1">3.2km</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">이동 거리</span>
+</div>
+<div class="flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-outline-variant mb-2" style="font-variation-settings: 'FILL' 0;">location_on</span>
+<span class="font-headline-md text-headline-md text-on-surface mb-1">5</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">방문 스팟</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Actions -->
+<section class="flex flex-col gap-stack-gap text-center mt-4">
+<p class="font-body-md text-body-md text-on-surface-variant mb-2">오늘의 추억을 공유하고 기록해보세요.</p>
+<button class="w-full py-4 rounded-lg bg-moonlight-gold text-midnight-deep font-label-md text-label-md flex items-center justify-center gap-2 glow-amber hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">ios_share</span>
+                이미지로 저장 및 공유하기
+            </button>
+<div class="flex gap-4">
+<button class="flex-1 py-3 rounded-lg border border-soft-amber text-soft-amber font-label-md text-label-md hover:bg-soft-amber/10 transition-colors">
+                    내 기록 확인하기
+                </button>
+<button class="flex-1 py-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-variant transition-colors">
+                    홈으로 돌아가기
+                </button>
+</div>
+</section>
+<!-- Nudge for Guest -->
+<section class="glass-panel p-4 rounded-lg flex items-center gap-4 mt-8 border border-glass-border border-dashed">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">account_circle</span>
+</div>
+<div class="flex-1">
+<p class="font-body-sm text-sm text-on-surface mb-1">기록을 영구적으로 저장하고 싶으신가요?</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">로그인하면 언제든 추억을 꺼내볼 수 있습니다.</p>
+</div>
+<button class="font-label-sm text-label-sm text-moonlight-gold whitespace-nowrap hover:underline">로그인/가입</button>
+</section>
+</main>
+<style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+    </style>
+</body></html>

@@ -31,7 +31,7 @@
 - Supabase CLI 링크 흔적은 존재한다.
 - `supabase/migrations` SQL 파일은 없다.
 - 문서에는 `core`, `editorial`, `serving`, `raw` 스키마가 설계되어 있지만 실제 마이그레이션 구현은 아직 저장소에 없다.
-- 현재 `.env.local`의 anon key로 원격 Supabase REST 요청을 확인했을 때 `Invalid API key`가 반환되었다.
+- 현재 `.env.local`의 anon key를 갱신한 뒤 원격 Supabase REST 요청이 성공했다.
 
 따라서 구현 전 선행 작업은 다음이다.
 
@@ -370,7 +370,7 @@ core/editorial/raw는 직접 노출 금지 또는 엄격 제한
 
 ### 9.1 Supabase 연결 검증
 
-- `.env.local` anon key의 `Invalid API key` 문제 해결
+- `.env.local` anon key 갱신 후 REST 조회 성공 확인
 - `auth.getUser()` 호출 가능
 - `serving` View 조회 성공
 

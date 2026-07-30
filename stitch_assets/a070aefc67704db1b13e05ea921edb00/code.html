@@ -1,0 +1,369 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>Dalbit Suwon - Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="assets/css2-0ecb35cf84ec821ae88317ea8ffa5864" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-container": "#b47300",
+                      "on-secondary-fixed-variant": "#524600",
+                      "surface-container-highest": "#323537",
+                      "on-primary-container": "#798098",
+                      "primary": "#bec6e0",
+                      "surface-container-high": "#272a2c",
+                      "on-tertiary-fixed-variant": "#653e00",
+                      "primary-fixed": "#dae2fd",
+                      "inverse-on-surface": "#2d3133",
+                      "error": "#ffb4ab",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "outline-variant": "#45464d",
+                      "primary-fixed-dim": "#bec6e0",
+                      "surface-dim": "#101415",
+                      "surface": "#101415",
+                      "moonlight-gold": "#FDE047",
+                      "surface-container": "#1d2022",
+                      "on-secondary-container": "#483d00",
+                      "on-surface-variant": "#c6c6cd",
+                      "on-secondary": "#393000",
+                      "surface-variant": "#323537",
+                      "surface-container-low": "#191c1e",
+                      "error-container": "#93000a",
+                      "on-primary-fixed": "#131b2e",
+                      "secondary-fixed-dim": "#e2c62d",
+                      "surface-bright": "#363a3b",
+                      "inverse-surface": "#e0e3e5",
+                      "tertiary-fixed": "#ffddb8",
+                      "secondary-container": "#c1a800",
+                      "tertiary-fixed-dim": "#ffb95f",
+                      "on-primary": "#283044",
+                      "secondary-fixed": "#ffe24c",
+                      "inverse-primary": "#565e74",
+                      "midnight-surface": "#1E293B",
+                      "outline": "#909097",
+                      "on-surface": "#e0e3e5",
+                      "on-background": "#e0e3e5",
+                      "secondary": "#e2c62d",
+                      "glass-border": "rgba(255, 255, 255, 0.12)",
+                      "surface-container-lowest": "#0b0f10",
+                      "on-tertiary": "#472a00",
+                      "background": "#101415",
+                      "on-error": "#690005",
+                      "midnight-deep": "#0F172A",
+                      "tertiary-container": "#251400",
+                      "primary-container": "#0f172a",
+                      "on-tertiary-fixed": "#2a1700",
+                      "surface-tint": "#bec6e0",
+                      "on-secondary-fixed": "#211b00",
+                      "soft-amber": "#F59E0B",
+                      "tertiary": "#ffb95f",
+                      "on-error-container": "#ffdad6"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-gap": "16px",
+                      "section-gap": "40px",
+                      "container-margin": "20px",
+                      "card-padding": "24px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Manrope"
+                      ],
+                      "body-md": [
+                              "Manrope"
+                      ],
+                      "headline-md": [
+                              "Manrope"
+                      ],
+                      "label-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-lg": [
+                              "Manrope"
+                      ],
+                      "headline-lg": [
+                              "Manrope"
+                      ],
+                      "label-md": [
+                              "Hanken Grotesk"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        /* Hide scrollbar for horizontal scrolling but keep functionality */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            font-family: 'Manrope', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            padding-bottom: calc(theme('spacing.16') + 20px); /* Space for bottom nav */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="relative min-h-screen max-w-[600px] mx-auto md:border-x md:border-glass-border">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-transparent backdrop-blur-xl border-b border-glass-border transition-opacity duration-300 flex justify-between items-center px-container-margin py-4 max-w-[600px] mx-auto">
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity duration-300 flex items-center justify-center">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-moonlight-gold tracking-tight">Dalbit Suwon</h1>
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity duration-300 flex items-center justify-center">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="pt-[80px] px-container-margin pb-section-gap flex flex-col gap-section-gap">
+<!-- Hero Greeting -->
+<section class="mt-8">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface leading-tight">
+                수원화성의 밤을 걷는<br>
+<span class="text-moonlight-gold">가장 로맨틱한 방법</span>
+</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2">오늘 밤, 당신의 걸음을 안내할게요.</p>
+</section>
+<!-- Section 1: 추천 데이트 코스 -->
+<section>
+<div class="flex justify-between items-end mb-4">
+<h3 class="font-headline-md text-headline-md text-on-surface">추천 데이트 코스</h3>
+<button class="font-label-sm text-label-sm text-soft-amber hover:opacity-80 flex items-center">
+                    모두 보기 <span class="material-symbols-outlined text-[16px] ml-1">chevron_right</span>
+</button>
+</div><div class="flex overflow-x-auto hide-scrollbar gap-2 mb-6 -mx-container-margin px-container-margin">
+<button class="shrink-0 px-4 py-2 rounded-full bg-moonlight-gold text-on-primary-fixed font-label-md text-label-md border border-moonlight-gold/20">
+        전체
+    </button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-surface-container border border-glass-border text-on-surface-variant font-label-md text-label-md flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">pets</span>
+        반려동물 동반
+    </button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-surface-container border border-glass-border text-on-surface-variant font-label-md text-label-md">
+        포토스팟
+    </button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-surface-container border border-glass-border text-on-surface-variant font-label-md text-label-md">
+        성곽산책
+    </button>
+</div>
+<div class="flex overflow-x-auto hide-scrollbar gap-4 pb-4 -mx-container-margin px-container-margin snap-x snap-mandatory">
+<!-- Card 1 -->
+<div class="snap-center shrink-0 w-[280px] rounded-xl overflow-hidden relative aspect-[4/5] bg-surface-container border border-glass-border shadow-lg">
+<img alt="Romantic night view of Suwon Hwaseong Fortress illuminated by soft golden lights, reflecting on tranquil water." class="absolute inset-0 w-full h-full object-cover" data-alt="A breathtaking night view of Suwon Hwaseong Fortress, featuring traditional Korean architecture illuminated by warm golden lights. The reflection of the fortress shimmers on a tranquil body of water in the foreground. The sky is a deep, romantic midnight blue, creating a high-fidelity, calm atmosphere. Soft, glowing lantern light highlights the pathway, evoking a sense of modern romance." src="assets/AB6AXuB_lOAeajwX4t63xJBDQPNKaVLzG2NFzZyIzMRPzK5I-Kex5T4F8vjNf9depSKqTmX--MGUA5BXYT5VzNp9UpidB11fLphI-da2f832240db7b54605144e74302ad98">
+<div class="absolute inset-0 bg-gradient-to-t from-midnight-deep via-midnight-deep/60 to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-card-padding w-full">
+<div class="flex gap-2 mb-2">
+<span class="bg-surface/60 backdrop-blur-md px-2 py-1 rounded text-moonlight-gold font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 90분
+                            </span>
+<span class="bg-surface/60 backdrop-blur-md px-2 py-1 rounded text-on-surface font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">location_on</span> 4개 스팟
+                            </span>
+</div>
+<h4 class="font-headline-md text-headline-md text-on-surface mb-1">처음 가는 수원화성<br>데이트 코스</h4>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="snap-center shrink-0 w-[280px] rounded-xl overflow-hidden relative aspect-[4/5] bg-surface-container border border-glass-border shadow-lg">
+<img alt="Night photography of a traditional Korean pavilion at Suwon, glowing warmly against the dark sky." class="absolute inset-0 w-full h-full object-cover" data-alt="A striking night photograph focusing on an intricate traditional Korean pavilion in Suwon. The architecture is bathed in soft amber illumination, standing out against a deep obsidian night sky. The scene is framed by dark, silhouetted trees, adding depth and a calm, secretive mood. The overall aesthetic is premium, high-fidelity, and deeply romantic." src="assets/AB6AXuDH5rpiyuO5o8LaK_sdb5bzTgVwusSQeXsTglhE6DfgW9zZYzvF1lmTcarUjRvvFMrvFht2r7AMBT9bReXfbGnJ4TdDIf9Y-851ffea10669a975f4c735979d7ce100">
+<div class="absolute inset-0 bg-gradient-to-t from-midnight-deep via-midnight-deep/60 to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-card-padding w-full">
+<div class="flex gap-2 mb-2">
+<span class="bg-surface/60 backdrop-blur-md px-2 py-1 rounded text-moonlight-gold font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 120분
+                            </span>
+<span class="bg-surface/60 backdrop-blur-md px-2 py-1 rounded text-on-surface font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">location_on</span> 3개 스팟
+                            </span>
+</div>
+<h4 class="font-headline-md text-headline-md text-on-surface mb-1">야경 사진<br>집중 코스</h4>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="snap-center shrink-0 w-[280px] rounded-xl overflow-hidden relative aspect-[4/5] bg-surface-container border border-glass-border shadow-lg">
+<img alt="Lively yet cozy night street view in Haenggung-dong, with warm cafe lights." class="absolute inset-0 w-full h-full object-cover" data-alt="A lively yet cozy night view of a street in Haenggung-dong, lined with charming cafes and small shops. Warm, glowing lights spill from the windows onto the pavement, creating an inviting, romantic atmosphere. The setting feels modern but intimate, perfectly capturing the mood of a late-night stroll. The color palette emphasizes soft ambers and deep twilight blues." src="assets/AB6AXuDoe2bgcmzIyASwCTMB7p7eMAvQJv3wY5ViYDTd2R87V-t1_1LUcbyCBCS3euRxFV4ESnuvVp44bvoROYBcUzvWBIUqJlLb-67424e0adf097a509bfe3ba18d510ac6">
+<div class="absolute inset-0 bg-gradient-to-t from-midnight-deep via-midnight-deep/60 to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-card-padding w-full">
+<div class="flex gap-2 mb-2">
+<span class="bg-surface/60 backdrop-blur-md px-2 py-1 rounded text-moonlight-gold font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 100분
+                            </span>
+<span class="bg-surface/60 backdrop-blur-md px-2 py-1 rounded text-on-surface font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">location_on</span> 5개 스팟
+                            </span>
+</div>
+<h4 class="font-headline-md text-headline-md text-on-surface mb-1">산책 후 행리단길<br>마무리 코스</h4>
+</div>
+</div>
+</div>
+</section><section class="mt-stack-gap">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4">최근 완료한 코스</h3>
+<div class="bg-surface-container/60 backdrop-blur-md rounded-xl border border-glass-border overflow-hidden flex shadow-lg relative">
+<div class="w-1/3 aspect-square relative">
+<img alt="Completed course image" class="w-full h-full object-cover" src="assets/AB6AXuDH5rpiyuO5o8LaK_sdb5bzTgVwusSQeXsTglhE6DfgW9zZYzvF1lmTcarUjRvvFMrvFht2r7AMBT9bReXfbGnJ4TdDIf9Y-851ffea10669a975f4c735979d7ce100">
+<div class="absolute top-2 left-2 bg-soft-amber text-on-secondary-fixed font-label-sm text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                완료
+            </div>
+</div>
+<div class="flex-1 p-4 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start">
+<h4 class="font-headline-md text-[18px] text-on-surface">야경 사진 집중 코스</h4>
+<span class="font-label-sm text-on-surface-variant text-[11px]">10월 24일</span>
+</div>
+<p class="font-label-sm text-moonlight-gold mt-1">수원의 숨은 야경 명소 탐방</p>
+</div>
+<div class="flex gap-4">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">timer</span>
+<span class="font-label-sm text-on-surface-variant text-[12px]">1h 45m</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">distance</span>
+<span class="font-label-sm text-on-surface-variant text-[12px]">3.2km</span>
+</div>
+</div>
+</div>
+<button class="absolute bottom-3 right-3 text-on-surface-variant hover:text-moonlight-gold">
+<span class="material-symbols-outlined text-[20px]">arrow_forward_ios</span>
+</button>
+</div>
+</section>
+<!-- Section 2: 지금 가기 좋은 스팟 -->
+<section>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4">지금 가기 좋은 스팟</h3>
+<div class="grid grid-cols-2 gap-4">
+<!-- Spot 1 -->
+<div class="bg-midnight-surface rounded-xl overflow-hidden border border-glass-border shadow-md">
+<div class="h-[120px] relative"><div class="absolute top-2 left-2 z-10 bg-midnight-deep/70 backdrop-blur-md text-white font-label-sm text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 border border-glass-border">
+<span class="material-symbols-outlined text-[12px]">pets</span>
+    반려동물 가능
+</div>
+<img alt="Banghwa Suryujeong pavilion at night, beautifully lit near a pond." class="w-full h-full object-cover" data-alt="A serene nighttime view of Banghwa Suryujeong pavilion, elegantly illuminated by warm light. The pavilion sits gracefully next to a calm pond that reflects its golden glow. The surrounding willow trees add a touch of mystery in the dim light. The overall mood is peaceful and romantic, fitting a high-end travel experience." src="assets/AB6AXuAUhKW4O4JnHNs0Wyeurz68BkAI9J2Uu6QLDUU1yoldZKbGRmevgWLMXYOJH9MBLICboMXpIzpRP7_WFS9GFLJhPrQ4px0w-58201b7aafd331f96d36958f9667edc1">
+<button class="absolute top-2 right-2 w-8 h-8 rounded-full bg-surface/50 backdrop-blur-md flex items-center justify-center text-on-surface hover:text-soft-amber transition-colors">
+<span class="material-symbols-outlined text-[18px]">bookmark_border</span>
+</button>
+</div>
+<div class="p-3">
+<h4 class="font-body-md text-body-md text-on-surface font-semibold truncate">방화수류정</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">달빛이 머무는 연못</p>
+</div>
+</div>
+<!-- Spot 2 -->
+<div class="bg-midnight-surface rounded-xl overflow-hidden border border-glass-border shadow-md">
+<div class="h-[120px] relative">
+<img alt="Hwaseong Haenggung palace gate glowing magnificently in the evening." class="w-full h-full object-cover" data-alt="The grand entrance gate of Hwaseong Haenggung palace, illuminated spectacularly against a dark evening sky. The warm golden lights highlight the intricate details of the traditional architecture and the colorful roof tiles. The scene is majestic yet inviting, evoking a strong sense of history blended with modern romantic ambiance. The palette is rich with deep blues and brilliant gold." src="assets/AB6AXuBHAVtjy5DsQtO77fNXmtfucXy3Uti4hfydhdnh5FvXsWz24idXDhb9FygL0gL2kENwRtFK093Mi4C125_P2uCscDPbRDSW-5f03a5a20f63eda17377cd6fc57593a8">
+<button class="absolute top-2 right-2 w-8 h-8 rounded-full bg-surface/50 backdrop-blur-md flex items-center justify-center text-on-surface hover:text-soft-amber transition-colors">
+<span class="material-symbols-outlined text-[18px]">bookmark_border</span>
+</button>
+</div>
+<div class="p-3">
+<h4 class="font-body-md text-body-md text-on-surface font-semibold truncate">화성행궁</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">고즈넉한 행궁 거닐기</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container/80 backdrop-blur-xl border-t border-glass-border shadow-[0_-4px_20px_rgba(0,0,0,0.4)] flex justify-around items-center h-16 max-w-[600px] mx-auto pb-safe md:hidden">
+<!-- Home (Active) -->
+<a class="flex flex-col items-center justify-center text-moonlight-gold font-bold scale-95 active:scale-90 transition-transform duration-200 w-16" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</a>
+<!-- Nearby -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-soft-amber scale-95 active:scale-90 transition-transform duration-200 w-16" href="#">
+<span class="material-symbols-outlined">near_me</span>
+<span class="font-label-sm text-label-sm mt-1">Nearby</span>
+</a>
+<!-- Bookmarks -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-soft-amber scale-95 active:scale-90 transition-transform duration-200 w-16" href="#">
+<span class="material-symbols-outlined">bookmark</span>
+<span class="font-label-sm text-label-sm mt-1">Bookmarks</span>
+</a>
+<!-- My -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-soft-amber scale-95 active:scale-90 transition-transform duration-200 w-16" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-sm text-label-sm mt-1">My</span>
+</a>
+</nav>
+</body></html>

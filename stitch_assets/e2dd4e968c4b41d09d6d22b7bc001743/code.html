@@ -1,0 +1,251 @@
+<!DOCTYPE html><html class="dark" lang="ko"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="assets/css2-58fcca80d0779de50825270c3478d217" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<link href="assets/css2-a39f5c6fcbb87b419667ec984d2e579a" rel="stylesheet">
+<style>
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-gold {
+            box-shadow: 0 0 20px rgba(253, 224, 71, 0.2);
+        }
+        .bg-night-gradient {
+            background: radial-gradient(circle at top right, #1E293B 0%, #0F172A 100%);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#363a3b",
+                        "on-error": "#690005",
+                        "midnight-deep": "#0F172A",
+                        "error": "#ffb4ab",
+                        "soft-amber": "#F59E0B",
+                        "on-background": "#e0e3e5",
+                        "on-secondary-container": "#483d00",
+                        "midnight-surface": "#1E293B",
+                        "surface-container": "#1d2022",
+                        "on-secondary-fixed": "#211b00",
+                        "inverse-on-surface": "#2d3133",
+                        "tertiary-container": "#251400",
+                        "surface-dim": "#101415",
+                        "tertiary-fixed": "#ffddb8",
+                        "on-secondary-fixed-variant": "#524600",
+                        "surface-container-highest": "#323537",
+                        "on-primary": "#283044",
+                        "error-container": "#93000a",
+                        "outline": "#909097",
+                        "on-primary-fixed": "#131b2e",
+                        "glass-border": "rgba(255, 255, 255, 0.12)",
+                        "on-tertiary": "#472a00",
+                        "inverse-surface": "#e0e3e5",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "outline-variant": "#45464d",
+                        "secondary-container": "#c1a800",
+                        "surface": "#101415",
+                        "primary-fixed-dim": "#bec6e0",
+                        "surface-variant": "#323537",
+                        "on-primary-container": "#798098",
+                        "secondary": "#e2c62d",
+                        "background": "#101415",
+                        "surface-container-low": "#191c1e",
+                        "surface-container-lowest": "#0b0f10",
+                        "primary": "#bec6e0",
+                        "secondary-fixed-dim": "#e2c62d",
+                        "tertiary": "#ffb95f",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-high": "#272a2c",
+                        "on-surface-variant": "#c6c6cd",
+                        "on-tertiary-container": "#b47300",
+                        "on-secondary": "#393000",
+                        "surface-tint": "#bec6e0",
+                        "primary-container": "#0f172a",
+                        "on-surface": "#e0e3e5",
+                        "inverse-primary": "#565e74",
+                        "primary-fixed": "#dae2fd",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "moonlight-gold": "#FDE047",
+                        "secondary-fixed": "#ffe24c",
+                        "on-tertiary-fixed": "#2a1700"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-gap": "16px",
+                        "card-padding": "24px",
+                        "container-margin": "20px",
+                        "section-gap": "40px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-md": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "headline-lg": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "1", "fontWeight": "500"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-midnight-deep text-on-surface selection:bg-moonlight-gold/30 overflow-hidden">
+<!-- Background Layer -->
+<div class="fixed inset-0 z-0">
+<img class="w-full h-full object-cover opacity-40" data-alt="A cinematic night view of the Suwon Hwaseong Fortress wall and gate, illuminated by warm golden spotlights against a deep indigo and midnight blue sky. The atmosphere is serene and romantic, with soft glowing highlights and a slight misty texture. The composition uses a low-angle perspective to emphasize the grandeur of the traditional Korean architecture, blending historic elegance with a modern nocturnal aesthetic." src="assets/AB6AXuCRkkEb-QtRWGrXLkiODLiy-CGLsGk7rmy4hC_qblMIGqZMVuhE0LX9tA8HefAfAgZIaPry_tLomJoREf6tsN7yCrQg2Vpa-b9f6f5f225ddd230956aa99e5a84c1f2">
+<div class="absolute inset-0 bg-gradient-to-t from-midnight-deep via-midnight-deep/60 to-transparent"></div>
+</div>
+<!-- Main Content Container -->
+<main class="relative z-10 min-h-screen flex flex-col items-center justify-between px-container-margin py-12 max-w-[600px] mx-auto overflow-y-auto">
+<!-- Header Section -->
+<header class="w-full flex flex-col items-center mt-8 animate-fade-in">
+<div class="mb-6 relative">
+<div class="w-20 h-20 rounded-full bg-gradient-to-tr from-moonlight-gold to-soft-amber flex items-center justify-center glow-gold">
+<span class="material-symbols-outlined text-midnight-deep text-5xl" style="font-variation-settings: 'FILL' 1;">bedtime</span>
+</div>
+<!-- Decorative stars/glows -->
+<div class="absolute -top-4 -right-4 w-2 h-2 rounded-full bg-moonlight-gold blur-[1px] animate-pulse"></div>
+<div class="absolute top-10 -left-6 w-1 h-1 rounded-full bg-white blur-[0.5px] animate-pulse" style="animation-delay: 1s;"></div>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-moonlight-gold tracking-tight mb-2">Dalbit Suwon</h1>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80">수원의 밤, 당신의 추억을 저장하세요</p>
+</header>
+<!-- Login Actions Container -->
+<section class="w-full space-y-4 mb-8">
+<!-- Kakao Login -->
+<button class="w-full h-[56px] flex items-center justify-between px-6 bg-[#FEE500] text-[#191919] rounded-xl font-label-md text-label-md transition-transform active:scale-[0.98] hover:shadow-lg" onclick="handleLogin('Kakao')">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+<span>카카오로 시작하기</span>
+</div>
+<span class="material-symbols-outlined opacity-40">chevron_right</span>
+</button>
+<!-- Naver Login -->
+<button class="w-full h-[56px] flex items-center justify-between px-6 bg-[#03C75A] text-white rounded-xl font-label-md text-label-md transition-transform active:scale-[0.98] hover:shadow-lg" onclick="handleLogin('Naver')">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+<span>네이버로 시작하기</span>
+</div>
+<span class="material-symbols-outlined opacity-40">chevron_right</span>
+</button>
+<!-- Apple Login -->
+<button class="w-full h-[56px] flex items-center justify-between px-6 bg-white text-black rounded-xl font-label-md text-label-md transition-transform active:scale-[0.98] hover:shadow-lg" onclick="handleLogin('Apple')">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">phone_iphone</span>
+<span>Apple로 시작하기</span>
+</div>
+<span class="material-symbols-outlined opacity-40">chevron_right</span>
+</button>
+<!-- Divider -->
+<div class="flex items-center py-4">
+<div class="flex-grow h-[1px] bg-glass-border"></div>
+<span class="px-4 font-label-sm text-label-sm text-outline opacity-50 uppercase tracking-widest">or</span>
+<div class="flex-grow h-[1px] bg-glass-border"></div>
+</div>
+<!-- Guest/Skip -->
+<button class="w-full h-[56px] glass-panel text-on-surface rounded-xl font-label-md text-label-md flex items-center justify-center transition-all hover:bg-white/5 active:scale-[0.98]" onclick="handleGuest()">
+<span>로그인 없이 둘러보기</span>
+</button>
+</section>
+<!-- Footer Footer -->
+<footer class="w-full text-center">
+<p class="font-label-sm text-label-sm text-outline px-8 leading-relaxed">
+                로그인 시 서비스 <span class="text-on-surface underline underline-offset-4 decoration-glass-border">이용 약관</span> 및 <span class="text-on-surface underline underline-offset-4 decoration-glass-border">개인정보 처리방침</span>에 동의하게 됩니다.
+            </p>
+</footer>
+</main>
+<!-- Floating Atmosphere Elements -->
+<div class="fixed inset-0 pointer-events-none z-0" id="stars-container"></div>
+<script>
+        // Micro-interaction: Particle stars
+        const starsContainer = document.getElementById('stars-container');
+        const starCount = 30;
+
+        for (let i = 0; i < starCount; i++) {
+            const star = document.createElement('div');
+            const size = Math.random() * 2 + 1;
+            star.className = 'absolute bg-white rounded-full opacity-0';
+            star.style.width = `${size}px`;
+            star.style.height = `${size}px`;
+            star.style.left = `${Math.random() * 100}%`;
+            star.style.top = `${Math.random() * 100}%`;
+            
+            // Animation properties
+            const duration = 3000 + Math.random() * 5000;
+            const delay = Math.random() * 5000;
+            
+            star.animate([
+                { opacity: 0 },
+                { opacity: Math.random() * 0.6 + 0.2 },
+                { opacity: 0 }
+            ], {
+                duration: duration,
+                delay: delay,
+                iterations: Infinity,
+                easing: 'ease-in-out'
+            });
+            
+            starsContainer.appendChild(star);
+        }
+
+        // Logic Functions
+        function handleLogin(provider) {
+            // Flash effect for feedback
+            const btn = event.currentTarget;
+            btn.style.opacity = '0.7';
+            setTimeout(() => btn.style.opacity = '1', 150);
+        }
+
+        function handleGuest() {
+            // Seamless transition simulation
+            document.body.style.transition = 'opacity 0.5s ease';
+            document.body.style.opacity = '0';
+            setTimeout(() => {
+                // Navigate or refresh logic would go here
+                alert('비회원으로 시작합니다.');
+                document.body.style.opacity = '1';
+            }, 600);
+        }
+    </script>
+<style>
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.8s ease-out forwards;
+        }
+    </style>
+</body></html>
