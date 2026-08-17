@@ -27,6 +27,12 @@ KTO_SERVICE_KEY=...
 - `editorial.place_copy`: 운영자가 작성하는 야간 큐레이션 문구
 - `serving.v_imported_places`: 앱/웹 조회용 공개 뷰
 - `public.v_imported_places`: Supabase REST Data API가 읽는 공개 별칭 뷰
+- `serving.v_published_places`: publish state가 true인 공개 장소 view
+- `public.v_published_places`: 공개 웹이 읽는 장소 alias view
+- `serving.v_home_courses`, `serving.v_course_detail`: DB 공개 코스/코스 장소 조회 뷰
+- `public.v_home_courses`, `public.v_course_detail`: 앱이 읽는 코스 view alias
+- `serving.v_now_good_spot_candidates`: 현재 날짜 혼잡도와 공개 장소를 조합한 view
+- `public.v_now_good_spot_candidates`: 홈의 오늘의 달빛 스팟 alias view
 
 원격 반영 전에는 원격 마이그레이션 이력을 먼저 맞춰야 한다. 이전 확인에서 원격에는 로컬에 없는 마이그레이션 버전이 존재했으므로, `supabase db push` 전에 이력 정리가 필요하다.
 
@@ -44,6 +50,7 @@ KTO_SERVICE_KEY=...
 npm run kto:preview
 npm run kto:import
 npm run kto:verify
+npm run course:verify
 ```
 
 ## 완료 기준
@@ -51,6 +58,7 @@ npm run kto:verify
 - `npm run kto:preview`가 수원 관광지 목록과 선택 스팟 정규화 결과를 반환한다.
 - `npm run kto:import`가 선택 관광지를 `core`, `editorial` 계층에 적재한다.
 - `npm run kto:verify`가 `serving.v_imported_places`에서 1개 이상의 행을 반환한다.
+- `npm run course:verify`가 공개 코스 수와 코스별 연결 스팟 수를 반환한다. 코스가 아직 없으면 `Published courses: 0`이 정상이다.
 - 앱/웹 구현은 TourAPI를 직접 호출하지 않고 Supabase `serving` 계층만 조회한다.
 
 ## 현재 확인된 차단 조건

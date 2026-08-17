@@ -4,14 +4,20 @@ import { useState } from 'react';
 import { type User } from '@supabase/supabase-js';
 import { LoginModal } from '@/components/auth/login-modal';
 import { signOut } from '@/app/actions/auth';
-import { Moon, Menu, Sparkles, Heart, Camera, Utensils, LogOut, LayoutDashboard, ShieldAlert, UserCog, CheckCircle2 } from 'lucide-react';
+import { Moon, Menu, Sparkles, LogOut, LayoutDashboard, ShieldAlert, UserCog, CheckCircle2, ArrowRight, Clock, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import type { ImportedPlace } from '@/lib/places/types';
+import type { ServiceCourse } from '@/lib/courses/types';
+import type { NowGoodSpot } from '@/lib/crowd/queries';
 
 interface LandingClientProps {
   initialUser: User | null;
   importedPlaces: ImportedPlace[];
   placesError: string | null;
+  courses: ServiceCourse[];
+  coursesError: string | null;
+  nowGoodSpots: NowGoodSpot[];
+  crowdError: string | null;
   hasAuthError: boolean;
   hasAccountDeleted: boolean;
 }
@@ -20,11 +26,16 @@ export function LandingClient({
   initialUser,
   importedPlaces,
   placesError,
+  courses,
+  coursesError,
+  nowGoodSpots,
+  crowdError,
   hasAuthError,
   hasAccountDeleted,
 }: LandingClientProps) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const placesWithImages = importedPlaces.filter((place) => Boolean(place.heroImageUrl)).length;
 
   const handleSignOut = async () => {
     await signOut();
@@ -201,91 +212,147 @@ export function LandingClient({
           </div>
         </section>
 
-        {/* Features Section (Bento Grid) */}
-        <section className="py-24 relative bg-[#0b1326]">
-          <div className="container mx-auto px-6 md:px-20 max-w-[1440px]">
-            <div className="mb-16 md:w-2/3">
-              <span className="text-[#ffd700] text-xs font-bold uppercase tracking-widest">추천 코스 3종</span>
-              <h2 className="text-3xl md:text-5xl font-extrabold text-[#fff6df] mt-2 mb-4">큐레이션된 달빛 코스</h2>
-              <p className="text-sm md:text-base text-[#d0c6ab] leading-relaxed">모든 상황에 완벽하게 어울리는, 가장 멋진 야경을 돋보이게 하도록 세심하게 설계된 길입니다.</p>
+        {/* Published Courses Section */}
+        <section className="relative bg-[#0b1326] py-24">
+          <div className="container mx-auto max-w-[1440px] px-6 md:px-20">
+            <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div className="max-w-2xl">
+                <span className="text-xs font-bold uppercase tracking-widest text-[#ffd700]">운영자 공개 코스</span>
+                <h2 className="mt-2 text-3xl font-extrabold text-[#fff6df] md:text-5xl">DB에 공개된 달빛 코스</h2>
+                <p className="mt-4 text-sm leading-relaxed text-[#d0c6ab] md:text-base">
+                  운영자가 공개한 코스만 표시합니다. 코스 데이터가 추가되면 별도 배포 없이 이 영역에 반영됩니다.
+                </p>
+              </div>
+              <Link href="/courses" className="inline-flex items-center gap-2 text-sm font-black text-[#ffd700]">
+                전체 코스 보기
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-              {/* Feature 1: Initial Date Course */}
-              <div className="md:col-span-8 rounded-2xl overflow-hidden group relative min-h-[400px] flex flex-col justify-end p-8 border border-zinc-800/40 shadow-lg">
-                <div className="absolute inset-0 z-0">
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0b1326]/90 to-transparent z-10 transition-opacity duration-300 group-hover:opacity-80" />
-                  <img 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                    src="/assets/AB6AXuBczVTWJcMrUmxjSnFwyPhL88YDoWdrVPbVpVdfgEnKOz0d8GXJTBJolR-0M3HJOKmEJR3ZK8jRdVPs3zyTLLCp8xfI0Xtf-f22f3b68a1569960dfaa9253754a3d9f" 
-                    alt="첫 데이트 코스"
-                  />
-                </div>
-                <div className="relative z-20">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#171f33]/80 backdrop-blur-md border border-[#ffd700]/20 mb-6">
-                    <Heart className="text-[#ffd700] w-5 h-5 fill-current" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">첫 데이트 코스</h3>
-                  <p className="text-sm text-[#d0c6ab] max-w-lg mb-6 leading-relaxed">연무대에서 시작하는 완벽한 페이스의 40분 산책로. 완만한 경사와 아름답게 빛나는 성벽의 파노라마 뷰를 제공합니다.</p>
-                  <button className="text-[#ffd700] font-bold text-xs flex items-center gap-2 hover:gap-3 transition-all">
-                    <span>코스 상세 보기</span>
-                    <span>→</span>
-                  </button>
-                </div>
+            {coursesError ? (
+              <div className="rounded-3xl border border-amber-400/30 bg-amber-400/10 p-8 text-sm text-amber-100">
+                공개 코스 데이터를 불러오지 못했습니다. 운영자에게 데이터 연결 상태를 확인해 주세요.
               </div>
-
-              {/* Feature 2: Photo Focus Course */}
-              <div className="md:col-span-4 rounded-2xl overflow-hidden group relative min-h-[400px] flex flex-col justify-end p-8 border border-[#3e495d]/30 bg-slate-900/40 backdrop-blur-md shadow-lg">
-                <div className="absolute inset-0 z-0 opacity-20">
-                  <img 
-                    className="w-full h-full object-cover" 
-                    src="/assets/AB6AXuArki5EazvMuh3FMKJz6QaOgE_v2aGSMHVLA5ENA85zESuwsFnt_60eH9zl4IaZR3nUp29Li14_WV3H3-D6lMAnvT0M9D2B-ac29e5fbd9b8492e973e7e48a505553e" 
-                    alt="포토 포커스 코스"
-                  />
-                </div>
-                <div className="relative z-20">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#171f33]/80 backdrop-blur-md border border-[#ffd700]/20 mb-6">
-                    <Camera className="text-[#ffd700] w-5 h-5" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">포토 포커스 코스</h3>
-                  <p className="text-sm text-[#d0c6ab] leading-relaxed mb-6">숨겨진 사진 명소를 발견하세요. 성곽의 야경을 담을 수 있는 최고의 뷰포인트 5곳으로 안내합니다.</p>
-                  <button className="text-[#ffd700] font-bold text-xs flex items-center gap-2 hover:gap-3 transition-all">
-                    <span>코스 상세 보기</span>
-                    <span>→</span>
-                  </button>
-                </div>
+            ) : courses.length === 0 ? (
+              <div className="rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/70 p-8 text-sm text-[#d0c6ab]">
+                아직 공개된 코스가 없습니다. 현재는 아래 달빛 스팟에서 장소 정보를 확인할 수 있습니다.
               </div>
-
-              {/* Feature 3: Haengnidan-gil Finish */}
-              <div className="md:col-span-12 rounded-2xl overflow-hidden group relative min-h-[300px] bg-[#171f33] border border-[#3e495d]/20 flex flex-col md:flex-row items-center shadow-lg">
-                <div className="p-8 md:p-12 md:w-1/2 flex flex-col justify-center h-full">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-800 mb-6">
-                    <Utensils className="text-[#ffd700] w-5 h-5" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-4">행리단길 피니시 코스</h3>
-                  <p className="text-sm text-[#d0c6ab] mb-6 leading-relaxed">수원의 가장 트렌디한 카페 거리로 자연스럽게 이동하며 역사적인 산책을 마무리하세요. 아름답게 복원된 현대식 한옥에서 크래프트 커피나 전통 차를 즐겨보세요.</p>
-                  <div className="flex gap-4">
-                    <span className="inline-flex items-center gap-1.5 text-xs text-[#d0c6ab] bg-[#222a3d] px-3.5 py-1.5 rounded-full">
-                      <span>1.5 시간</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-xs text-[#d0c6ab] bg-[#222a3d] px-3.5 py-1.5 rounded-full">
-                      <span>2.3 km</span>
-                    </span>
-                  </div>
-                </div>
-                <div className="h-64 md:h-full w-full md:w-1/2 relative">
-                  <img 
-                    className="w-full h-full object-cover" 
-                    src="/assets/AB6AXuCGLJWMMr2AsVQd0QPeSVCC1WKMV2qi0HNcHOcp-G3XoOdJzj_yASXA9gcQTjdnMc_1FmV9Kf4-mRMHEL54a8m1YIDpfV1U-698a694e1defc0602f5b7038f7c5871e" 
-                    alt="행리단길 피니시"
-                  />
-                </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                {courses.slice(0, 3).map((course) => (
+                  <article key={course.id} className="overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33] shadow-xl">
+                    {course.heroImageUrl ? (
+                      <div
+                        role="img"
+                        aria-label={course.title}
+                        className="aspect-[16/9] bg-cover bg-center"
+                        style={{ backgroundImage: `url(${course.heroImageUrl})` }}
+                      />
+                    ) : null}
+                    <div className="p-6">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[10px] font-black text-[#ffd700]">LIVE DATA</span>
+                        <span className="text-xs font-bold text-[#d0c6ab]">{course.theme}</span>
+                      </div>
+                      <h3 className="text-xl font-black text-white">{course.title}</h3>
+                      <p className="mt-2 text-sm font-bold text-[#ffd700]">{course.subtitle}</p>
+                      <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-[#d0c6ab]">{course.description}</p>
+                      <div className="mt-5 flex gap-3 text-xs text-[#d0c6ab]">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0b1326]/70 px-3 py-2">
+                          <Clock className="h-3.5 w-3.5 text-[#ffd700]" />
+                          {course.durationMinutes}분
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0b1326]/70 px-3 py-2">
+                          <MapPin className="h-3.5 w-3.5 text-[#ffd700]" />
+                          {course.distanceKm === null ? '거리 정보 없음' : `${course.distanceKm}km`}
+                        </span>
+                      </div>
+                      <div className="mt-5 space-y-2">
+                        {course.places.slice(0, 3).map((place) => (
+                          <Link key={place.id} href={`/places/${place.slug}`} className="flex items-center justify-between rounded-xl bg-[#0b1326]/60 px-3 py-2 text-xs font-bold text-white hover:text-[#ffd700]">
+                            {place.displayName}
+                            <ArrowRight className="h-3.5 w-3.5 text-[#ffd700]" />
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </article>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         </section>
 
-        <section id="kto-spots" className="py-24 bg-[#10182b] relative overflow-hidden">
+        <section className="relative overflow-hidden bg-[#10182b] py-24">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,215,0,0.11),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(103,140,255,0.12),transparent_36%)]" />
+          <div className="relative container mx-auto max-w-[1440px] px-6 md:px-20">
+            <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div className="max-w-2xl">
+                <span className="text-xs font-bold uppercase tracking-widest text-[#ffd700]">오늘의 혼잡도</span>
+                <h2 className="mt-2 text-3xl font-extrabold text-[#fff6df] md:text-5xl">오늘 더 여유로운 달빛 스팟</h2>
+                <p className="mt-4 text-sm leading-relaxed text-[#d0c6ab] md:text-base">
+                  관광 데이터 기반 혼잡도 예보를 바탕으로 현재 방문을 고려할 수 있는 공개 스팟을 보여드립니다.
+                </p>
+              </div>
+              <span className="rounded-full border border-[#ffd700]/20 bg-[#0b1326]/70 px-5 py-2 text-xs font-bold text-[#ffd700]">
+                {nowGoodSpots.length > 0 ? `${nowGoodSpots.length}개 예보 연동` : '예보 준비 중'}
+              </span>
+            </div>
+
+            {crowdError ? (
+              <div className="rounded-3xl border border-amber-400/30 bg-amber-400/10 p-8 text-sm text-amber-100">
+                오늘의 혼잡도 예보를 불러오지 못했습니다. 장소 정보는 아래에서 계속 확인할 수 있습니다.
+              </div>
+            ) : nowGoodSpots.length === 0 ? (
+              <div className="rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/70 p-8 text-sm text-[#d0c6ab]">
+                오늘의 혼잡도 예보가 아직 준비되지 않았습니다.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                {nowGoodSpots.map((spot) => (
+                  <Link
+                    key={spot.placeId}
+                    href={`/places/${spot.slug}`}
+                    className="group overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl transition hover:-translate-y-1 hover:border-[#ffd700]/40"
+                  >
+                    <div className="relative aspect-[4/3] overflow-hidden bg-[#0b1326]">
+                      {spot.heroImageUrl ? (
+                        <div
+                          role="img"
+                          aria-label={spot.displayName}
+                          className="h-full w-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+                          style={{ backgroundImage: `url(${spot.heroImageUrl})` }}
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-xs text-[#d0c6ab]">이미지 준비 중</div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0b1326]/85 via-transparent to-transparent" />
+                      <span
+                        className={`absolute left-4 top-4 rounded-full px-3 py-1 text-[10px] font-black ${
+                          spot.crowdLevel === '여유'
+                            ? 'bg-emerald-300 text-emerald-950'
+                            : spot.crowdLevel === '혼잡'
+                              ? 'bg-rose-300 text-rose-950'
+                              : 'bg-amber-200 text-amber-950'
+                        }`}
+                      >
+                        {spot.crowdLevel ?? '예보 확인 중'}
+                      </span>
+                    </div>
+                    <div className="p-5">
+                      <h3 className="text-lg font-extrabold text-white">{spot.displayName}</h3>
+                      <p className="mt-2 text-xs text-[#d0c6ab]">
+                        {spot.forecastScore === null ? '혼잡도 점수 준비 중' : `혼잡도 점수 ${spot.forecastScore.toFixed(1)}`}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section id="kto-spots" className="relative overflow-hidden bg-[#10182b] py-24">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,215,0,0.12),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(103,140,255,0.14),transparent_36%)]" />
           <div className="relative container mx-auto px-6 md:px-20 max-w-[1440px]">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
@@ -397,13 +464,13 @@ export function LandingClient({
 
                 <div className="mt-12 flex items-center gap-6">
                   <div>
-                    <p className="text-2xl md:text-3xl font-extrabold text-[#ffd700] mb-1">50k+</p>
-                    <p className="text-xs text-[#d0c6ab]">월간 방문자</p>
+                    <p className="text-2xl md:text-3xl font-extrabold text-[#ffd700] mb-1">{importedPlaces.length}</p>
+                    <p className="text-xs text-[#d0c6ab]">공개 스팟</p>
                   </div>
                   <div className="w-px h-12 bg-[#3e495d]/30" />
                   <div>
-                    <p className="text-2xl md:text-3xl font-extrabold text-[#ffd700] mb-1">4.9/5</p>
-                    <p className="text-xs text-[#d0c6ab]">앱스토어 평점</p>
+                    <p className="text-2xl md:text-3xl font-extrabold text-[#ffd700] mb-1">{placesWithImages}</p>
+                    <p className="text-xs text-[#d0c6ab]">대표 이미지 보유</p>
                   </div>
                 </div>
               </div>
@@ -423,7 +490,7 @@ export function LandingClient({
             <Link className="text-[#d0c6ab] hover:text-[#ffd700] underline transition-colors" href="/admin">운영 콘솔</Link>
           </div>
           <div className="text-center mt-4 text-xs text-zinc-500">
-            © 2024 달빛수원. 수원화성의 달빛 문화유산을 보존합니다.
+            © 달빛수원. 수원화성의 달빛 문화유산을 보존합니다.
           </div>
         </div>
       </footer>

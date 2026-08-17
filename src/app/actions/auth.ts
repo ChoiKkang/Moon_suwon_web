@@ -6,7 +6,7 @@ import { getRequiredServerEnv } from '@/lib/env/server';
 import type { Provider } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 
-type SupportedProvider = 'kakao' | 'naver' | 'apple';
+type SupportedProvider = 'kakao' | 'apple';
 
 // 제공자별 추가 스코프. Apple은 이름과 이메일을 명시적으로 요청해야 전달한다.
 const PROVIDER_SCOPES: Partial<Record<SupportedProvider, string>> = {
@@ -14,7 +14,7 @@ const PROVIDER_SCOPES: Partial<Record<SupportedProvider, string>> = {
 };
 
 /**
- * 카카오, 네이버, 애플 등의 OAuth 로그인 트리거 Server Action
+ * 카카오와 애플 OAuth 로그인을 트리거하는 Server Action
  */
 export async function signInWithOAuth(provider: SupportedProvider) {
   const supabase = await createClient();

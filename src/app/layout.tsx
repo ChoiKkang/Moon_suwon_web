@@ -19,17 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className={`${manrope.variable} dark`}>
-      <head>
-        {/* Material Symbols Outlined for Stitch Icons */}
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" 
-          rel="stylesheet" 
-        />
-      </head>
       <body className="antialiased min-h-screen bg-[#0b1326] text-[#dae2fd]">
         {children}
       </body>
     </html>
   );
 }
-

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Compass, ExternalLink, MapPin, Moon, Phone, Route } from 'lucide-react';
-import { getImportedPlaceBySlug } from '@/lib/places/queries';
+import { getPublishedPlaceBySlug } from '@/lib/places/queries';
 
 type PlaceDetailPageProps = {
   params: Promise<{
@@ -11,7 +11,7 @@ type PlaceDetailPageProps = {
 
 export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) {
   const { slug } = await params;
-  const { place, error } = await getImportedPlaceBySlug(decodeURIComponent(slug));
+  const { place, error } = await getPublishedPlaceBySlug(decodeURIComponent(slug));
 
   if (!place && !error) {
     notFound();
@@ -79,6 +79,13 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
                   <Phone className="mb-4 h-5 w-5 text-[#ffd700]" />
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">연락처</p>
                   <p className="mt-2 text-sm font-bold text-white">{place.contactPhone ?? '연락처 정보 없음'}</p>
+                </div>
+                <div className="rounded-3xl bg-[#0b1326]/70 p-5">
+                  <Moon className="mb-4 h-5 w-5 text-[#ffd700]" />
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">최종 확인</p>
+                  <p className="mt-2 text-sm font-bold text-white">
+                    {place.sourceModifiedAt ? new Date(place.sourceModifiedAt).toLocaleDateString('ko-KR') : '정보 없음'}
+                  </p>
                 </div>
                 <div className="rounded-3xl bg-[#0b1326]/70 p-5">
                   <ExternalLink className="mb-4 h-5 w-5 text-[#ffd700]" />

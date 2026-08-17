@@ -44,6 +44,8 @@ Apple은 OAuth client secret으로 고정 문자열이 아닌 ES256 서명 JWT�
 npm run apple:secret
 ```
 
+이 스크립트는 `.env.local`을 자동으로 읽는다. JWT를 파일·Git·채팅에 저장하지 말고, 표준 출력의 토큰만 Supabase Dashboard의 Apple provider Secret Key에 붙여 넣는다.
+
 표준 출력으로 JWT가 나오고, 표준 오류로 만료 시각이 표시된다. 유효 기간은 최대 6개월이며 만료 전에 같은 명령으로 재발급해 Supabase에 다시 입력해야 한다. 재발급을 놓치면 Apple 로그인만 실패한다.
 
 ## 4. Apple Developer 콘솔 설정

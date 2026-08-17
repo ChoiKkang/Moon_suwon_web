@@ -16,6 +16,9 @@
 
 import { createSign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { loadEnvConfig } from '@next/env';
+
+loadEnvConfig(process.cwd());
 
 // Apple이 허용하는 client secret 최대 수명(초). 6개월.
 const MAX_LIFETIME_SECONDS = 15777000;

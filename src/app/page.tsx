@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { LandingClient } from '@/components/landing-client';
-import { getImportedPlaces } from '@/lib/places/queries';
+import { getPublishedPlaces } from '@/lib/places/queries';
+import { getPublishedCourses } from '@/lib/courses/queries';
+import { getNowGoodSpots } from '@/lib/crowd/queries';
 
 // Next.js 16/React 19 Server Component
 export default async function HomePage({
@@ -10,11 +12,18 @@ export default async function HomePage({
 }) {
   const supabase = await createClient();
 
-  // 현재 로그인한 사용자 정보 조회
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { places, error: placesError } = await getImportedPlaces();
+  const [
+    {
+      data: { user },
+    },
+    placesResult,
+    coursesResult,
+    crowdResult,
+  ] = await Promise.all([supabase.auth.getUser(), getPublishedPlaces(), getPublishedCourses(), getNowGoodSpots()]);
+
+  const { places, error: placesError } = placesResult;
+  const { courses, error: coursesError } = coursesResult;
+  const { spots: nowGoodSpots, error: crowdError } = crowdResult;
   const { 'auth-error': authErrorParam, 'account-deleted': accountDeletedParam } = await searchParams;
   const hasAuthError = authErrorParam === 'true';
   const hasAccountDeleted = accountDeletedParam === 'true';
@@ -24,6 +33,10 @@ export default async function HomePage({
       initialUser={user}
       importedPlaces={places}
       placesError={placesError}
+      courses={courses}
+      coursesError={coursesError}
+      nowGoodSpots={nowGoodSpots}
+      crowdError={crowdError}
       hasAuthError={hasAuthError}
       hasAccountDeleted={hasAccountDeleted}
     />

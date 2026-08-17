@@ -7,9 +7,11 @@
 ## 현재 확인된 사실
 
 - `public.v_imported_places`에 활성 스팟 13개가 존재한다.
+- `public.v_published_places`에는 publish state가 true인 공개 스팟 7개가 존재한다.
 - 13개 중 대표 이미지 12개, 설명 문구 5개가 존재한다.
 - 공개 장소 조회 코드가 `limit(12)`를 사용해 DB의 13번째 스팟을 숨기고 있다.
-- `core.courses`와 `core.course_places`는 현재 비어 있다.
+- `core.courses`와 `core.course_places`는 현재 비어 있다. 원격에는 이를 조합한 `serving.v_home_courses`와 `serving.v_course_detail`이 존재한다.
+- `core.place_crowd_forecasts`에는 224건이 있고, `serving.v_now_good_spot_candidates`가 현재 날짜 기준 공개 후보와 혼잡도를 조합한다.
 - 현재 코스 3개와 코스 문구·동선은 `src/lib/courses/catalog.ts`에 하드코딩되어 있다.
 - Apple `.p8` 키와 JWT 생성 스크립트는 존재하지만 `.env.local`의 Apple 변수와 Supabase Auth Apple Secret이 비어 있다.
 - Supabase Auth에서 Kakao는 redirect가 가능하고, Naver는 지원 provider가 아니다.
@@ -26,14 +28,14 @@
 
 ### 2. 공개 장소 데이터
 
-- `public.v_imported_places`를 공개 데이터의 단일 읽기 경로로 사용한다.
+- 운영 화면은 `public.v_imported_places`를 읽고, 공개 사이트는 `public.v_published_places`를 읽는다.
 - 고정 12개 제한을 제거하고 활성 공개 스팟 전체를 조회한다.
 - 장소 식별자 `id`와 대표 이미지·원본 수정 시각을 데이터 모델에 포함해 코스 연결과 freshness 표시에 사용할 수 있게 한다.
 - 이미지·설명·연락처가 없는 레코드는 오류가 아니라 필드별 빈 상태로 표시한다.
 
 ### 3. 코스 데이터
 
-- `core.courses`, `core.course_places`, `editorial.course_copy`, `editorial.course_publish_state`를 읽는 별도 query adapter를 만든다.
+- `public.v_home_courses`와 `public.v_course_detail` alias를 통해 `core.courses`, `core.course_places`, `editorial.course_copy`, `editorial.course_publish_state`를 읽는 별도 query adapter를 만든다.
 - `is_published = true`인 코스만 공개 화면에 노출한다.
 - 장소 연결은 DB의 `place_id`를 공개 장소 `id`와 매칭한다.
 - 코스 데이터가 없을 때 기존 하드코딩 코스를 조용히 노출하지 않고 “공개된 코스가 준비 중” 상태를 표시한다.
@@ -45,6 +47,7 @@
 - `50k+`, `4.9/5`, 고정 `12개 스팟` 같은 검증되지 않은 수치는 제거한다.
 - 브랜드 설명·정적 시각 자산처럼 의도적으로 고정하는 콘텐츠는 유지하되, 실제 운영 지표처럼 보이는 값은 데이터로 교체한다.
 - 코스 카드·장소 카드에는 실제 DB 데이터만 사용한다.
+- 현재 날짜 기준 혼잡도는 `public.v_now_good_spot_candidates`를 통해 노출하고, 데이터가 없으면 “예보 준비 중”으로 표시한다.
 
 ### 5. 개발·운영 안정성
 

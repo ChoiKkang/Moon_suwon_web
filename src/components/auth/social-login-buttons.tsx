@@ -12,7 +12,7 @@ export function SocialLoginButtons({ onSuccess }: SocialLoginButtonsProps) {
   // React 19의 useActionState 훅 사용
   const [errorMsg, formAction, isPending] = useActionState(
     async (prevState: string | null, formData: FormData) => {
-      const provider = formData.get('provider') as 'kakao' | 'naver' | 'apple';
+      const provider = formData.get('provider') as 'kakao' | 'apple';
       try {
         await signInWithOAuth(provider);
         if (onSuccess) onSuccess();
@@ -24,7 +24,7 @@ export function SocialLoginButtons({ onSuccess }: SocialLoginButtonsProps) {
     null
   );
 
-  const handleLogin = (provider: 'kakao' | 'naver' | 'apple') => {
+  const handleLogin = (provider: 'kakao' | 'apple') => {
     const formData = new FormData();
     formData.append('provider', provider);
     startTransition(() => {
@@ -51,17 +51,6 @@ export function SocialLoginButtons({ onSuccess }: SocialLoginButtonsProps) {
         {/* Simple Kakao Icon Mockup */}
         <MessageCircle className="w-5 h-5 fill-current" />
         <span>카카오톡으로 시작하기</span>
-      </button>
-
-      {/* 네이버 로그인 */}
-      <button
-        type="button"
-        disabled={isPending}
-        onClick={() => handleLogin('naver')}
-        className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-[#03C75A] text-white hover:bg-[#02b34f] transition-colors rounded-xl font-semibold text-sm active:scale-98 disabled:opacity-50"
-      >
-        <span className="w-5 h-5 flex items-center justify-center font-extrabold text-lg tracking-tighter">N</span>
-        <span>네이버로 시작하기</span>
       </button>
 
       {/* 애플 로그인 */}

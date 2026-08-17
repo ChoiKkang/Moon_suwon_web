@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { AlertCircle, ArrowUp, Castle, CheckCircle, FileText, ImageIcon, MapPin, Route } from 'lucide-react';
-import { getServiceCourses } from '@/lib/courses/catalog';
-import { getImportedPlaces } from '@/lib/places/queries';
+import { getPublishedCourses } from '@/lib/courses/queries';
+import { getPublishedPlaces } from '@/lib/places/queries';
 import { KTOImportPanel } from '@/components/admin/kto-import-panel';
 
 export default async function AdminDashboardPage() {
-  const { places, error } = await getImportedPlaces();
-  const courses = getServiceCourses(places);
+  const { places, error } = await getPublishedPlaces();
+  const { courses, error: coursesError } = await getPublishedCourses();
+  const dataError = error ?? coursesError;
   const heroImageCount = places.filter((place) => Boolean(place.heroImageUrl)).length;
   const addressCount = places.filter((place) => Boolean(place.addressFull)).length;
   const copyCount = places.filter((place) => Boolean(place.shortDescription)).length;
@@ -63,9 +64,9 @@ export default async function AdminDashboardPage() {
         </div>
       </header>
 
-      {error ? (
+      {dataError ? (
         <section className="mb-10 rounded-3xl border border-amber-400/30 bg-amber-400/10 p-6 text-sm text-amber-100">
-          Supabase 콘텐츠 데이터를 불러오지 못했습니다. {error}
+          Supabase 콘텐츠 데이터를 불러오지 못했습니다. 운영자에게 데이터 연결 상태를 확인해 주세요.
         </section>
       ) : null}
 
@@ -119,6 +120,7 @@ export default async function AdminDashboardPage() {
                   <th className="py-4 px-2">KTO ID</th>
                   <th className="py-4 px-2">주소</th>
                   <th className="py-4 px-2">Hero</th>
+                  <th className="py-4 px-2">최종 확인</th>
                   <th className="py-4 px-2 text-right">상세</th>
                 </tr>
               </thead>
@@ -141,6 +143,9 @@ export default async function AdminDashboardPage() {
                       ) : (
                         <AlertCircle className="w-4 h-4 text-amber-400" />
                       )}
+                    </td>
+                    <td className="py-4 px-2 text-xs text-[#d0c6ab]">
+                      {place.sourceModifiedAt ? new Date(place.sourceModifiedAt).toLocaleDateString('ko-KR') : '정보 없음'}
                     </td>
                     <td className="py-4 px-2 text-right">
                       <Link href={`/places/${place.slug}`} className="text-[#ffd700] font-bold hover:text-[#ffe16d]">
@@ -167,10 +172,10 @@ export default async function AdminDashboardPage() {
                   <Route className="w-5 h-5 text-[#ffd700]" />
                   <div>
                     <p className="text-sm font-black text-white">{course.title}</p>
-                    <p className="text-xs text-[#d0c6ab]">{course.places.length + course.plannedPlaces.length}개 스팟 구성</p>
+                    <p className="text-xs text-[#d0c6ab]">{course.places.length}개 스팟 구성</p>
                   </div>
                   <span className="ml-auto rounded-full bg-[#1e293b] px-2 py-1 text-[10px] font-black text-[#ffd700]">
-                    {course.status === 'live' ? 'LIVE' : '준비'}
+                    LIVE
                   </span>
                 </div>
               </div>
