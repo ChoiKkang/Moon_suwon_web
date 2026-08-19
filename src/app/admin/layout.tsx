@@ -82,6 +82,13 @@ export default async function AdminLayout({
 
       {/* Main Content Area */}
       <div className="flex-1 md:ml-[280px] min-h-screen flex flex-col">
+        <div className="sticky top-0 z-40 flex gap-2 overflow-x-auto border-b border-[#4d4732]/20 bg-[#0b1326]/95 px-4 py-3 backdrop-blur-xl md:hidden">
+          <Link href="/admin" className="shrink-0 rounded-full bg-[#171f33] px-3 py-2 text-xs font-bold text-[#fff6df]">대시보드</Link>
+          <Link href="/admin/places" className="shrink-0 rounded-full bg-[#171f33] px-3 py-2 text-xs font-bold text-[#d0c6ab]">장소</Link>
+          <Link href="/admin/courses" className="shrink-0 rounded-full bg-[#171f33] px-3 py-2 text-xs font-bold text-[#d0c6ab]">코스</Link>
+          <Link href="/admin/operations" className="shrink-0 rounded-full bg-[#171f33] px-3 py-2 text-xs font-bold text-[#d0c6ab]">운영</Link>
+          <Link href="/admin/events" className="shrink-0 rounded-full bg-[#171f33] px-3 py-2 text-xs font-bold text-[#d0c6ab]">행사</Link>
+        </div>
         {children}
       </div>
     </div>

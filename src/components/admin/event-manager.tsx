@@ -12,7 +12,7 @@ function fromEvent(event: AdminEvent): EventInput { return { id: event.id, event
 
 export function EventManager({ events, initialEventId, initialNew }: { events: AdminEvent[]; initialEventId?: string; initialNew: boolean }) {
   const router = useRouter();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
   const [filter, setFilter] = useState<'all' | 'current' | 'ended'>('all');
   const [selectedId, setSelectedId] = useState<string | null>(initialNew ? null : initialEventId ?? events[0]?.id ?? null);
   const [draft, setDraft] = useState<EventInput>(selectedId ? fromEvent(events.find((event) => event.id === selectedId) ?? events[0]) : emptyEvent());
