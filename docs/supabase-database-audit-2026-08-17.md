@@ -35,9 +35,11 @@ MCP read-only query로 다시 확인한 현재 원격 count는 다음과 같다.
 - `core.places` 13, `editorial.place_publish_state` 13, `editorial.place_copy` 5
 - `core.courses` 2, `core.course_places` 6, `core.events` 6
 - `core.place_crowd_forecasts` 224, `raw.sync_runs` 7, `raw.sync_errors` 6
-- `public.profiles` 2명 모두 `USER`; 첫 `ADMIN` 지정은 배포 전 DB 소유자가 수행해야 한다.
+- `public.profiles` 2명 모두 `ADMIN`; 개발 계정 운영보드 접근 권한을 지정했다.
 
 운영보드는 service-role server action으로 core/editorial을 갱신하고, 공개 웹은 기존 public serving view를 계속 읽는다. raw sync 이력은 읽기 전용으로 표시한다.
+
+개발 계정 승격은 환경 전용 one-off SQL(`promote_current_developer_profiles`)로 원격에만 적용했다. 보안상 이 작업을 저장소 migration으로 재실행하지 않는다.
 
 ## 적재 결과
 

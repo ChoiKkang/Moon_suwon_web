@@ -26,7 +26,8 @@
 - [x] `npm run typecheck`, `npm run lint`(0 errors, existing 4 image warnings), `npm run build`를 통과했다.
 - [x] 익명 admin route는 `/`로 307 redirect되는 것을 확인했다.
 - [x] 원격 `profiles.role`을 `USER`/`ADMIN` 계약으로 정규화하는 migration을 적용하고 check constraint를 확인했다.
-- [ ] 실제 ADMIN 세션의 create/update/delete smoke는 현재 원격 프로필 2개가 모두 `USER`라 첫 관리자 지정 후 재검증해야 한다.
+- [x] 현재 개발 프로필 2개를 `ADMIN`으로 지정했다.
+- [ ] 실제 ADMIN 세션의 create/update/delete smoke는 로그인 세션과 로컬 service-role 환경변수 설정 후 재검증해야 한다.
 - [ ] `npm run admin:verify`는 로컬 `.env.local`에 서버 전용 service-role key가 없어 실행하지 못했다. 원격 read-only count는 Supabase MCP로 확인했다.
 
 ---
@@ -288,7 +289,7 @@ Load `.env.local` through `@next/env`, create a service client, and print counts
 
 - [ ] **Step 2: Document the new routes and manual admin role gate.**
 
-Add the five admin screens, action behavior, current uppercase role contract, and the exact manual prerequisite that one trusted profile must be set to `ADMIN` by the DB owner.
+Add the five admin screens, action behavior, current uppercase role contract, and the operational note that the two current development profiles are `ADMIN`; production role assignment remains an environment-owner decision.
 
 - [ ] **Step 3: Run data verification.**
 

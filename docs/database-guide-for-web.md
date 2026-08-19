@@ -191,7 +191,7 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 
 - 설계 문서 기준 role 값은 `USER`/`ADMIN` 대문자다.
 - 현재 웹의 관리자 검사는 role을 대문자로 정규화해 `ADMIN`을 허용한다.
-- 현재 프로필은 모두 `USER`라 실제 관리자 계정이 없다.
+- 현재 개발 프로필 2개가 `ADMIN`으로 지정되어 있다.
 - `/admin` layout과 모든 관리자 Server Action 양쪽에서 권한을 확인한다.
 
 따라서 배포 전에 role 표준을 하나로 통일하고, `/admin` 진입과 Server Action 양쪽에서 같은 관리자 판정을 사용해야 한다.
@@ -230,7 +230,7 @@ npm run build
 - [ ] Vercel `NEXT_PUBLIC_SITE_URL`을 localhost가 아닌 실제 도메인으로 설정
 - [ ] 서버 전용 `SUPABASE_SERVICE_ROLE_KEY`, `KTO_SERVICE_KEY` 설정
 - [ ] Apple/Kakao의 Supabase callback과 production redirect URL 등록
-- [ ] 관리자 role 표준 통일 및 첫 ADMIN 계정 지정
+- [x] 관리자 role 표준 통일 및 개발 프로필 2개 ADMIN 지정
 - [ ] `/admin/places`, `/admin/courses`, `/admin/operations`, `/admin/events` production smoke test
 - [ ] 7개 공개 장소 editorial 설명 보강
 - [ ] 반려동물 API 승인 또는 반려동물 수집 기능 비활성화 결정
