@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Clock, MapPin, Moon } from 'lucide-react';
 import { getPublishedCourses } from '@/lib/courses/queries';
+import { ScrollRail } from '@/components/public/scroll-rail';
 
 export default async function CoursesPage() {
   const { courses, error } = await getPublishedCourses();
 
   return (
     <main className="min-h-screen bg-[#0b1326] text-[#dae2fd]">
-      <section className="relative overflow-hidden px-6 py-10 md:px-20 md:py-16">
+      <section className="ambient-glow relative overflow-hidden px-6 py-10 md:px-20 md:py-16">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,215,0,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(90,130,255,0.14),transparent_34%)]" />
         <div className="relative mx-auto max-w-[1440px]">
           <Link href="/" className="mb-10 inline-flex items-center gap-2 text-sm font-bold text-[#ffd700]">
@@ -20,13 +21,13 @@ export default async function CoursesPage() {
               <Moon className="h-4 w-4" />
               Moon Suwon Courses
             </div>
-            <h1 className="text-4xl font-black leading-tight text-[#fff6df] md:text-7xl">
+            <h1 className="motion-reveal text-4xl font-black leading-tight text-[#fff6df] md:text-7xl">
               밤의 수원을 걷는
               <span className="block bg-gradient-to-r from-[#ffd700] to-[#fff6df] bg-clip-text text-transparent">
                 공개 코스
               </span>
             </h1>
-            <p className="mt-6 text-base leading-relaxed text-[#d0c6ab] md:text-lg">
+            <p className="motion-reveal mt-6 text-base leading-relaxed text-[#d0c6ab] [animation-delay:160ms] md:text-lg">
               운영자가 공개한 코스와 관광콘텐츠랩에서 검증한 스팟을 연결해 실제 방문 동선을 제공합니다.
             </p>
           </div>
@@ -54,20 +55,20 @@ export default async function CoursesPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <ScrollRail label="공개 코스 목록" className="xl:grid-cols-3">
               {courses.map((course) => (
                 <article
                   key={course.id}
-                  className="relative overflow-hidden rounded-[2rem] border border-[#3e495d]/40 bg-[#141d32] p-6 shadow-2xl"
+                  className="group relative min-w-[86%] snap-start overflow-hidden rounded-[2rem] border border-[#3e495d]/40 bg-[#141d32] p-6 shadow-2xl motion-reveal md:min-w-0"
                 >
                   {course.heroImageUrl ? (
                     <div
                       role="img"
                       aria-label={course.title}
-                      className="mb-6 aspect-[16/9] rounded-3xl bg-cover bg-center"
+                      className="image-reveal mb-6 aspect-[16/9] rounded-3xl bg-cover bg-center"
                       style={{ backgroundImage: `url(${course.heroImageUrl})` }}
                     />
-                  ) : null}
+                  ) : <div className="mb-6 flex aspect-[16/9] items-center justify-center rounded-3xl bg-[#0b1326] text-xs text-[#8f9bb3]">이미지 준비 중</div>}
                   <div className="relative">
                     <div className="mb-5 flex items-center justify-between gap-4">
                       <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[11px] font-black text-[#ffd700]">
@@ -117,7 +118,7 @@ export default async function CoursesPage() {
                   </div>
                 </article>
               ))}
-            </div>
+            </ScrollRail>
           )}
         </div>
       </section>

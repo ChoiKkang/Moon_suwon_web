@@ -19,13 +19,13 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
 
   return (
     <main className="min-h-screen bg-[#0b1326] text-[#dae2fd]">
-      <section className="relative min-h-[72vh] overflow-hidden px-6 py-10 md:px-20">
+      <section className="ambient-glow relative min-h-[72vh] overflow-hidden px-6 py-10 md:px-20">
         <div className="absolute inset-0">
           {place?.heroImageUrl ? (
             <div
               role="img"
               aria-label={place.displayName}
-              className="h-full w-full bg-cover bg-center opacity-45"
+              className="image-reveal h-full w-full bg-cover bg-center opacity-45"
               style={{ backgroundImage: `url(${place.heroImageUrl})` }}
             />
           ) : null}
@@ -48,8 +48,8 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
                 <Moon className="h-4 w-4" />
                 KTO {place.ktoContentId}
               </div>
-              <h1 className="text-5xl font-black leading-tight text-[#fff6df] md:text-8xl">{place.displayName}</h1>
-              <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#d0c6ab] md:text-lg">
+              <h1 className="motion-reveal text-5xl font-black leading-tight text-[#fff6df] md:text-8xl">{place.displayName}</h1>
+              <p className="motion-reveal mt-6 max-w-2xl text-base leading-relaxed text-[#d0c6ab] [animation-delay:160ms] md:text-lg">
                 {place.shortDescription ?? '달빛수원 운영 문구를 준비 중입니다. KTO 기준 위치와 이미지는 정상 연동되어 있습니다.'}
               </p>
             </div>
@@ -99,7 +99,7 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
               <Route className="h-8 w-8 text-[#ffd700]" />
               <h2 className="mt-5 text-2xl font-black text-white">이 스팟이 포함된 코스</h2>
               <p className="mt-3 text-sm leading-relaxed text-[#d0c6ab]">
-                현재 이 장소는 성곽 야경 입문 코스의 핵심 스팟으로 활용됩니다. 코스 목록에서 전체 동선을 확인하세요.
+                이 장소가 포함된 공개 코스가 있다면 코스 목록에서 실제 동선을 확인할 수 있습니다.
               </p>
               <Link
                 href="/courses"

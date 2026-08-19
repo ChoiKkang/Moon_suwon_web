@@ -28,7 +28,17 @@ export async function updateSession(request: NextRequest) {
   );
 
   // 중요: getUser()를 호출해야 세션 토큰이 유효한지 확인하고 적절히 갱신합니다.
-  await supabase.auth.getUser();
+  // 오래된 브라우저 쿠키의 refresh_token_not_found가 모든 요청을 서버 로그에 쌓지 않도록
+  // 해당 쿠키만 정리하고 익명 요청으로 계속 진행한다.
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith('sb-')) {
+        supabaseResponse.cookies.delete(cookie.name);
+      }
+    }
+  }
 
   return supabaseResponse;
 }

@@ -9,6 +9,10 @@ import Link from 'next/link';
 import type { ImportedPlace } from '@/lib/places/types';
 import type { ServiceCourse } from '@/lib/courses/types';
 import type { NowGoodSpot } from '@/lib/crowd/queries';
+import { MediaCard } from '@/components/public/media-card';
+import { ScrollRail } from '@/components/public/scroll-rail';
+import { SectionHeading } from '@/components/public/section-heading';
+import { StatusPill } from '@/components/public/status-pill';
 
 interface LandingClientProps {
   initialUser: User | null;
@@ -175,10 +179,11 @@ export function LandingClient({
       {/* Main Content */}
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative min-h-screen flex items-center justify-center pt-24 overflow-hidden">
+        <section className="ambient-glow relative min-h-screen flex items-center justify-center overflow-hidden pt-24">
           {/* Background Image Overlay */}
           <div className="absolute inset-0 z-0">
             <div className="absolute inset-0 bg-gradient-to-b from-[#0b1326]/60 via-[#0b1326]/40 to-[#0b1326] z-10" />
+            <div className="hero-shimmer z-10" aria-hidden="true" />
             <img 
               alt="수원화성 야경" 
               className="w-full h-full object-cover" 
@@ -186,22 +191,22 @@ export function LandingClient({
             />
           </div>
 
-          <div className="relative z-20 container mx-auto px-6 md:px-20 max-w-[1440px] flex flex-col items-center text-center gap-8 mt-12 md:mt-0">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#ffd700]/30 bg-[#171f33]/50 backdrop-blur-sm mb-4">
+          <div className="relative z-20 container mx-auto mt-12 flex max-w-[1440px] flex-col items-center gap-8 px-6 text-center md:mt-0 md:px-20">
+            <div className="motion-reveal inline-flex items-center gap-2 rounded-full border border-[#ffd700]/30 bg-[#171f33]/50 px-4 py-2 backdrop-blur-sm">
               <Sparkles className="text-[#ffd700] w-4 h-4" />
               <span className="text-xs font-bold text-[#ffd700] tracking-widest uppercase">달빛 문화유산 발견하기</span>
             </div>
             
-            <h1 className="text-4xl md:text-7xl font-extrabold max-w-4xl text-[#fff6df] leading-tight tracking-tight">
+            <h1 className="motion-reveal text-4xl font-extrabold leading-tight tracking-tight text-[#fff6df] [animation-delay:120ms] md:text-7xl">
               수원화성의 밤을 걷는 가장 <br />
               <span className="bg-gradient-to-r from-[#ffd700] to-[#fff6df] bg-clip-text text-transparent">로맨틱한 방법</span>
             </h1>
             
-            <p className="text-base md:text-lg text-[#d0c6ab] max-w-2xl leading-relaxed">
+            <p className="motion-reveal max-w-2xl text-base leading-relaxed text-[#d0c6ab] [animation-delay:240ms] md:text-lg">
               세계문화유산 수원화성의 시간을 초월한 아름다움을 경험하세요. 달빛수원 앱을 다운로드하여 큐레이션된 산책 코스, 역사적 통찰, 그리고 특별한 야간 이벤트를 만나보세요.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 mt-8 w-full justify-center max-w-md">
+            <div className="motion-reveal mt-8 flex w-full max-w-md flex-col justify-center gap-4 [animation-delay:360ms] sm:flex-row">
               <Link href="/courses" className="flex items-center justify-center gap-3 px-8 py-4 bg-[#ffd700] text-[#3a3000] rounded-xl font-bold hover:bg-[#ffe16d] transition-colors w-full sm:w-auto shadow-lg shadow-yellow-500/10">
                 <span>코스 둘러보기</span>
               </Link>
@@ -213,21 +218,9 @@ export function LandingClient({
         </section>
 
         {/* Published Courses Section */}
-        <section className="relative bg-[#0b1326] py-24">
+        <section className="ambient-glow relative bg-[#0b1326] py-24">
           <div className="container mx-auto max-w-[1440px] px-6 md:px-20">
-            <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-              <div className="max-w-2xl">
-                <span className="text-xs font-bold uppercase tracking-widest text-[#ffd700]">운영자 공개 코스</span>
-                <h2 className="mt-2 text-3xl font-extrabold text-[#fff6df] md:text-5xl">DB에 공개된 달빛 코스</h2>
-                <p className="mt-4 text-sm leading-relaxed text-[#d0c6ab] md:text-base">
-                  운영자가 공개한 코스만 표시합니다. 코스 데이터가 추가되면 별도 배포 없이 이 영역에 반영됩니다.
-                </p>
-              </div>
-              <Link href="/courses" className="inline-flex items-center gap-2 text-sm font-black text-[#ffd700]">
-                전체 코스 보기
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
+            <SectionHeading eyebrow="운영자 공개 코스" title="DB에 공개된 달빛 코스" description="운영자가 공개한 코스만 표시합니다. 코스 데이터가 추가되면 별도 배포 없이 이 영역에 반영됩니다." action={{ href: '/courses', label: '전체 코스 보기', icon: <ArrowRight className="h-4 w-4" /> }} />
 
             {coursesError ? (
               <div className="rounded-3xl border border-amber-400/30 bg-amber-400/10 p-8 text-sm text-amber-100">
@@ -238,17 +231,17 @@ export function LandingClient({
                 아직 공개된 코스가 없습니다. 현재는 아래 달빛 스팟에서 장소 정보를 확인할 수 있습니다.
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <ScrollRail label="공개 코스 목록" className="xl:grid-cols-3">
                 {courses.slice(0, 3).map((course) => (
-                  <article key={course.id} className="overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33] shadow-xl">
+                  <article key={course.id} className="group min-w-[86%] snap-start overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33] shadow-xl motion-reveal md:min-w-0">
                     {course.heroImageUrl ? (
                       <div
                         role="img"
                         aria-label={course.title}
-                        className="aspect-[16/9] bg-cover bg-center"
+                        className="image-reveal aspect-[16/9] bg-cover bg-center"
                         style={{ backgroundImage: `url(${course.heroImageUrl})` }}
                       />
-                    ) : null}
+                    ) : <div className="flex aspect-[16/9] items-center justify-center bg-[#0b1326] text-xs text-[#8f9bb3]">이미지 준비 중</div>}
                     <div className="p-6">
                       <div className="mb-4 flex items-center justify-between gap-3">
                         <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[10px] font-black text-[#ffd700]">LIVE DATA</span>
@@ -278,7 +271,7 @@ export function LandingClient({
                     </div>
                   </article>
                 ))}
-              </div>
+              </ScrollRail>
             )}
           </div>
         </section>
@@ -308,36 +301,26 @@ export function LandingClient({
                 오늘의 혼잡도 예보가 아직 준비되지 않았습니다.
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+              <ScrollRail label="오늘의 혼잡도 스팟" className="xl:grid-cols-4">
                 {nowGoodSpots.map((spot) => (
                   <Link
                     key={spot.placeId}
                     href={`/places/${spot.slug}`}
-                    className="group overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl transition hover:-translate-y-1 hover:border-[#ffd700]/40"
+                    className="group min-w-[82%] snap-start overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl transition hover:-translate-y-1 hover:border-[#ffd700]/40 md:min-w-0"
                   >
                     <div className="relative aspect-[4/3] overflow-hidden bg-[#0b1326]">
                       {spot.heroImageUrl ? (
                         <div
                           role="img"
                           aria-label={spot.displayName}
-                          className="h-full w-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+                          className="image-reveal h-full w-full bg-cover bg-center"
                           style={{ backgroundImage: `url(${spot.heroImageUrl})` }}
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center text-xs text-[#d0c6ab]">이미지 준비 중</div>
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0b1326]/85 via-transparent to-transparent" />
-                      <span
-                        className={`absolute left-4 top-4 rounded-full px-3 py-1 text-[10px] font-black ${
-                          spot.crowdLevel === '여유'
-                            ? 'bg-emerald-300 text-emerald-950'
-                            : spot.crowdLevel === '혼잡'
-                              ? 'bg-rose-300 text-rose-950'
-                              : 'bg-amber-200 text-amber-950'
-                        }`}
-                      >
-                        {spot.crowdLevel ?? '예보 확인 중'}
-                      </span>
+                      <div className="absolute left-4 top-4"><StatusPill level={spot.crowdLevel} /></div>
                     </div>
                     <div className="p-5">
                       <h3 className="text-lg font-extrabold text-white">{spot.displayName}</h3>
@@ -347,7 +330,7 @@ export function LandingClient({
                     </div>
                   </Link>
                 ))}
-              </div>
+              </ScrollRail>
             )}
           </div>
         </section>
@@ -355,19 +338,9 @@ export function LandingClient({
         <section id="kto-spots" className="relative overflow-hidden bg-[#10182b] py-24">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,215,0,0.12),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(103,140,255,0.14),transparent_36%)]" />
           <div className="relative container mx-auto px-6 md:px-20 max-w-[1440px]">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
-              <div className="max-w-2xl">
-                <span className="text-[#ffd700] text-xs font-bold uppercase tracking-widest">관광콘텐츠랩 연동</span>
-                <h2 className="text-3xl md:text-5xl font-extrabold text-[#fff6df] mt-2 mb-4">
-                  공공데이터로 검증한 달빛 스팟
-                </h2>
-                <p className="text-sm md:text-base text-[#d0c6ab] leading-relaxed">
-                  TourAPI에서 받은 장소명, 좌표, 이미지와 달빛수원 운영 문구를 결합해 실제 코스 데이터로 확장합니다.
-                </p>
-              </div>
-              <div className="rounded-full border border-[#ffd700]/20 bg-[#0b1326]/70 px-5 py-2 text-xs font-bold text-[#ffd700]">
-                {importedPlaces.length > 0 ? `${importedPlaces.length}개 스팟 연동됨` : '연동 확인 필요'}
-              </div>
+            <SectionHeading eyebrow="관광콘텐츠랩 연동" title="공공데이터로 검증한 달빛 스팟" description="TourAPI에서 받은 장소명, 좌표, 이미지와 달빛수원 운영 문구를 결합해 실제 코스 데이터로 확장합니다." />
+            <div className="mb-10 rounded-full border border-[#ffd700]/20 bg-[#0b1326]/70 px-5 py-2 text-xs font-bold text-[#ffd700] md:ml-auto md:w-fit">
+              {importedPlaces.length > 0 ? `${importedPlaces.length}개 스팟 연동됨` : '연동 확인 필요'}
             </div>
 
             {placesError ? (
@@ -375,47 +348,11 @@ export function LandingClient({
                 Supabase 공개 스팟 데이터를 불러오지 못했습니다. 운영 콘솔에서 연동 상태를 확인하세요.
               </div>
             ) : importedPlaces.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
+              <ScrollRail label="공공데이터 달빛 스팟" className="xl:grid-cols-5">
                 {importedPlaces.map((place) => (
-                  <article
-                    key={place.slug}
-                    className="group rounded-3xl overflow-hidden border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl"
-                  >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-[#0b1326]">
-                      {place.heroImageUrl ? (
-                        <div
-                          role="img"
-                          aria-label={place.displayName}
-                          className="h-full w-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-                          style={{ backgroundImage: `url(${place.heroImageUrl})` }}
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-xs text-[#d0c6ab]">
-                          이미지 준비 중
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#0b1326]/85 via-transparent to-transparent" />
-                      {place.ktoContentId ? (
-                        <div className="absolute left-4 top-4 rounded-full bg-[#ffd700] px-3 py-1 text-[10px] font-black text-[#3a3000]">
-                          KTO {place.ktoContentId}
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="p-5">
-                      <h3 className="text-lg font-extrabold text-white mb-2">{place.displayName}</h3>
-                      <p className="text-xs text-[#d0c6ab] leading-relaxed line-clamp-3">
-                        {place.shortDescription ?? place.addressFull ?? '운영 문구 준비 중'}
-                      </p>
-                      <Link
-                        href={`/places/${place.slug}`}
-                        className="mt-4 inline-flex text-xs font-black text-[#ffd700] hover:text-[#ffe16d]"
-                      >
-                        상세 보기
-                      </Link>
-                    </div>
-                  </article>
+                  <div key={place.slug} className="min-w-[82%] snap-start md:min-w-0"><MediaCard href={`/places/${place.slug}`} title={place.displayName} description={place.shortDescription ?? place.addressFull ?? '운영 문구 준비 중'} imageUrl={place.heroImageUrl} eyebrow={place.ktoContentId ? `KTO ${place.ktoContentId}` : undefined} /></div>
                 ))}
-              </div>
+              </ScrollRail>
             ) : (
               <div className="rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/70 p-8 text-sm text-[#d0c6ab]">
                 아직 공개 가능한 KTO 스팟이 없습니다. 수집 스크립트와 적재 상태를 확인하세요.

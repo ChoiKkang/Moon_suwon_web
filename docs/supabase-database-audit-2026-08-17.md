@@ -25,8 +25,19 @@
 - `raw.kto_crowd_forecast`: 980개, 35개 관광지, 최신 수집 2026-08-17 08:38 UTC
 - `serving.v_now_good_spot_candidates`: 현재 공개 후보 7개
 - `public.v_now_good_spot_candidates`: 공개 Data API alias 7개
-- `core.courses`, `core.course_places`, `editorial.course_copy`, `editorial.course_publish_state`: 현재 0개
+- `core.courses`: 2개, `core.course_places`: 6개, `editorial.course_copy`: 2개, `editorial.course_publish_state`: 2개
 - `public.profiles`: 2개
+
+## 2026-08-19 운영보드 구현 전 재확인
+
+MCP read-only query로 다시 확인한 현재 원격 count는 다음과 같다.
+
+- `core.places` 13, `editorial.place_publish_state` 13, `editorial.place_copy` 5
+- `core.courses` 2, `core.course_places` 6, `core.events` 6
+- `core.place_crowd_forecasts` 224, `raw.sync_runs` 7, `raw.sync_errors` 6
+- `public.profiles` 2명 모두 `USER`; 첫 `ADMIN` 지정은 배포 전 DB 소유자가 수행해야 한다.
+
+운영보드는 service-role server action으로 core/editorial을 갱신하고, 공개 웹은 기존 public serving view를 계속 읽는다. raw sync 이력은 읽기 전용으로 표시한다.
 
 ## 적재 결과
 
@@ -49,7 +60,7 @@
 - `public.spatial_ref_sys`는 RLS가 꺼져 있어 Supabase Advisor ERROR가 발생한다.
 - `public`의 SECURITY DEFINER 함수 중 일부가 `anon`/`authenticated`에 실행 권한을 가진다. 특히 `checkin_place`, `delete_own_account`, `is_admin`, course/place RPC는 의도와 권한을 DBA가 검토해야 한다.
 - 함수 search path mutable 경고 8건, multiple permissive policy 경고 다수, unindexed foreign key 정보가 존재한다.
-- 원격 migration 이력은 로컬보다 앞서 있다. 원격에는 baseline 10개, 2026-08-17 데이터/정책 migration 6개와 이번 공개 alias migration 4개가 있다. `supabase db push`를 무검토로 실행하지 않는다.
+- 원격 migration 이력은 로컬보다 앞서 있다. 원격에는 baseline 10개, 2026-08-17 데이터/정책 migration과 공개 alias migration, 2026-08-19 role contract migration이 있다. `supabase db push`를 무검토로 실행하지 않는다.
 - 앱 의존성은 Next 16.3.1 보안 패치 후 `npm audit --omit=dev`가 0 vulnerabilities를 반환한다.
 
 ## 앱 반영

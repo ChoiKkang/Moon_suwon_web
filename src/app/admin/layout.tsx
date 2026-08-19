@@ -1,22 +1,20 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { LayoutDashboard, Map, MapPin, Settings, LogOut, Moon } from 'lucide-react';
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/admin/server';
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-
-  // 로그인 상태 검증
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // 비로그인 사용자는 메인 랜딩 페이지로 리다이렉트
-  if (!user) {
+  try {
+    await requireAdmin();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('관리자 권한')) {
+      redirect('/?auth-error=true');
+    }
     redirect('/');
   }
 
@@ -40,7 +38,7 @@ export default async function AdminLayout({
             </div>
           </div>
           
-          <Link href="/courses" className="w-full py-3 px-4 bg-[#ffd700] text-[#3a3000] font-bold text-xs rounded hover:bg-[#ffe16d] transition-all flex items-center justify-center gap-2 shadow-sm active:scale-98">
+          <Link href="/admin/courses?new=1" className="w-full py-3 px-4 bg-[#ffd700] text-[#3a3000] font-bold text-xs rounded hover:bg-[#ffe16d] transition-all flex items-center justify-center gap-2 shadow-sm active:scale-98">
             <span>새 코스 추가</span>
           </Link>
         </div>
@@ -52,17 +50,21 @@ export default async function AdminLayout({
             <LayoutDashboard className="w-4 h-4 text-[#ffd700]" />
             <span>대시보드 통계</span>
           </Link>
-          <Link className="flex items-center gap-3 text-[#d0c6ab] px-4 py-3 text-sm font-semibold hover:bg-slate-800/40 hover:text-white transition-all border-l-4 border-transparent rounded-r" href="/courses">
+          <Link className="flex items-center gap-3 text-[#d0c6ab] px-4 py-3 text-sm font-semibold hover:bg-slate-800/40 hover:text-white transition-all border-l-4 border-transparent rounded-r" href="/admin/courses">
             <Map className="w-4 h-4" />
             <span>코스 관리</span>
           </Link>
-          <Link className="flex items-center gap-3 text-[#d0c6ab] px-4 py-3 text-sm font-semibold hover:bg-slate-800/40 hover:text-white transition-all border-l-4 border-transparent rounded-r" href="/#kto-spots">
+          <Link className="flex items-center gap-3 text-[#d0c6ab] px-4 py-3 text-sm font-semibold hover:bg-slate-800/40 hover:text-white transition-all border-l-4 border-transparent rounded-r" href="/admin/places">
             <MapPin className="w-4 h-4" />
             <span>스팟 관리</span>
           </Link>
-          <Link className="flex items-center gap-3 text-[#d0c6ab] px-4 py-3 text-sm font-semibold hover:bg-slate-800/40 hover:text-white transition-all border-l-4 border-transparent rounded-r" href="/">
+          <Link className="flex items-center gap-3 text-[#d0c6ab] px-4 py-3 text-sm font-semibold hover:bg-slate-800/40 hover:text-white transition-all border-l-4 border-transparent rounded-r" href="/admin/operations">
             <Settings className="w-4 h-4" />
-            <span>시스템 설정</span>
+            <span>운영 상태</span>
+          </Link>
+          <Link className="flex items-center gap-3 text-[#d0c6ab] px-4 py-3 text-sm font-semibold hover:bg-slate-800/40 hover:text-white transition-all border-l-4 border-transparent rounded-r" href="/admin/events">
+            <MapPin className="w-4 h-4" />
+            <span>행사 관리</span>
           </Link>
         </div>
 

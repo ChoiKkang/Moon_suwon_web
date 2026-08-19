@@ -169,9 +169,9 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 - `detailImage2`는 `imageYN=Y`만 사용하고 `subImageYN`은 넣지 않는다.
 - 반려동물 API 목록/일부 endpoint는 현재 서비스 키 승인 문제로 403이 발생한다.
 
-## 8. 운영 웹 현재 기능과 미구현 범위
+## 8. 운영 웹 기능과 서비스 운영 범위
 
-현재 [관리자 대시보드](../src/app/admin/page.tsx)는 다음을 제공한다.
+현재 [관리자 대시보드](../src/app/admin/page.tsx)와 업무별 운영 화면은 다음을 제공한다.
 
 - 공개 장소 KPI: 공개 수, hero 이미지, 주소, editorial 문구 보유 현황
 - 공개 장소 목록과 상세 링크
@@ -180,23 +180,19 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 - 선택 관광지 상세/이미지 preview
 - 관리자 승인 후 `core.places`, `core.place_sources`, `core.place_images` upsert
 - 적재 후 관련 Next.js 경로 revalidate
-
-아직 별도 화면이 필요한 기능:
-
-- 장소 `is_published`, `display_priority`, `is_now_good_enabled` 편집
-- `editorial.place_copy` 문구 편집
-- 코스 생성/수정/공개/순서 변경
-- `raw.sync_runs`, `raw.sync_errors` 조회
-- `core.events` 운영
-- `core.place_crowd_forecasts` 최신 수집 상태 확인
-- 로컬 스팟 CRUD
+- `/admin/places`: 장소 공개/비공개, 노출 우선순위, 지금 추천 토글, editorial 문구 편집
+- `/admin/courses`: 코스 생성/수정, 장소 순서 변경, 공개 상태와 홈 노출 순서 관리
+- `/admin/operations`: 혼잡도 최신성·분포, sync run, sync error 이력 조회
+- `/admin/events`: 행사 생성·수정·삭제와 기간/장소/프로그램 편집
+- 모든 관리자 화면과 Server Action은 `public.profiles.role = ADMIN`을 확인
+- 로컬 스팟 CRUD는 현재 DB에 0행이고 이번 운영보드 범위 밖이다.
 
 운영 권한 주의:
 
 - 설계 문서 기준 role 값은 `USER`/`ADMIN` 대문자다.
-- 현재 웹 Server Action의 관리자 검사는 `profile.role === 'admin'` 소문자를 요구한다.
+- 현재 웹의 관리자 검사는 role을 대문자로 정규화해 `ADMIN`을 허용한다.
 - 현재 프로필은 모두 `USER`라 실제 관리자 계정이 없다.
-- `/admin` layout은 로그인 여부만 확인하고 role은 확인하지 않는다.
+- `/admin` layout과 모든 관리자 Server Action 양쪽에서 권한을 확인한다.
 
 따라서 배포 전에 role 표준을 하나로 통일하고, `/admin` 진입과 Server Action 양쪽에서 같은 관리자 판정을 사용해야 한다.
 
@@ -208,6 +204,9 @@ npm run kto:verify
 
 # 공개 코스와 연결 스팟 확인
 npm run course:verify
+
+# 관리자 데이터 계약 확인 (서버 전용 service role 필요)
+npm run admin:verify
 
 # 타입·lint·production build
 npm run typecheck
@@ -223,6 +222,8 @@ npm run build
 - 비공개 장소 slug: 404
 - `npm audit --omit=dev`: 0 vulnerabilities
 
+`admin:verify`는 서버 전용 `SUPABASE_SERVICE_ROLE_KEY`가 로컬 환경에 있어야 실행된다. 키가 없는 환경에서는 오류가 정상이며, 키를 출력하거나 클라이언트에 넣지 않는다.
+
 ## 10. 배포 전 체크리스트
 
 - [ ] Vercel `NEXT_PUBLIC_SUPABASE_URL`/publishable key 설정
@@ -230,9 +231,11 @@ npm run build
 - [ ] 서버 전용 `SUPABASE_SERVICE_ROLE_KEY`, `KTO_SERVICE_KEY` 설정
 - [ ] Apple/Kakao의 Supabase callback과 production redirect URL 등록
 - [ ] 관리자 role 표준 통일 및 첫 ADMIN 계정 지정
+- [ ] `/admin/places`, `/admin/courses`, `/admin/operations`, `/admin/events` production smoke test
 - [ ] 7개 공개 장소 editorial 설명 보강
 - [ ] 반려동물 API 승인 또는 반려동물 수집 기능 비활성화 결정
 - [ ] 원격 migration 이력과 저장소 migration 동기화
+- [x] `normalize_profile_role_values` migration 원격 적용 및 `USER`/`ADMIN` check 확인
 - [ ] Supabase Advisor의 `public.spatial_ref_sys` RLS 오류와 SECURITY DEFINER 권한 검토
 - [ ] production에서 `/`, `/courses`, `/places/{published-slug}`, `/admin` smoke test
 

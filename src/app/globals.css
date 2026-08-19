@@ -3,6 +3,9 @@
 :root {
   --background: #0b1326;
   --foreground: #dae2fd;
+  --moonlight: #ffd700;
+  --surface: #171f33;
+  --surface-border: rgba(62, 73, 93, 0.42);
 }
 
 body {
@@ -11,3 +14,86 @@ body {
   font-family: 'Manrope', sans-serif;
 }
 
+@keyframes moonlight-reveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes moonlight-shimmer {
+  0%, 100% { opacity: 0.55; transform: translateX(-8%); }
+  50% { opacity: 1; transform: translateX(8%); }
+}
+
+@keyframes moonlight-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.42; }
+  50% { transform: scale(1.08); opacity: 0.72; }
+}
+
+.motion-reveal {
+  animation: moonlight-reveal 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.image-reveal {
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1), filter 700ms ease;
+}
+
+.group:hover .image-reveal,
+.group:focus-within .image-reveal {
+  transform: scale(1.06);
+  filter: saturate(1.08);
+}
+
+.ambient-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.ambient-glow::before {
+  position: absolute;
+  inset: 12% 18% auto;
+  z-index: -1;
+  height: 18rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.14), transparent 68%);
+  content: '';
+  filter: blur(36px);
+  animation: moonlight-breathe 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.hero-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 20%, rgba(255, 246, 223, 0.08) 48%, transparent 74%);
+  animation: moonlight-shimmer 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.scroll-rail {
+  scrollbar-width: none;
+}
+
+.scroll-rail::-webkit-scrollbar {
+  display: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--moonlight);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-reveal,
+  .hero-shimmer,
+  .ambient-glow::before {
+    animation: none;
+  }
+
+  .image-reveal,
+  .group:hover .image-reveal,
+  .group:focus-within .image-reveal {
+    transition: none;
+    transform: none;
+    filter: none;
+  }
+}

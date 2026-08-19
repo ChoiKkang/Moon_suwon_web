@@ -1,11 +1,10 @@
 'use server';
 
-import { createClient as createSupabaseUserClient } from '@/lib/supabase/server';
-import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
 import { getRequiredServerEnv } from '@/lib/env/server';
 import { KtoClient } from '@/lib/kto/client';
 import { normalizeImages, normalizePlace } from '@/lib/kto/normalize';
 import { revalidatePath } from 'next/cache';
+import { getAdminClient, requireAdmin } from '@/lib/admin/server';
 
 // unknown 타입 오류에서 사용자 노출용 메시지를 안전하게 추출한다
 function toErrorMessage(error: unknown, fallback: string) {
@@ -14,38 +13,6 @@ function toErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
-}
-
-// 권한 확인 헬퍼 함수
-async function verifyAdminRole() {
-  const userClient = await createSupabaseUserClient();
-  const { data: { user }, error: userError } = await userClient.auth.getUser();
-
-  if (userError || !user) {
-    throw new Error('인증 오류가 발생했습니다. 다시 로그인해주세요.');
-  }
-
-  // public.profiles 테이블에서 현재 로그인한 사용자의 role 컬럼 확인
-  const { data: profile, error: profileError } = await userClient
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError || !profile || profile.role !== 'admin') {
-    throw new Error('권한이 부족합니다. 관리자 계정으로 로그인해주세요.');
-  }
-
-  return user;
-}
-
-// RLS를 우회(bypass RLS)하는 Admin Client 생성 함수
-function getAdminClient() {
-  return createSupabaseAdminClient(
-    getRequiredServerEnv('NEXT_PUBLIC_SUPABASE_URL'),
-    getRequiredServerEnv('SUPABASE_SERVICE_ROLE_KEY'),
-    { auth: { persistSession: false } }
-  );
 }
 
 // KtoClient 인스턴스 팩토리
@@ -61,7 +28,7 @@ function getKtoClient() {
  */
 export async function fetchKTOAttractionsAction() {
   try {
-    await verifyAdminRole();
+    await requireAdmin();
     const kto = getKtoClient();
     const attractions = await kto.fetchSuwonAttractions();
 
@@ -87,7 +54,7 @@ export async function fetchKTOAttractionsAction() {
  */
 export async function fetchKTOPlacePreviewAction(contentId: string) {
   try {
-    await verifyAdminRole();
+    await requireAdmin();
     const kto = getKtoClient();
 
     // 1. 관광지 리스트 전체 조회하여 매칭되는 기본 데이터 확인
@@ -126,7 +93,7 @@ export async function fetchKTOPlacePreviewAction(contentId: string) {
  */
 export async function approveAndSavePlaceAction(contentId: string) {
   try {
-    await verifyAdminRole();
+    await requireAdmin();
     const kto = getKtoClient();
     const adminSupabase = getAdminClient();
 
