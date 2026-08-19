@@ -20,6 +20,15 @@
 - 코스 새 생성은 비공개로 시작하며 공개 장소만 코스 연결 후보로 제공한다.
 - 성공 주장 전에는 `npm run typecheck`, `npm run lint`, `npm run build`, read/write smoke test를 새로 실행한다.
 
+## Execution Status (2026-08-19)
+
+- [x] 관리자 인증 경계, 장소·코스·행사 action, 다섯 개 운영 route를 구현했다.
+- [x] `npm run typecheck`, `npm run lint`(0 errors, existing 4 image warnings), `npm run build`를 통과했다.
+- [x] 익명 admin route는 `/`로 307 redirect되는 것을 확인했다.
+- [x] 원격 `profiles.role`을 `USER`/`ADMIN` 계약으로 정규화하는 migration을 적용하고 check constraint를 확인했다.
+- [ ] 실제 ADMIN 세션의 create/update/delete smoke는 현재 원격 프로필 2개가 모두 `USER`라 첫 관리자 지정 후 재검증해야 한다.
+- [ ] `npm run admin:verify`는 로컬 `.env.local`에 서버 전용 service-role key가 없어 실행하지 못했다. 원격 read-only count는 Supabase MCP로 확인했다.
+
 ---
 
 ### Task 1: Create the admin server boundary and normalized types

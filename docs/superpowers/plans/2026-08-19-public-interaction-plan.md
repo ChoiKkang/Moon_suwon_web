@@ -19,6 +19,14 @@
 - 모바일 390px 폭에서 body-level horizontal overflow를 만들지 않는다.
 - 공개 웹의 숫자·평점·코스 정보는 하드코딩하지 않는다.
 
+## Execution Status (2026-08-19)
+
+- [x] CSS-only reveal, ambient glow, image reveal, responsive scroll rail, crowd status pill을 추가했다.
+- [x] 홈·코스·장소 상세에서 실제 DB 코스 2개·공개 스팟 7개·예보 7개가 렌더링되는 것을 Chrome/Orca accessibility snapshot으로 확인했다.
+- [x] `npm run kto:verify`, `npm run course:verify`, `npm run typecheck`, `npm run lint`, `npm run build`를 통과했다.
+- [x] production route smoke: `/` 200, `/courses` 200, published detail 200, unpublished detail 404.
+- [ ] `agent-browser` 실행 파일이 환경에 없어 Chrome/Orca computer-use를 fallback으로 사용했다. 별도 390px viewport 자동 검증은 아직 남아 있다.
+
 ---
 
 ### Task 1: Add the motion and surface utility layer
