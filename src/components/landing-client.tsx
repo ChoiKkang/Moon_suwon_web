@@ -79,10 +79,14 @@ export function LandingClient({
           
           <div className="hidden md:flex items-center gap-8">
             <Link className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="/courses">문화유산 코스</Link>
+            <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#now-good">오늘의 혼잡도</a>
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#kto-spots">달빛 스팟</a>
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#heritage-story">수원 소개</a>
-            <Link className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="/admin">운영 콘솔</Link>
+            {initialUser && (
+              <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors duration-300 text-sm font-semibold tracking-wider" href="/admin">운영 콘솔</Link>
+            )}
           </div>
+
 
           <div className="hidden md:flex items-center gap-4">
             {initialUser ? (
@@ -130,10 +134,14 @@ export function LandingClient({
         {/* Mobile Navigation Dropdown */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-[#4d4732]/20 bg-[#0b1326] px-6 py-4 flex flex-col gap-4">
-            <Link className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="/courses">문화유산 코스</Link>
-            <a className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#kto-spots">달빛 스팟</a>
-            <a className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#heritage-story">수원 소개</a>
-            <Link className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="/admin">운영 콘솔</Link>
+            <Link onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="/courses">문화유산 코스</Link>
+            <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#now-good">오늘의 혼잡도</a>
+            <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#kto-spots">달빛 스팟</a>
+            <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#heritage-story">수원 소개</a>
+            {initialUser && (
+              <Link onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#ffd700] py-1 text-sm font-semibold" href="/admin">운영 콘솔</Link>
+            )}
+
             <div className="h-px bg-[#4d4732]/10 my-1" />
             {initialUser ? (
               <div className="flex flex-col gap-2">
@@ -276,7 +284,7 @@ export function LandingClient({
           </div>
         </section>
 
-        <section className="relative overflow-hidden bg-[#10182b] py-24">
+        <section id="now-good" className="relative overflow-hidden bg-[#10182b] py-24">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,215,0,0.11),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(103,140,255,0.12),transparent_36%)]" />
           <div className="relative container mx-auto max-w-[1440px] px-6 md:px-20">
             <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
@@ -421,14 +429,20 @@ export function LandingClient({
         <div className="w-full px-6 md:px-20 py-12 flex flex-col items-center gap-6 max-w-[1440px] mx-auto">
           <div className="text-lg font-extrabold text-[#ffd700]">달빛수원</div>
           <div className="flex flex-wrap justify-center gap-6 md:gap-8 text-xs">
-            <Link className="text-[#d0c6ab] hover:text-[#ffd700] underline transition-colors" href="/courses">코스 보기</Link>
-            <a className="text-[#d0c6ab] hover:text-[#ffd700] underline transition-colors" href="#kto-spots">달빛 스팟</a>
-            <a className="text-[#d0c6ab] hover:text-[#ffd700] underline transition-colors" href="https://www.cha.go.kr" target="_blank" rel="noreferrer">문화재 포털</a>
-            <Link className="text-[#d0c6ab] hover:text-[#ffd700] underline transition-colors" href="/admin">운영 콘솔</Link>
+            <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/courses">코스 보기</Link>
+            <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#now-good">오늘의 혼잡도</a>
+            <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#kto-spots">달빛 스팟</a>
+            <Link className="text-[#fff6df] hover:text-[#ffd700] font-semibold transition-colors" href="/privacy">개인정보처리방침</Link>
+            <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/terms">이용약관</Link>
+            <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="https://www.cha.go.kr" target="_blank" rel="noreferrer">국가유산포털</a>
+            {initialUser && (
+              <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/admin">운영 콘솔</Link>
+            )}
           </div>
-          <div className="text-center mt-4 text-xs text-zinc-500">
-            © 달빛수원. 수원화성의 달빛 문화유산을 보존합니다.
+          <div className="text-center mt-2 text-xs text-zinc-500">
+            © 달빛수원. 수원화성의 밤을 걷는 야간 특화 문화유산 가이드.
           </div>
+
         </div>
       </footer>
 
