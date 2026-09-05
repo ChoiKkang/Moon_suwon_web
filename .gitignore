@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+/jira_docs
 
 # debug
 npm-debug.log*
