@@ -15,6 +15,7 @@ gh secret set KTO_SERVICE_KEY --repo ChoiKkang/Moon_suwon_web
 ## 자동 일정
 
 `.github/workflows/kto-data-sync.yml`의 cron은 UTC 기준이다.
+workflow는 Node.js 22와 IPv4 우선 DNS 설정으로 실행한다.
 
 | 작업 | UTC | 한국시간 |
 | --- | --- | --- |
