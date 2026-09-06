@@ -43,8 +43,8 @@ GitHub Actions cron은 UTC 기준이다.
 | 작업 | 일정(UTC) | 한국시간 | 수동 입력 |
 | --- | --- | --- | --- |
 | crowd | 매일 `30 17 * * *` | 매일 02:30 | `crowd` |
-| pet | 매주 월요일 `0 18 * * 1` | 월요일 03:00 | `pet` |
-| content | 매월 1일 `0 19 1 * *` | 매월 1일 04:00 | `content` |
+| pet | 매주 일요일 `0 18 * * 0` | 월요일 03:00 | `pet` |
+| content | UTC 28~31일 `0 19 28-31 * *` (한국시간 1일 guard) | 매월 1일 04:00 | `content` |
 
 모든 작업의 중복 실행은 GitHub Actions `concurrency`로 직렬화해 KTO API 요청이
 서로 겹치지 않게 한다.

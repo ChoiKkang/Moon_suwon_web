@@ -14,8 +14,11 @@ on:
   schedule:
     # GitHub Actions cron is UTC (KST = UTC+9).
     - cron: '30 17 * * *'
-    - cron: '0 18 * * 1'
-    - cron: '0 19 1 * *'
+    # Monday 03:00 KST = Sunday 18:00 UTC.
+    - cron: '0 18 * * 0'
+    # Run on the UTC dates that can contain the first day in KST, then guard
+    # on Seoul's local date below so this is exactly the 1st at 04:00 KST.
+    - cron: '0 19 28-31 * *'
 
 permissions:
   contents: read
@@ -69,8 +72,8 @@ jobs:
           else
             case "$EVENT_SCHEDULE" in
               '30 17 * * *') job='crowd' ;;
-              '0 18 * * 1') job='pet' ;;
-              '0 19 1 * *') job='content' ;;
+              '0 18 * * 0') job='pet' ;;
+              '0 19 28-31 * *') job='content' ;;
               *) echo "Unknown schedule: $EVENT_SCHEDULE" >&2; exit 1 ;;
             esac
           fi
@@ -80,7 +83,17 @@ jobs:
             *) echo "Unknown sync job: $job" >&2; exit 1 ;;
           esac
 
+          should_run=true
+          if [[ "$EVENT_NAME" != "workflow_dispatch" && "$job" == "content" ]]; then
+            seoul_day="$(TZ=Asia/Seoul date +%d)"
+            if [[ "$seoul_day" != "01" ]]; then
+              should_run=false
+              echo "Skipping monthly content sync: Seoul local date is day $seoul_day"
+            fi
+          fi
+
           echo "job=$job" >> "$GITHUB_OUTPUT"
+          echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
           echo "Running sync job: $job"
 
       - name: Validate secrets
@@ -92,4 +105,5 @@ jobs:
           : "${KTO_SERVICE_KEY:?KTO_SERVICE_KEY secret is required}"
 
       - name: Run sync
+        if: steps.resolve.outputs.should_run == 'true'
         run: npm run sync:data -- --job "${{ steps.resolve.outputs.job }}"
