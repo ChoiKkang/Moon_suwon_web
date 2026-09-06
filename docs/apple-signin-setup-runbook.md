@@ -7,9 +7,10 @@
 | 항목 | 값 |
 | --- | --- |
 | Team ID | `9Q2ZLM39JN` |
-| Services ID (client_id) | `team.choikkang.dalbitsuwon` |
+| Services ID (client_id) | `team.choikkang.dalbitsuwon.web` |
 | Key ID | `9W29HS3BBK` |
 | 개인키 파일 | `AuthKey_9W29HS3BBK.p8` |
+| Supabase 프로젝트 ref | `feifvxhltehhsugizrob` |
 
 개인키는 저장소에 커밋하지 않는다. `.gitignore`가 `/secrets`와 `*.p8`을 제외한다.
 
@@ -31,7 +32,7 @@ Apple은 `.p8` 파일을 한 번만 내려주므로 별도 비밀 저장소에�
 
 ```
 APPLE_TEAM_ID=9Q2ZLM39JN
-APPLE_SERVICE_ID=team.choikkang.dalbitsuwon
+APPLE_SERVICE_ID=team.choikkang.dalbitsuwon.web
 APPLE_KEY_ID=9W29HS3BBK
 APPLE_PRIVATE_KEY_PATH=./secrets/AuthKey_9W29HS3BBK.p8
 ```
@@ -50,10 +51,10 @@ npm run apple:secret
 
 ## 4. Apple Developer 콘솔 설정
 
-Certificates, Identifiers & Profiles에서 Services ID `team.choikkang.dalbitsuwon`을 열고 Sign In with Apple을 구성한다.
+Certificates, Identifiers & Profiles에서 Services ID `team.choikkang.dalbitsuwon.web`을 열고 Sign In with Apple을 구성한다.
 
-- Domains and Subdomains: 서비스 도메인과 Supabase 프로젝트 도메인
-- Return URLs: `https://<supabase-project-ref>.supabase.co/auth/v1/callback`
+- Domains and Subdomains: `feifvxhltehhsugizrob.supabase.co` (서비스 도메인을 별도로 연결하는 경우 그 도메인도 추가)
+- Return URLs: `https://feifvxhltehhsugizrob.supabase.co/auth/v1/callback`
 
 Return URL은 앱의 `/auth/callback`이 아니라 Supabase의 콜백 주소다. Supabase가 Apple 응답을 받아 세션 코드를 만든 뒤 앱의 `/auth/callback`으로 되돌린다.
 
@@ -61,10 +62,12 @@ Return URL은 앱의 `/auth/callback`이 아니라 Supabase의 콜백 주소다.
 
 Dashboard의 Authentication > Sign In / Providers > Apple에서 다음을 입력한다.
 
-- Client IDs: `team.choikkang.dalbitsuwon`
+- Client IDs: `team.choikkang.dalbitsuwon.web`
 - Secret Key: 3단계에서 생성한 JWT
 
-Authentication > URL Configuration에서 Site URL과 Redirect URLs에 서비스 도메인의 `/auth/callback`을 등록한다. 로컬 개발용으로 `http://localhost:3000/auth/callback`도 함께 등록한다.
+Authentication > URL Configuration에서 Site URL과 Redirect URLs에 서비스 도메인의 `/auth/callback`을 등록한다. 로컬 개발용으로 `http://localhost:3000/auth/callback`도 함께 등록한다. Apple Developer의 Return URL은 앱 callback이 아니라 위 Supabase callback이다.
+
+`APPLE_*` 환경변수와 `.p8` 개인키는 client secret JWT를 생성할 때만 사용한다. Vercel 런타임에 개인키를 업로드하지 말고, 생성된 JWT만 Supabase Apple provider의 Secret Key에 입력한다. Apple client secret은 최대 6개월까지만 유효하므로 만료 전에 재발급한다.
 
 ## 6. 데이터베이스 마이그레이션
 

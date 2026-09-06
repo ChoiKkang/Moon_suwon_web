@@ -245,4 +245,6 @@ npm run build
 - [친구 API 필드 매핑 원문](../jira_docs/2026-05-25-dalbit-suwon-api-field-mapping.md)
 - [친구 서비스 플로우 원문](../jira_docs/2026-05-25-dalbit-suwon-service-flow.md)
 - [현재 Supabase 감사 보고서](./supabase-database-audit-2026-08-17.md)
+- [Kakao 로그인 설정 런북](./kakao-signin-setup-runbook.md)
+- [Apple 로그인 설정 런북](./apple-signin-setup-runbook.md)
 - [KTO 적재 런북](./kto-content-ingestion-runbook.md)
