@@ -46,7 +46,8 @@ GitHub Actions cron은 UTC 기준이다.
 | pet | 매주 월요일 `0 18 * * 1` | 월요일 03:00 | `pet` |
 | content | 매월 1일 `0 19 1 * *` | 매월 1일 04:00 | `content` |
 
-동일 작업의 중복 실행은 GitHub Actions `concurrency`로 차단한다.
+모든 작업의 중복 실행은 GitHub Actions `concurrency`로 직렬화해 KTO API 요청이
+서로 겹치지 않게 한다.
 
 ## 실패 처리
 

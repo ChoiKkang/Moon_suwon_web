@@ -21,7 +21,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: kto-data-sync-${{ inputs.job || github.event.schedule || 'scheduled' }}
+  # Keep all KTO jobs serial so a manual run cannot add API pressure while a
+  # scheduled job is still processing.
+  group: kto-data-sync
   cancel-in-progress: false
 
 jobs:

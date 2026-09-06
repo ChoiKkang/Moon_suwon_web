@@ -22,7 +22,7 @@ gh secret set KTO_SERVICE_KEY --repo ChoiKkang/Moon_suwon_web
 | 반려동물 | 월요일 18:00 | 월요일 03:00 |
 | 장소/이미지 | 매월 1일 19:00 | 매월 1일 04:00 |
 
-동일 작업이 겹치면 `concurrency`가 이전 실행을 취소하지 않고 순서를 유지한다.
+작업이 겹치면 `concurrency`가 이전 실행을 취소하지 않고 KTO 요청을 직렬화한다.
 
 ## 수동 실행
 
