@@ -14,6 +14,8 @@
     "kto:verify": "tsx scripts/verify-kto-serving.ts",
     "course:verify": "tsx scripts/verify-course-serving.ts",
     "admin:verify": "tsx scripts/verify-admin-serving.ts",
+    "sync:data": "tsx scripts/sync-kto-data.ts",
+    "sync:rpc:verify": "tsx scripts/verify-sync-rpc.ts",
     "apple:secret": "tsx scripts/generate-apple-client-secret.ts"
   },
   "dependencies": {

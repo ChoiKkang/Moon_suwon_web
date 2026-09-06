@@ -1,6 +1,30 @@
-import type { KtoApiResponse, KtoDetailItem, KtoImageItem, KtoListItem } from './types';
+import type {
+  KtoApiResponse,
+  KtoCrowdForecastItem,
+  KtoDetailItem,
+  KtoImageItem,
+  KtoListItem,
+  KtoPetTourItem,
+} from './types';
 
-const KTO_BASE_URL = 'http://apis.data.go.kr/B551011/KorService2';
+const KTO_BASE_URL = 'https://apis.data.go.kr/B551011/KorService2';
+const CROWD_BASE_URL = 'https://apis.data.go.kr/B551011/TatsCnctrRateService';
+const REQUEST_TIMEOUT_MS = 20_000;
+const MAX_RETRIES = 2;
+
+export class KtoApiError extends Error {
+  readonly endpoint: string;
+  readonly status: number | null;
+  readonly resultCode: string | null;
+
+  constructor(endpoint: string, message: string, status: number | null = null, resultCode: string | null = null) {
+    super(message);
+    this.name = 'KtoApiError';
+    this.endpoint = endpoint;
+    this.status = status;
+    this.resultCode = resultCode;
+  }
+}
 
 type KtoClientOptions = {
   serviceKey: string;
@@ -45,8 +69,31 @@ export class KtoClient {
     });
   }
 
-  private async requestItems<T>(endpoint: string, params: Record<string, string>): Promise<T[]> {
-    const url = new URL(`${KTO_BASE_URL}/${endpoint}`);
+  async fetchPetDetail(contentId: string): Promise<KtoPetTourItem | null> {
+    const items = await this.requestItems<KtoPetTourItem>('detailPetTour2', {
+      contentId,
+      numOfRows: '1',
+      pageNo: '1',
+    });
+
+    return items[0] ?? null;
+  }
+
+  async fetchCrowdForecasts(options: { areaCode?: string; sigunguCode?: string } = {}): Promise<KtoCrowdForecastItem[]> {
+    return this.requestItems<KtoCrowdForecastItem>(
+      'tatsCnctrRatedList',
+      {
+        areaCd: options.areaCode ?? '41',
+        signguCd: options.sigunguCode ?? '41115',
+        numOfRows: '1000',
+        pageNo: '1',
+      },
+      CROWD_BASE_URL,
+    );
+  }
+
+  private async requestItems<T>(endpoint: string, params: Record<string, string>, baseUrl = KTO_BASE_URL): Promise<T[]> {
+    const url = new URL(`${baseUrl}/${endpoint}`);
     url.searchParams.set('MobileOS', this.mobileOS);
     url.searchParams.set('MobileApp', this.mobileApp);
     url.searchParams.set('_type', 'json');
@@ -57,36 +104,83 @@ export class KtoClient {
 
     url.searchParams.set('serviceKey', this.serviceKey);
 
-    const response = await fetch(url, {
-      headers: { Accept: 'application/json' },
-    });
+    let lastError: unknown = null;
 
-    if (!response.ok) {
-      throw new Error(`KTO request failed: ${endpoint} ${response.status}`);
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(url, {
+          headers: { Accept: 'application/json' },
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          let resultCode: string | null = null;
+          let resultMessage: string | null = null;
+          try {
+            const errorPayload = (await response.json()) as KtoApiResponse<T>;
+            resultCode = errorPayload.resultCode ?? errorPayload.response?.header?.resultCode ?? null;
+            resultMessage = errorPayload.resultMsg ?? errorPayload.response?.header?.resultMsg ?? null;
+          } catch {
+            // Some gateway errors return HTML or an empty body. Keep the
+            // status-only message and never include the request URL.
+          }
+
+          const error = new KtoApiError(
+            endpoint,
+            `KTO request failed: ${endpoint} ${resultCode ?? `HTTP ${response.status}`}${resultMessage ? ` ${resultMessage}` : ''}`,
+            response.status,
+            resultCode,
+          );
+          if (response.status < 500 && response.status !== 429) {
+            throw error;
+          }
+          lastError = error;
+        } else {
+          const payload = (await response.json()) as KtoApiResponse<T>;
+          const header = payload.response?.header;
+          const resultCode = payload.resultCode ?? header?.resultCode;
+          const resultMessage = payload.resultMsg ?? header?.resultMsg;
+
+          if (resultCode && resultCode !== '0000') {
+            throw new KtoApiError(
+              endpoint,
+              `KTO request failed: ${endpoint} ${resultCode}${resultMessage ? ` ${resultMessage}` : ''}`,
+              response.status,
+              resultCode,
+            );
+          }
+
+          const items = payload.response?.body?.items;
+          const item = typeof items === 'object' ? items.item : undefined;
+
+          if (!item) {
+            return [];
+          }
+
+          return Array.isArray(item) ? item : [item];
+        }
+      } catch (error: unknown) {
+        if (error instanceof KtoApiError && error.status !== null && error.status < 500 && error.status !== 429) {
+          throw error;
+        }
+        lastError = error;
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (attempt < MAX_RETRIES) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+      }
     }
 
-    const payload = (await response.json()) as KtoApiResponse<T>;
-    const header = payload.response?.header;
-
-    if (payload.resultCode && payload.resultCode !== '0000') {
-      throw new Error(
-        `KTO request failed: ${endpoint} ${payload.resultCode} ${payload.resultMsg ?? ''}`.trim(),
-      );
+    if (lastError instanceof KtoApiError) {
+      throw lastError;
     }
 
-    if (header?.resultCode && header.resultCode !== '0000') {
-      throw new Error(
-        `KTO request failed: ${endpoint} ${header.resultCode} ${header.resultMsg ?? ''}`.trim(),
-      );
-    }
-
-    const items = payload.response?.body?.items;
-    const item = typeof items === 'object' ? items.item : undefined;
-
-    if (!item) {
-      return [];
-    }
-
-    return Array.isArray(item) ? item : [item];
+    const message = lastError instanceof Error ? lastError.message : String(lastError);
+    throw new KtoApiError(endpoint, `KTO request failed: ${endpoint} ${message}`);
   }
 }

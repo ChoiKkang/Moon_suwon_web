@@ -28,6 +28,29 @@ export type KtoImageItem = {
   cpyrhtDivCd?: string;
 };
 
+export type KtoPetTourItem = {
+  contentid: string;
+  acmpyPsblCpam?: string;
+  acmpyNeedMtr?: string;
+  etcAcmpyInfo?: string;
+  acmpyTypeCd?: string;
+  relaRntlPrdlst?: string;
+  relaFrnshPrdlst?: string;
+  relaPurcPrdlst?: string;
+  relaAcdntRiskMtr?: string;
+  relaPosesFclty?: string;
+};
+
+export type KtoCrowdForecastItem = {
+  cnctrRate: string;
+  baseYmd: string;
+  areaCd: string;
+  areaNm?: string;
+  signguCd: string;
+  signguNm?: string;
+  tAtsNm: string;
+};
+
 export type KtoApiResponse<T> = {
   response?: {
     header?: {
