@@ -40,7 +40,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Supabase JS initializes its Realtime client when createClient is
+          # constructed. Node 22 supplies the native WebSocket implementation
+          # expected by the current Supabase client.
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
