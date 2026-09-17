@@ -12,7 +12,25 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // 프로덕션 에러 트래킹 등을 위해 유지
+    const payload = JSON.stringify({
+      message: error.message,
+      digest: error.digest,
+      pathname: window.location.pathname,
+    });
+    const body = new Blob([payload], { type: 'application/json' });
+
+    if (navigator.sendBeacon?.('/api/client-errors', body)) {
+      return;
+    }
+
+    void fetch('/api/client-errors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {
+      // Error reporting must never replace the recovery UI.
+    });
   }, [error]);
 
   return (

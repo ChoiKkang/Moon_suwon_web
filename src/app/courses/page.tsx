@@ -72,7 +72,7 @@ export default async function CoursesPage() {
                   <div className="relative">
                     <div className="mb-5 flex items-center justify-between gap-4">
                       <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[11px] font-black text-[#ffd700]">
-                        LIVE DATA
+                        운영 공개
                       </span>
                       <span className="text-xs font-bold text-[#d0c6ab]">{course.theme}</span>
                     </div>

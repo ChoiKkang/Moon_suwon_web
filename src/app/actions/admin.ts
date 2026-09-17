@@ -164,6 +164,34 @@ export async function saveCourseAction(input: CourseInput): Promise<AdminActionR
     if (placeIds.length === 0) throw new Error('코스에는 한 곳 이상의 장소가 필요합니다.');
     if (input.isPublished && !heroTitle) throw new Error('공개 코스에는 제목이 필요합니다.');
 
+    if (input.isPublished) {
+      const [stateResult, placesResult] = await Promise.all([
+        adminClient
+          .schema('editorial')
+          .from('place_publish_state')
+          .select('place_id')
+          .eq('is_published', true)
+          .in('place_id', placeIds),
+        adminClient
+          .schema('core')
+          .from('places')
+          .select('id')
+          .eq('is_active', true)
+          .in('id', placeIds),
+      ]);
+
+      if (stateResult.error || placesResult.error) {
+        throw new Error('코스에 연결한 장소의 공개 상태를 확인하지 못했습니다.');
+      }
+
+      const publishedIds = new Set((stateResult.data ?? []).map((row) => row.place_id as string));
+      const activeIds = new Set((placesResult.data ?? []).map((row) => row.id as string));
+      const allPlacesServable = placeIds.every((placeId) => publishedIds.has(placeId) && activeIds.has(placeId));
+      if (!allPlacesServable) {
+        throw new Error('공개 코스에는 공개·활성 상태인 장소만 연결할 수 있습니다.');
+      }
+    }
+
     let courseId = input.id;
     if (courseId !== undefined && !isUuid(courseId)) throw new Error('코스 식별자가 올바르지 않습니다.');
 

@@ -8,24 +8,28 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
     "kto:preview": "tsx scripts/preview-kto-content.ts",
     "kto:import": "tsx scripts/import-kto-content.ts",
     "kto:sql": "tsx scripts/export-kto-content-sql.ts",
     "kto:verify": "tsx scripts/verify-kto-serving.ts",
     "course:verify": "tsx scripts/verify-course-serving.ts",
+    "data:verify": "tsx scripts/verify-data-health.ts",
+    "deployment:verify": "tsx scripts/verify-deployment.ts",
     "admin:verify": "tsx scripts/verify-admin-serving.ts",
     "sync:data": "tsx scripts/sync-kto-data.ts",
     "sync:rpc:verify": "tsx scripts/verify-sync-rpc.ts",
     "apple:secret": "tsx scripts/generate-apple-client-secret.ts"
   },
   "dependencies": {
-    "@next/env": "16.3.1",
+    "@next/env": "16.3.5",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
     "lucide-react": "^1.18.0",
-    "next": "16.3.1",
+    "next": "16.3.5",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "0.35.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -34,9 +38,14 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.3.1",
+    "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "unrs-resolver@1.12.2": true,
+    "fsevents@2.3.3": true
   }
 }

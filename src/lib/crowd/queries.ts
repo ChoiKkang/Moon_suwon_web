@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { toSecureImageUrl } from '@/lib/media/urls';
 
 export type NowGoodSpot = {
   placeId: string;
@@ -39,7 +40,7 @@ export async function getNowGoodSpots(): Promise<{
       placeId: spot.place_id,
       slug: spot.slug,
       displayName: spot.display_name,
-      heroImageUrl: spot.hero_image_url,
+      heroImageUrl: toSecureImageUrl(spot.hero_image_url),
       forecastScore: spot.forecast_score === null ? null : Number(spot.forecast_score),
       crowdLevel: spot.crowd_level,
       forecastAvailable: spot.forecast_available,

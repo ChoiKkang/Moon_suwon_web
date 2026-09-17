@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   keywords: ["수원화성", "야간관광", "수원 야경", "화성행궁", "방화수류정", "수원 데이트 코스", "달빛수원"],
   openGraph: {
     title: "달빛수원 - 수원화성의 밤을 걷는 가장 로맨틱한 방법",
-    description: "관광 데이터 기반 실시간 혼잡도와 검증된 야경 산책 코스를 제공합니다.",
+    description: "관광 데이터 기반 방문 집중도 예측과 검증된 야경 산책 코스를 제공합니다.",
     url: "/",
     siteName: "달빛수원",
     locale: "ko_KR",

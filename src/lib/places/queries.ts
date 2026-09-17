@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import type { ImportedPlace } from './types';
+import { toSecureImageUrl } from '@/lib/media/urls';
 
 type PlaceViewName = 'v_imported_places' | 'v_published_places';
 
@@ -27,8 +28,8 @@ function mapPlace(place: ImportedPlaceRow): ImportedPlace {
     displayName: place.display_name,
     addressFull: place.address_full,
     shortDescription: place.short_description,
-    heroImageUrl: place.hero_image_url,
-    heroThumbnailUrl: place.hero_thumbnail_url,
+    heroImageUrl: toSecureImageUrl(place.hero_image_url),
+    heroThumbnailUrl: toSecureImageUrl(place.hero_thumbnail_url),
     ktoContentId: place.kto_content_id,
     lat: place.lat === null ? null : Number(place.lat),
     lng: place.lng === null ? null : Number(place.lng),

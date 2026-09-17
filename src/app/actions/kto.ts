@@ -24,7 +24,7 @@ function getKtoClient() {
 
 /**
  * 어드민 페이지에서 수집 대상 관광지를 선택할 수 있도록
- * 수원시 전체 관광지 목록을 KTO API로부터 실시간 조회합니다.
+ * 수원시 전체 관광지 목록을 KTO 원천 API에서 운영자 화면용으로 조회합니다.
  */
 export async function fetchKTOAttractionsAction() {
   try {
@@ -89,7 +89,7 @@ export async function fetchKTOPlacePreviewAction(contentId: string) {
 }
 
 /**
- * 관리자가 데이터를 확인하고 승인한 경우, KTO API의 실시간 정보로 DB에 적재합니다.
+ * 관리자가 데이터를 확인하고 승인한 경우, KTO API의 최신 원천 정보로 DB에 적재합니다.
  */
 export async function approveAndSavePlaceAction(contentId: string) {
   try {

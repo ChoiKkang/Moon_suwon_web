@@ -8,6 +8,10 @@ import { redirect } from 'next/navigation';
 
 type SupportedProvider = 'kakao' | 'apple';
 
+function isSupportedProvider(value: unknown): value is SupportedProvider {
+  return value === 'kakao' || value === 'apple';
+}
+
 // 제공자별 추가 스코프. Apple은 이름과 이메일을 명시적으로 요청해야 전달한다.
 const PROVIDER_SCOPES: Partial<Record<SupportedProvider, string>> = {
   apple: 'name email',
@@ -17,6 +21,10 @@ const PROVIDER_SCOPES: Partial<Record<SupportedProvider, string>> = {
  * 카카오와 애플 OAuth 로그인을 트리거하는 Server Action
  */
 export async function signInWithOAuth(provider: SupportedProvider) {
+  if (!isSupportedProvider(provider)) {
+    throw new Error('지원하지 않는 로그인 제공자입니다.');
+  }
+
   const supabase = await createClient();
   
   // 사이트 도메인 (개발 단계와 배포 단계를 대응하기 위해 환경변수로 제어)

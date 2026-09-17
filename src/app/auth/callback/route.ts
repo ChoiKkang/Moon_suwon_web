@@ -19,6 +19,18 @@ function resolveNextPath(rawNext: string | null): string {
 }
 
 function resolveRedirectBase(request: Request, origin: string): string {
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (configuredSiteUrl) {
+    try {
+      const parsed = new URL(configuredSiteUrl);
+      if (parsed.protocol === 'https:' || (process.env.NODE_ENV === 'development' && parsed.protocol === 'http:')) {
+        return parsed.origin;
+      }
+    } catch {
+      // Fall back to the request origin when the deployment variable is invalid.
+    }
+  }
+
   const forwardedHost = request.headers.get('x-forwarded-host');
   const isLocalEnv = process.env.NODE_ENV === 'development';
 
@@ -26,8 +38,14 @@ function resolveRedirectBase(request: Request, origin: string): string {
     return origin;
   }
 
-  // reverse proxy 뒤에서는 외부에 노출된 호스트로 되돌린다.
-  return `https://${forwardedHost}`;
+  // reverse proxy 뒤에서는 검증된 외부 호스트로 되돌린다. 헤더 값에
+  // 프로토콜이나 경로가 들어오면 요청 origin을 유지해 오픈 리다이렉트를 막는다.
+  const host = forwardedHost.split(',')[0]?.trim() ?? '';
+  if (!/^[a-z0-9.-]+(?::\d+)?$/i.test(host)) {
+    return origin;
+  }
+
+  return `https://${host}`;
 }
 
 async function completeSignIn(request: Request, code: string | null, rawNext: string | null) {

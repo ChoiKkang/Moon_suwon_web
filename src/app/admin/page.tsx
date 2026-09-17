@@ -23,7 +23,7 @@ export default async function AdminDashboardPage() {
     { label: '공개 장소', value: `${publishedPlaces.length}개`, helper: `${unpublishedPlaces.length}개 비공개`, href: '/admin/places?filter=published', icon: CheckCircle, tone: 'success' as const },
     { label: '공개 코스', value: `${liveCourses.length}개`, helper: `전체 ${data.courses.length}개`, href: '/admin/courses', icon: Route, tone: 'info' as const },
     { label: '진행·예정 행사', value: `${activeEvents.length}개`, helper: `전체 ${data.events.length}개`, href: '/admin/events', icon: CalendarDays, tone: 'warning' as const },
-    { label: '오늘 예보', value: `${data.crowd.todayRows}건`, helper: data.crowd.stale ? '최신성 확인 필요' : '정상 최신 상태', href: '/admin/operations', icon: Activity, tone: data.crowd.stale ? 'warning' as const : 'success' as const },
+    { label: '오늘 예측', value: `${data.crowd.todayRows}건`, helper: data.crowd.stale ? '최신성 확인 필요' : '정상 최신 상태', href: '/admin/operations', icon: Activity, tone: data.crowd.stale ? 'warning' as const : 'success' as const },
     { label: '최근 sync 오류', value: `${data.syncErrors.length}건`, helper: '최근 50건 기준', href: '/admin/operations', icon: AlertCircle, tone: data.syncErrors.length > 0 ? 'danger' as const : 'success' as const },
   ];
 
@@ -149,8 +149,8 @@ export default async function AdminDashboardPage() {
         <div className="rounded-3xl border border-white/10 bg-[#171f33]/80 p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">혼잡도 건강 상태</p>
-              <h3 className="mt-2 text-xl font-black text-white">오늘의 예보 파이프라인</h3>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">방문 집중도 예측 상태</p>
+              <h3 className="mt-2 text-xl font-black text-white">오늘의 예측 파이프라인</h3>
             </div>
             <Link href="/admin/operations" className="text-xs font-black text-[#ffd700]">상세 →</Link>
           </div>

@@ -6,7 +6,7 @@ loadEnvConfig(process.cwd());
 
 const supabase = createClient(
   getRequiredServerEnv('NEXT_PUBLIC_SUPABASE_URL'),
-  process.env.SUPABASE_SERVICE_ROLE_KEY || getRequiredServerEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
+  getRequiredServerEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
   { auth: { persistSession: false } },
 );
 
@@ -25,14 +25,14 @@ async function main() {
     .limit(20);
 
   if (error) {
-    throw new Error(`Failed to read serving.v_imported_places: ${error.message}`);
+    throw new Error(`Failed to read the public serving.v_imported_places view with the anonymous key: ${error.message}`);
   }
 
   if (!data || data.length === 0) {
-    throw new Error('serving.v_imported_places returned 0 rows');
+    throw new Error('The public serving.v_imported_places view returned 0 rows');
   }
 
-  writeLine(`Serving rows: ${data.length}`);
+  writeLine(`Public serving rows: ${data.length}`);
 
   for (const row of data) {
     writeLine(`${row.display_name} | ${row.kto_content_id} | ${row.hero_image_url ?? 'no image'}`);

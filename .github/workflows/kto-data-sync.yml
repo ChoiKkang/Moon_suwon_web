@@ -106,4 +106,42 @@ jobs:
 
       - name: Run sync
         if: steps.resolve.outputs.should_run == 'true'
-        run: npm run sync:data -- --job "${{ steps.resolve.outputs.job }}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          job="${{ steps.resolve.outputs.job }}"
+          for attempt in 1 2 3; do
+            echo "Starting $job sync (attempt $attempt/3)"
+            if npm run sync:data -- --job "$job"; then
+              exit 0
+            fi
+            if [[ "$attempt" -lt 3 ]]; then
+              delay=$((attempt * 15))
+              echo "Sync failed; retrying in ${delay}s" >&2
+              sleep "$delay"
+            fi
+          done
+          echo "KTO $job sync failed after 3 attempts" >&2
+          exit 1
+
+      - name: Verify data health
+        if: always() && steps.resolve.outputs.should_run == 'true'
+        run: npm run data:verify -- --job "${{ steps.resolve.outputs.job }}"
+
+      - name: Write run summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## KTO data sync"
+            echo "- resolved job: \`${{ steps.resolve.outputs.job }}\`"
+            echo "- should run: \`${{ steps.resolve.outputs.should_run }}\`"
+            echo "- workflow run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            if [[ "${{ steps.resolve.outputs.should_run }}" != "true" ]]; then
+              echo "- result: skipped by Seoul local-date guard"
+            elif [[ "${{ job.status }}" == "success" ]]; then
+              echo "- result: sync and serving health checks passed"
+            else
+              echo "- result: failed; inspect the sync run and error rows in the admin operations console"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -2,7 +2,7 @@
 
 > 이 문서는 친구가 작성한 `jira_docs`의 DB/API 설계를 현재 Supabase 원격 DB와 Next.js 웹 코드에 맞춰 요약한 문서다.
 
-최종 확인 기준: 2026-08-17~18 / Supabase project ref `feifvxhltehhsugizrob`
+최종 확인 기준: 2026-09-18 / Supabase project ref `feifvxhltehhsugizrob`
 
 ## 1. 가장 먼저 이해할 구조
 
@@ -71,11 +71,11 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 
 | 테이블 | 역할 | 현재 상태 |
 |---|---|---:|
-| `raw.kto_crowd_forecast` | 관광지 집중률 원본 | 980행 |
-| `core.place_crowd_forecasts` | 장소별 날짜 예보 정규화 | 224행 |
-| `core.events` | 행사/축제 정규화 | 6행 |
+| `raw.kto_crowd_forecast` | 관광지 집중률 원본 | 1,980행 |
+| `core.place_crowd_forecasts` | 장소별 날짜 예보 정규화 | 684행 |
+| `core.events` | 행사/축제 정규화 | 6행 (공개 예정 4행) |
 
-혼잡도는 `forecast_score`를 `여유`/`보통`/`혼잡`으로 변환해 저장한다. 웹은 `public.v_now_good_spot_candidates`에서 현재 날짜 기준 공개 후보만 읽는다.
+혼잡도는 실시간 현장 인원이 아니라 관광지 방문 집중도 예측이다. `forecast_score`를 `여유`/`보통`/`혼잡`으로 변환해 저장하며, 웹은 `public.v_now_good_spot_candidates`에서 현재 날짜 기준 공개 후보만 읽는다. 화면 문구는 `오늘 방문 집중도 예측`으로 사용한다.
 
 ### 운영 문구·공개 상태
 
@@ -98,6 +98,7 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 | 홈/코스 목록 | `public.v_home_courses` | `src/lib/courses/queries.ts` |
 | 코스 장소 순서 | `public.v_course_detail` | `src/lib/courses/queries.ts` |
 | 오늘 혼잡도 | `public.v_now_good_spot_candidates` | `src/lib/crowd/queries.ts` |
+| 예정 행사 미리보기 | `public.v_upcoming_events` | `src/lib/events/queries.ts` |
 
 새 테이블을 DB에 추가해도 웹에 자동으로 나타나지 않는다. 다음 순서가 필요하다.
 
@@ -108,23 +109,23 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 5. 웹 query adapter에서 읽기
 6. route smoke test
 
-## 5. 장소가 13개인데 웹에는 7개인 이유
+## 5. 장소가 44개인데 웹에는 8개인 이유
 
 현재 원격 DB 상태는 다음과 같다.
 
 | 구분 | 개수 |
 |---|---:|
-| `core.places` | 13 |
-| `public.v_imported_places` | 13 |
-| `editorial.place_publish_state` | 13 |
-| `public.v_published_places` | 7 |
+| `core.places` | 44 |
+| `public.v_imported_places` | 44 |
+| `editorial.place_publish_state` | 44 |
+| `public.v_published_places` | 8 |
 | `public.v_now_good_spot_candidates` | 7 |
 
-13개는 친구가 적재한 서비스 장소 원본이고, 7개는 운영자가 공개 승인한 장소다. 공개 웹은 7개를 보여주는 것이 정상이다.
+44개는 KTO 동기화로 보관된 서비스 장소 원본이고, 8개는 운영자가 공개 승인한 장소다. 공개 웹은 8개를 보여주는 것이 정상이다.
 
 공개 상태를 바꾸는 것은 코드 수정이 아니라 운영 데이터 변경이다. 운영자가 승인할 때 `editorial.place_publish_state.is_published`를 켜고, 필요하면 `display_priority`와 `is_now_good_enabled`를 설정한다.
 
-현재 공개된 7개는 대표 이미지·주소·오늘 혼잡도 예보가 모두 있다. 다만 editorial 설명 문구는 7개 중 1개뿐이므로, 출시 품질을 높이려면 `editorial.place_copy.short_description`, `night_highlight`, `photo_tip`을 보강해야 한다.
+현재 공개된 8개는 주소와 공개 문구를 갖추고 있으며 7개가 오늘 방문 집중도 예측 대상이다. 팔달문은 KTO 이미지가 없어 상세 화면에서 이미지 준비중으로 표시된다. 공개 대상을 늘릴 때는 `editorial.place_copy.short_description`, `night_highlight`, `photo_tip`을 먼저 보강한다.
 
 ## 6. 현재 DB 적재 현황
 
@@ -132,23 +133,24 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 
 | 영역 | 행 수 | 의미 |
 |---|---:|---|
-| `raw.kto_kor_content` | 98 | 일반 관광정보 원본 |
-| `raw.kto_kor_images` | 113 | 일반 관광 이미지 원본 |
-| `raw.kto_crowd_forecast` | 980 | 집중률 원본 |
-| `raw.kto_pet_tour` | 2 | 반려동물 원본 |
-| `raw.sync_runs` | 7 | 수집 실행 이력 |
-| `raw.sync_errors` | 6 | 수집 오류 이력 |
-| `core.places` | 13 | 정규화 장소 |
-| `core.place_sources` | 13 | KTO 매핑 |
-| `core.place_images` | 123 | 정규화 이미지 |
-| `core.place_crowd_forecasts` | 224 | 장소별 예보 |
+| `raw.kto_kor_content` | 129 | 일반 관광정보 원본 |
+| `raw.kto_kor_images` | 348 | 일반 관광 이미지 원본 |
+| `raw.kto_crowd_forecast` | 1,980 | 집중률 원본 |
+| `raw.kto_pet_tour` | 3 | 반려동물 원본 |
+| `raw.sync_runs` | 37 | 수집 실행 이력 |
+| `raw.sync_errors` | 34 | 수집 오류 이력 |
+| `core.places` | 44 | 정규화 장소 |
+| `core.place_sources` | 44 | KTO 매핑 |
+| `core.place_images` | 330 | 정규화 이미지 |
+| `core.place_crowd_forecasts` | 684 | 장소별 예보 |
 | `core.events` | 6 | 행사 데이터 |
-| `core.courses` | 2 | 공개 코스 2개 |
+| `core.courses` | 5 | 공개 코스 3개 포함 |
 
-코스는 현재 다음 두 개가 `public.v_home_courses`에서 조회된다.
+코스는 현재 다음 세 개가 `public.v_home_courses`에서 조회된다.
 
+- 처음 가는 수원화성 데이트 코스 — 4개 스팟
 - 야경 사진 집중 코스 — 3개 스팟
-- 성곽 야간 산책 코스 — 3개 스팟
+- 산책 후 행리단길 마무리 코스 — 5개 스팟
 
 ## 7. API 수집 흐름
 
@@ -159,7 +161,7 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 | `detailImage2` | 이미지 갤러리 | `core.place_images` |
 | `areaBasedList2` | 수원 후보 장소 탐색 | `raw`, 선별 후 `core.places` |
 | `locationBasedList2` | 주변 장소 탐색 | serving/RPC 확장 |
-| `searchFestival2` | 행사/축제 | `core.events` |
+| `searchFestival2` | 행사/축제 | `core.events` → `public.v_upcoming_events` |
 | `TatsCnctrRateService` | 방문 집중률 예측 | `raw.kto_crowd_forecast` → `core.place_crowd_forecasts` |
 | `KorPetTourService2` | 반려동물 장소/정책 | `raw.kto_pet_tour` → 반려동물 core |
 
@@ -216,9 +218,9 @@ npm run build
 
 현재 성공 기준:
 
-- `kto:verify`: Serving rows 13
-- `course:verify`: Published courses 2
-- 공개 웹: publish된 장소 7개와 오늘 예보 7개
+- `kto:verify`: Public serving rows 20
+- `course:verify`: Published courses 3
+- 공개 웹: publish된 장소 8개와 오늘 예보 7개
 - 비공개 장소 slug: 404
 - `npm audit --omit=dev`: 0 vulnerabilities
 
@@ -228,16 +230,20 @@ npm run build
 
 - [ ] Vercel `NEXT_PUBLIC_SUPABASE_URL`/publishable key 설정
 - [ ] Vercel `NEXT_PUBLIC_SITE_URL`을 localhost가 아닌 실제 도메인으로 설정
-- [ ] 서버 전용 `SUPABASE_SERVICE_ROLE_KEY`, `KTO_SERVICE_KEY` 설정
+- [ ] 서버 전용 `SUPABASE_SERVICE_ROLE_KEY` 설정 (Vercel)
+- [ ] `KTO_SERVICE_KEY` 설정 (Vercel 서버 액션 + GitHub Actions secret; 웹 브라우저에 노출하지 않음)
 - [ ] Apple/Kakao의 Supabase callback과 production redirect URL 등록
 - [x] 관리자 role 표준 통일 및 개발 프로필 2개 ADMIN 지정
 - [ ] `/admin/places`, `/admin/courses`, `/admin/operations`, `/admin/events` production smoke test
-- [ ] 7개 공개 장소 editorial 설명 보강
+- [ ] `npm run data:verify -- --job all` 실행
+- [ ] `DEPLOYMENT_URL=https://서비스도메인 npm run deployment:verify` 실행
+- [ ] 공개 장소를 늘릴 때 editorial 설명·야간 포인트·포토 팁 보강
 - [ ] 반려동물 API 승인 또는 반려동물 수집 기능 비활성화 결정
 - [ ] 원격 migration 이력과 저장소 migration 동기화
 - [x] `normalize_profile_role_values` migration 원격 적용 및 `USER`/`ADMIN` check 확인
 - [ ] Supabase Advisor의 `public.spatial_ref_sys` RLS 오류와 SECURITY DEFINER 권한 검토
 - [ ] production에서 `/`, `/courses`, `/places/{published-slug}`, `/admin` smoke test
+- [x] `public.v_upcoming_events` migration 적용 확인
 
 ## 참고 문서
 

@@ -3,6 +3,7 @@ import { LandingClient } from '@/components/landing-client';
 import { getPublishedPlaces } from '@/lib/places/queries';
 import { getPublishedCourses } from '@/lib/courses/queries';
 import { getNowGoodSpots } from '@/lib/crowd/queries';
+import { getUpcomingEvents } from '@/lib/events/queries';
 
 // Next.js 16/React 19 Server Component
 export default async function HomePage({
@@ -19,11 +20,13 @@ export default async function HomePage({
     placesResult,
     coursesResult,
     crowdResult,
-  ] = await Promise.all([supabase.auth.getUser(), getPublishedPlaces(), getPublishedCourses(), getNowGoodSpots()]);
+    eventsResult,
+  ] = await Promise.all([supabase.auth.getUser(), getPublishedPlaces(), getPublishedCourses(), getNowGoodSpots(), getUpcomingEvents()]);
 
   const { places, error: placesError } = placesResult;
   const { courses, error: coursesError } = coursesResult;
   const { spots: nowGoodSpots, error: crowdError } = crowdResult;
+  const { events, error: eventsError } = eventsResult;
   const { data: profile } = user
     ? await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
     : { data: null };
@@ -47,6 +50,8 @@ export default async function HomePage({
       coursesError={coursesError}
       nowGoodSpots={nowGoodSpots}
       crowdError={crowdError}
+      events={events}
+      eventsError={eventsError}
       hasAuthError={hasAuthError}
       hasAdminError={hasAdminError}
       hasAccountDeleted={hasAccountDeleted}

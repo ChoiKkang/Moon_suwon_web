@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
+import Image from 'next/image';
 import {
   fetchKTOAttractionsAction,
   fetchKTOPlacePreviewAction,
@@ -58,6 +59,7 @@ export function KTOImportPanel() {
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [isPending, startTransition] = useTransition();
+  const heroImage = previewData?.images.find((image) => image.is_hero) ?? null;
 
   // 1. 컴포넌트 마운트 시 수원 관광지 전체 리스트 가져오기
   useEffect(() => {
@@ -128,10 +130,10 @@ export function KTOImportPanel() {
     <div className="bg-[#1e293b]/40 backdrop-blur-md border border-white/10 rounded-xl p-6 flex flex-col h-full">
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="w-5 h-5 text-[#ffd700]" />
-        <h3 className="text-xl font-bold text-[#ffd700]">실시간 KTO 데이터 수집 및 승인</h3>
+        <h3 className="text-xl font-bold text-[#ffd700]">KTO 원천 데이터 조회 및 승인</h3>
       </div>
       <p className="text-xs text-[#d0c6ab] mb-6 leading-relaxed">
-        공공데이터(KTO) API를 실시간 조회하여 미리보기 형태로 내용을 확인하고, 관리자 승인을 통해 데이터베이스에 반영합니다.
+        공공데이터(KTO) 원천 API를 조회하여 미리보기 형태로 내용을 확인하고, 관리자 승인을 통해 데이터베이스에 반영합니다. 이 화면의 조회는 자동 동기화와 별개로 필요할 때 실행됩니다.
       </p>
 
       {/* 셀렉트 리스트 및 로딩바 */}
@@ -183,7 +185,7 @@ export function KTOImportPanel() {
       {isLoadingPreview && (
         <div className="flex flex-col items-center justify-center py-20 flex-1">
           <Loader2 className="w-8 h-8 text-[#ffd700] animate-spin mb-4" />
-          <p className="text-sm font-bold text-[#d0c6ab]">KTO 서버로부터 실시간 데이터 추출 중...</p>
+          <p className="text-sm font-bold text-[#d0c6ab]">KTO 원천 데이터 조회 중...</p>
         </div>
       )}
 
@@ -191,11 +193,13 @@ export function KTOImportPanel() {
       {!isLoadingPreview && previewData && (
         <div className="flex-1 flex flex-col gap-6 animate-fadeIn overflow-y-auto max-h-[500px] pr-2">
           {/* 대표 히어로 이미지 미리보기 */}
-          {previewData.place.slug && previewData.images.find(img => img.is_hero) && (
+          {previewData.place.slug && heroImage && (
             <div className="relative rounded-2xl overflow-hidden h-48 border border-zinc-800">
-              <img
-                src={previewData.images.find(img => img.is_hero)?.image_url}
+              <Image
+                src={heroImage.image_url}
                 alt={previewData.place.official_name}
+                fill
+                sizes="(max-width: 768px) 100vw, 640px"
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0b1326] via-transparent to-transparent" />
@@ -244,10 +248,12 @@ export function KTOImportPanel() {
                   .filter((img) => !img.is_hero)
                   .slice(0, 8)
                   .map((img, i) => (
-                    <div key={i} className="aspect-square rounded-lg overflow-hidden border border-zinc-800">
-                      <img
+                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-zinc-800">
+                      <Image
                         src={img.image_url}
                         alt="갤러리 서브 이미지"
+                        fill
+                        sizes="96px"
                         className="w-full h-full object-cover hover:scale-105 transition-transform"
                       />
                     </div>

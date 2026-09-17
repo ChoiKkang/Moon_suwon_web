@@ -1,4 +1,5 @@
 import type { KtoDetailItem, KtoImageItem, KtoListItem, NormalizedPlace } from './types';
+import { toSecureImageUrl } from '@/lib/media/urls';
 
 export function normalizeSlug(title: string, contentId: string): string {
   const base = title
@@ -61,8 +62,8 @@ export function normalizeImages(
   if (listItem.firstimage) {
     rows.push({
       place_id: placeId,
-      image_url: listItem.firstimage,
-      thumbnail_url: listItem.firstimage2 || null,
+      image_url: toSecureImageUrl(listItem.firstimage)!,
+      thumbnail_url: toSecureImageUrl(listItem.firstimage2),
       alt_text: listItem.title,
       copyright_type: null,
       source_provider: 'KTO',
@@ -79,8 +80,8 @@ export function normalizeImages(
 
     rows.push({
       place_id: placeId,
-      image_url: item.originimgurl,
-      thumbnail_url: item.smallimageurl || null,
+      image_url: toSecureImageUrl(item.originimgurl)!,
+      thumbnail_url: toSecureImageUrl(item.smallimageurl),
       alt_text: item.imgname || listItem.title,
       copyright_type: item.cpyrhtDivCd || null,
       source_provider: 'KTO',
