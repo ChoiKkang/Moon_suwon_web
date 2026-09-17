@@ -17,6 +17,8 @@ type SyncStats = {
   zeroResultContentIds: string[];
 };
 
+const PET_CONCURRENCY = 6;
+
 const supabase = createClient(
   getRequiredServerEnv('NEXT_PUBLIC_SUPABASE_URL'),
   getRequiredServerEnv('SUPABASE_SERVICE_ROLE_KEY'),
@@ -224,36 +226,45 @@ async function syncPet(runId: string, stats: SyncStats) {
   let successfulResults = 0;
   writeLine(`pet: checking ${places.length} places`);
 
-  for (const place of places) {
-    let pet: KtoPetTourItem | null;
+  for (let offset = 0; offset < places.length; offset += PET_CONCURRENCY) {
+    const batch = places.slice(offset, offset + PET_CONCURRENCY);
+    let accessError: Error | null = null;
 
-    try {
-      pet = await kto.fetchPetDetail(place.kto_content_id);
-    } catch (error: unknown) {
-      await recordSyncError(runId, stats, error, place.kto_content_id);
-      if (isPetAccessError(error)) {
-        throw new Error('KorService2 detailPetTour2 사용 권한이 없습니다. 공공데이터포털에서 해당 API 활용신청/승인을 확인하세요.');
+    await Promise.all(batch.map(async (place) => {
+      let pet: KtoPetTourItem | null;
+
+      try {
+        pet = await kto.fetchPetDetail(place.kto_content_id);
+      } catch (error: unknown) {
+        await recordSyncError(runId, stats, error, place.kto_content_id);
+        if (isPetAccessError(error) && !accessError) {
+          accessError = new Error('KorService2 detailPetTour2 사용 권한이 없습니다. 공공데이터포털에서 해당 API 활용신청/승인을 확인하세요.');
+        }
+        return;
       }
-      continue;
-    }
 
-    if (!pet) {
-      stats.zeroResultContentIds.push(place.kto_content_id);
-      continue;
-    }
-
-    try {
-      const upserted = await callRpc<boolean>(supabase, 'sync_kto_pet_item', {
-        p_run_id: runId,
-        p_content_id: place.kto_content_id,
-        p_payload: pet,
-      });
-      if (upserted) {
-        successfulResults += 1;
-        stats.itemsUpserted += 1;
+      if (!pet) {
+        stats.zeroResultContentIds.push(place.kto_content_id);
+        return;
       }
-    } catch (error: unknown) {
-      await recordSyncError(runId, stats, error, place.kto_content_id);
+
+      try {
+        const upserted = await callRpc<boolean>(supabase, 'sync_kto_pet_item', {
+          p_run_id: runId,
+          p_content_id: place.kto_content_id,
+          p_payload: pet,
+        });
+        if (upserted) {
+          successfulResults += 1;
+          stats.itemsUpserted += 1;
+        }
+      } catch (error: unknown) {
+        await recordSyncError(runId, stats, error, place.kto_content_id);
+      }
+    }));
+
+    if (accessError) {
+      throw accessError;
     }
   }
 

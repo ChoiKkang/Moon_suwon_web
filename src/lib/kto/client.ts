@@ -10,6 +10,7 @@ import type {
 const KTO_BASE_URL = 'https://apis.data.go.kr/B551011/KorService2';
 const CROWD_BASE_URL = 'https://apis.data.go.kr/B551011/TatsCnctrRateService';
 const REQUEST_TIMEOUT_MS = 20_000;
+const PET_REQUEST_TIMEOUT_MS = 10_000;
 const MAX_RETRIES = 2;
 
 export class KtoApiError extends Error {
@@ -74,7 +75,7 @@ export class KtoClient {
       contentId,
       numOfRows: '1',
       pageNo: '1',
-    });
+    }, KTO_BASE_URL, PET_REQUEST_TIMEOUT_MS);
 
     return items[0] ?? null;
   }
@@ -92,7 +93,12 @@ export class KtoClient {
     );
   }
 
-  private async requestItems<T>(endpoint: string, params: Record<string, string>, baseUrl = KTO_BASE_URL): Promise<T[]> {
+  private async requestItems<T>(
+    endpoint: string,
+    params: Record<string, string>,
+    baseUrl = KTO_BASE_URL,
+    timeoutMs = REQUEST_TIMEOUT_MS,
+  ): Promise<T[]> {
     const url = new URL(`${baseUrl}/${endpoint}`);
     url.searchParams.set('MobileOS', this.mobileOS);
     url.searchParams.set('MobileApp', this.mobileApp);
@@ -108,7 +114,7 @@ export class KtoClient {
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
         const response = await fetch(url, {
