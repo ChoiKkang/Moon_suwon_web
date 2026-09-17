@@ -24,13 +24,23 @@ export default async function HomePage({
   const { places, error: placesError } = placesResult;
   const { courses, error: coursesError } = coursesResult;
   const { spots: nowGoodSpots, error: crowdError } = crowdResult;
-  const { 'auth-error': authErrorParam, 'account-deleted': accountDeletedParam } = await searchParams;
+  const { data: profile } = user
+    ? await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    : { data: null };
+  const isAdmin = String(profile?.role ?? '').toUpperCase() === 'ADMIN';
+  const {
+    'auth-error': authErrorParam,
+    'admin-error': adminErrorParam,
+    'account-deleted': accountDeletedParam,
+  } = await searchParams;
   const hasAuthError = authErrorParam === 'true';
+  const hasAdminError = adminErrorParam === 'true';
   const hasAccountDeleted = accountDeletedParam === 'true';
 
   return (
     <LandingClient
       initialUser={user}
+      initialIsAdmin={isAdmin}
       importedPlaces={places}
       placesError={placesError}
       courses={courses}
@@ -38,6 +48,7 @@ export default async function HomePage({
       nowGoodSpots={nowGoodSpots}
       crowdError={crowdError}
       hasAuthError={hasAuthError}
+      hasAdminError={hasAdminError}
       hasAccountDeleted={hasAccountDeleted}
     />
   );

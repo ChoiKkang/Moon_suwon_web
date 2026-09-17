@@ -12,10 +12,13 @@ export default async function AdminLayout({
     await requireAdmin();
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
-    if (message.includes('관리자 권한')) {
+    if (message.includes('인증 오류')) {
       redirect('/?auth-error=true');
     }
-    redirect('/');
+    if (message.includes('관리자 권한')) {
+      redirect('/?admin-error=true');
+    }
+    redirect('/?admin-error=true');
   }
 
   return (

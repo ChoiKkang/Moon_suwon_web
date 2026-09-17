@@ -9,7 +9,7 @@ create table if not exists public.profiles (
   avatar_url text,
   -- Apple 로그인은 최초 1회만 이름을 전달하므로 별도 보관한다.
   auth_provider text,
-  role text not null default 'user' check (role in ('user', 'admin')),
+  role text not null default 'USER' check (role in ('USER', 'ADMIN')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

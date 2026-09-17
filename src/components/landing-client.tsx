@@ -16,6 +16,7 @@ import { StatusPill } from '@/components/public/status-pill';
 
 interface LandingClientProps {
   initialUser: User | null;
+  initialIsAdmin: boolean;
   importedPlaces: ImportedPlace[];
   placesError: string | null;
   courses: ServiceCourse[];
@@ -23,11 +24,13 @@ interface LandingClientProps {
   nowGoodSpots: NowGoodSpot[];
   crowdError: string | null;
   hasAuthError: boolean;
+  hasAdminError: boolean;
   hasAccountDeleted: boolean;
 }
 
 export function LandingClient({
   initialUser,
+  initialIsAdmin,
   importedPlaces,
   placesError,
   courses,
@@ -35,6 +38,7 @@ export function LandingClient({
   nowGoodSpots,
   crowdError,
   hasAuthError,
+  hasAdminError,
   hasAccountDeleted,
 }: LandingClientProps) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -55,6 +59,17 @@ export function LandingClient({
         >
           <ShieldAlert className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
           <span>로그인을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.</span>
+        </div>
+      )}
+
+      {/* 로그인은 정상이나 관리자 권한이 없을 때의 안내 */}
+      {hasAdminError && (
+        <div
+          role="alert"
+          className="fixed top-20 inset-x-0 z-[60] mx-auto w-[min(92%,32rem)] flex items-start gap-3 rounded-xl border border-amber-400/40 bg-amber-950/90 px-4 py-3 text-sm text-amber-100 shadow-lg backdrop-blur-md"
+        >
+          <ShieldAlert className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+          <span>로그인은 정상입니다. 관리자 권한이 없어 운영 콘솔에 들어갈 수 없습니다.</span>
         </div>
       )}
 
@@ -82,7 +97,7 @@ export function LandingClient({
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#now-good">오늘의 혼잡도</a>
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#kto-spots">달빛 스팟</a>
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#heritage-story">수원 소개</a>
-            {initialUser && (
+            {initialIsAdmin && (
               <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors duration-300 text-sm font-semibold tracking-wider" href="/admin">운영 콘솔</Link>
             )}
           </div>
@@ -91,13 +106,15 @@ export function LandingClient({
           <div className="hidden md:flex items-center gap-4">
             {initialUser ? (
               <>
-                <Link 
-                  href="/admin" 
-                  className="flex items-center gap-2 px-5 py-2 bg-[#171f33] border border-[#3e495d] text-white text-xs font-bold rounded-full hover:bg-[#222a3d] transition-all"
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5 text-[#ffd700]" />
-                  <span>관리자 콘솔</span>
-                </Link>
+                {initialIsAdmin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-2 px-5 py-2 bg-[#171f33] border border-[#3e495d] text-white text-xs font-bold rounded-full hover:bg-[#222a3d] transition-all"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5 text-[#ffd700]" />
+                    <span>관리자 콘솔</span>
+                  </Link>
+                )}
                 <Link
                   href="/account"
                   className="flex items-center gap-2 px-5 py-2 bg-[#171f33] border border-[#3e495d] text-white text-xs font-bold rounded-full hover:bg-[#222a3d] transition-all"
@@ -138,20 +155,22 @@ export function LandingClient({
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#now-good">오늘의 혼잡도</a>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#kto-spots">달빛 스팟</a>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#heritage-story">수원 소개</a>
-            {initialUser && (
+            {initialIsAdmin && (
               <Link onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#ffd700] py-1 text-sm font-semibold" href="/admin">운영 콘솔</Link>
             )}
 
             <div className="h-px bg-[#4d4732]/10 my-1" />
             {initialUser ? (
               <div className="flex flex-col gap-2">
-                <Link 
-                  href="/admin"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full text-center py-2.5 bg-[#171f33] text-white text-sm font-bold rounded-xl border border-[#3e495d]"
-                >
-                  관리자 콘솔
-                </Link>
+                {initialIsAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full text-center py-2.5 bg-[#171f33] text-white text-sm font-bold rounded-xl border border-[#3e495d]"
+                  >
+                    관리자 콘솔
+                  </Link>
+                )}
                 <Link
                   href="/account"
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -435,7 +454,7 @@ export function LandingClient({
             <Link className="text-[#fff6df] hover:text-[#ffd700] font-semibold transition-colors" href="/privacy">개인정보처리방침</Link>
             <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/terms">이용약관</Link>
             <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="https://www.cha.go.kr" target="_blank" rel="noreferrer">국가유산포털</a>
-            {initialUser && (
+            {initialIsAdmin && (
               <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/admin">운영 콘솔</Link>
             )}
           </div>
