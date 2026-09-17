@@ -2,10 +2,11 @@
 
 ## 저장소 secrets
 
-저장소 `ChoiKkang/Moon_suwon_web`에 아래 세 가지 Actions secret을 등록한다.
+저장소 `ChoiKkang/Moon_suwon_web`에 아래 네 가지 Actions secret을 등록한다.
 
 ```bash
 gh secret set NEXT_PUBLIC_SUPABASE_URL --repo ChoiKkang/Moon_suwon_web
+gh secret set NEXT_PUBLIC_SUPABASE_ANON_KEY --repo ChoiKkang/Moon_suwon_web
 gh secret set SUPABASE_SERVICE_ROLE_KEY --repo ChoiKkang/Moon_suwon_web
 gh secret set KTO_SERVICE_KEY --repo ChoiKkang/Moon_suwon_web
 ```
