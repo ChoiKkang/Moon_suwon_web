@@ -11,6 +11,11 @@ test('normalizes KTO image URLs to HTTPS without changing secure URLs', () => {
 
 test('normalizes KTO place identity and timestamp', () => {
   assert.equal(normalizeSlug('Hwaseong Haenggung', '12345'), 'hwaseong-haenggung-12345');
+  // Hangul slugs must stay composed (NFC). Decomposed jamo look identical but
+  // never match the URL a browser shares, which used to 404 the detail page.
+  const hangulSlug = normalizeSlug('봉돈', '2613659');
+  assert.equal(hangulSlug, '봉돈-2613659');
+  assert.equal(hangulSlug, hangulSlug.normalize('NFC'));
   assert.equal(parseKtoTimestamp('20260918010203'), '2026-09-18T01:02:03+09:00');
   assert.equal(parseKtoTimestamp('invalid'), null);
 

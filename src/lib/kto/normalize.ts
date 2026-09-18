@@ -9,11 +9,16 @@ import type {
 import { toSecureImageUrl } from '@/lib/media/urls';
 
 export function normalizeSlug(title: string, contentId: string): string {
+  // NFKD folds compatibility forms (full-width, ligatures) but also splits
+  // Hangul syllables into conjoining jamo. Recomposing with NFC afterwards
+  // keeps the folding while storing "봉돈" as one code point per syllable, so a
+  // slug typed or shared from a browser matches the stored value exactly.
   const base = title
     .normalize('NFKD')
     .replace(/[^\p{Letter}\p{Number}]+/gu, '-')
     .replace(/^-+|-+$/g, '')
-    .toLowerCase();
+    .toLowerCase()
+    .normalize('NFC');
 
   return `${base || 'place'}-${contentId}`;
 }

@@ -108,18 +108,27 @@ export async function getPublishedPlaceBySlug(slug: string): Promise<{
 }> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from('v_published_places')
-    .select(PLACE_SELECT)
-    .eq('slug', slug)
-    .maybeSingle();
+  // Hangul slugs can arrive in either Unicode normalization form: browsers and
+  // macOS share URLs as NFC, while older rows were stored as decomposed NFD.
+  // Both spellings render identically, so try every distinct form before
+  // deciding a place does not exist.
+  const candidates = [...new Set([slug, slug.normalize('NFC'), slug.normalize('NFD')])];
 
-  if (error) {
-    return { place: null, error: error.message };
+  for (const candidate of candidates) {
+    const { data, error } = await supabase
+      .from('v_published_places')
+      .select(PLACE_SELECT)
+      .eq('slug', candidate)
+      .maybeSingle();
+
+    if (error) {
+      return { place: null, error: error.message };
+    }
+
+    if (data) {
+      return { place: mapPlace(data as ImportedPlaceRow), error: null };
+    }
   }
 
-  return {
-    place: data ? mapPlace(data as ImportedPlaceRow) : null,
-    error: null,
-  };
+  return { place: null, error: null };
 }
