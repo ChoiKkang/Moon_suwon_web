@@ -2,15 +2,19 @@ import type {
   KtoApiResponse,
   KtoCrowdForecastItem,
   KtoDetailItem,
+  KtoFestivalItem,
   KtoImageItem,
   KtoListItem,
+  KtoPage,
+  KtoPetListItem,
   KtoPetTourItem,
 } from './types';
 
 const KTO_BASE_URL = 'https://apis.data.go.kr/B551011/KorService2';
+const PET_BASE_URL = 'https://apis.data.go.kr/B551011/KorPetTourService2';
 const CROWD_BASE_URL = 'https://apis.data.go.kr/B551011/TatsCnctrRateService';
 const REQUEST_TIMEOUT_MS = 20_000;
-const PET_REQUEST_TIMEOUT_MS = 10_000;
+const PET_REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RETRIES = 2;
 
 export class KtoApiError extends Error {
@@ -75,9 +79,46 @@ export class KtoClient {
       contentId,
       numOfRows: '1',
       pageNo: '1',
-    }, KTO_BASE_URL, PET_REQUEST_TIMEOUT_MS);
+    }, PET_BASE_URL, PET_REQUEST_TIMEOUT_MS);
 
     return items[0] ?? null;
+  }
+
+  async fetchPetTourPage(options: {
+    areaCode: string;
+    sigunguCode: string;
+    contentTypeId: string;
+    pageNo: number;
+    numOfRows: number;
+  }): Promise<KtoPage<KtoPetListItem>> {
+    return this.requestPage<KtoPetListItem>(
+      'petTourSyncList2',
+      {
+        areaCode: options.areaCode,
+        sigunguCode: options.sigunguCode,
+        contentTypeId: options.contentTypeId,
+        numOfRows: String(options.numOfRows),
+        pageNo: String(options.pageNo),
+      },
+      PET_BASE_URL,
+      PET_REQUEST_TIMEOUT_MS,
+    );
+  }
+
+  async fetchSuwonFestivals(options: {
+    eventStartDate: string;
+    eventEndDate: string;
+    pageNo: number;
+    numOfRows: number;
+  }): Promise<KtoPage<KtoFestivalItem>> {
+    return this.requestPage<KtoFestivalItem>('searchFestival2', {
+      areaCode: '31',
+      sigunguCode: '13',
+      eventStartDate: options.eventStartDate,
+      eventEndDate: options.eventEndDate,
+      numOfRows: String(options.numOfRows),
+      pageNo: String(options.pageNo),
+    });
   }
 
   async fetchCrowdForecasts(options: { areaCode?: string; sigunguCode?: string } = {}): Promise<KtoCrowdForecastItem[]> {
@@ -99,6 +140,16 @@ export class KtoClient {
     baseUrl = KTO_BASE_URL,
     timeoutMs = REQUEST_TIMEOUT_MS,
   ): Promise<T[]> {
+    const page = await this.requestPage<T>(endpoint, params, baseUrl, timeoutMs);
+    return page.items;
+  }
+
+  private async requestPage<T>(
+    endpoint: string,
+    params: Record<string, string>,
+    baseUrl = KTO_BASE_URL,
+    timeoutMs = REQUEST_TIMEOUT_MS,
+  ): Promise<KtoPage<T>> {
     const url = new URL(`${baseUrl}/${endpoint}`);
     url.searchParams.set('MobileOS', this.mobileOS);
     url.searchParams.set('MobileApp', this.mobileApp);
@@ -159,14 +210,25 @@ export class KtoClient {
             );
           }
 
-          const items = payload.response?.body?.items;
-          const item = typeof items === 'object' ? items.item : undefined;
+          const body = payload.response?.body;
+          const items = body?.items;
+          const item = items && typeof items === 'object' ? items.item : undefined;
 
           if (!item) {
-            return [];
+            return {
+              items: [],
+              totalCount: Number(body?.totalCount ?? 0) || 0,
+              pageNo: Number(body?.pageNo ?? params.pageNo ?? 1) || 1,
+              numOfRows: Number(body?.numOfRows ?? params.numOfRows ?? 0) || 0,
+            };
           }
 
-          return Array.isArray(item) ? item : [item];
+          return {
+            items: (Array.isArray(item) ? item : [item]) as T[],
+            totalCount: Number(body?.totalCount ?? 0) || 0,
+            pageNo: Number(body?.pageNo ?? params.pageNo ?? 1) || 1,
+            numOfRows: Number(body?.numOfRows ?? params.numOfRows ?? 0) || 0,
+          };
         }
       } catch (error: unknown) {
         if (error instanceof KtoApiError && error.status !== null && error.status < 500 && error.status !== 429) {

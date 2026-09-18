@@ -41,6 +41,29 @@ export type KtoPetTourItem = {
   relaPosesFclty?: string;
 };
 
+export type KtoPetListItem = KtoListItem & {
+  contenttypeid: string;
+};
+
+export type KtoFestivalItem = {
+  contentid: string;
+  title: string;
+  eventstartdate?: string;
+  eventenddate?: string;
+  addr1?: string;
+  addr2?: string;
+  mapx?: string;
+  mapy?: string;
+  firstimage?: string;
+  firstimage2?: string;
+  tel?: string;
+  eventplace?: string;
+  playtime?: string;
+  usetimefestival?: string;
+  program?: string;
+  modifiedtime?: string;
+};
+
 export type KtoCrowdForecastItem = {
   cnctrRate: string;
   baseYmd: string;
@@ -63,13 +86,20 @@ export type KtoApiResponse<T> = {
             item?: T | T[];
           }
         | string;
-      totalCount?: number;
-      pageNo?: number;
-      numOfRows?: number;
+      totalCount?: number | string;
+      pageNo?: number | string;
+      numOfRows?: number | string;
     };
   };
   resultCode?: string;
   resultMsg?: string;
+};
+
+export type KtoPage<T> = {
+  items: T[];
+  totalCount: number;
+  pageNo: number;
+  numOfRows: number;
 };
 
 export type NormalizedPlace = {
@@ -84,4 +114,21 @@ export type NormalizedPlace = {
   category: string | null;
   kto_content_id: string;
   kto_content_type_id: string;
+};
+
+export type NormalizedEvent = {
+  content_id: string;
+  event_name: string;
+  start_date: string;
+  end_date: string;
+  venue_address: string | null;
+  lat: number | null;
+  lng: number | null;
+  hero_image_url: string | null;
+  contact_phone: string | null;
+  event_place: string | null;
+  play_time: string | null;
+  usage_fee: string | null;
+  program_raw: string | null;
+  source_modified_at: string | null;
 };
