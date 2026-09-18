@@ -4,6 +4,7 @@ import type {
   KtoDetailItem,
   KtoFestivalItem,
   KtoImageItem,
+  KtoIntroItem,
   KtoListItem,
   KtoPage,
   KtoPetListItem,
@@ -72,6 +73,17 @@ export class KtoClient {
       numOfRows: '50',
       pageNo: '1',
     });
+  }
+
+  // detailIntro2 carries usetime/restdate, which the course planner needs to
+  // avoid recommending a place that closes before the evening start time.
+  async fetchIntro(contentId: string, contentTypeId = '12'): Promise<KtoIntroItem | null> {
+    const items = await this.requestItems<KtoIntroItem>('detailIntro2', {
+      contentId,
+      contentTypeId,
+    });
+
+    return items[0] ?? null;
   }
 
   async fetchPetDetail(contentId: string): Promise<KtoPetTourItem | null> {

@@ -189,6 +189,13 @@ async function syncContent(runId: string, stats: SyncStats, options: RunnerOptio
       await recordSyncError(runId, stats, error, listItem.contentid, !options.dryRun);
     }
 
+    let intro: Awaited<ReturnType<typeof kto.fetchIntro>> = null;
+    try {
+      intro = await kto.fetchIntro(listItem.contentid, listItem.contenttypeid);
+    } catch (error: unknown) {
+      await recordSyncError(runId, stats, error, listItem.contentid, !options.dryRun);
+    }
+
     try {
       const normalizedPlace = normalizePlace(listItem, detail);
       if (!options.dryRun) {
@@ -201,7 +208,28 @@ async function syncContent(runId: string, stats: SyncStats, options: RunnerOptio
           p_normalized_place: normalizedPlace,
           p_images: toImageRows(listItem, images),
         });
-        if (placeId) stats.itemsUpserted += 1;
+        if (placeId) {
+          stats.itemsUpserted += 1;
+          // Operating hours live outside the existing RPC contract so the
+          // mobile app's sync payload stays unchanged. Store the raw KTO text
+          // and let the course verifier interpret it conservatively.
+          const useTime = cleanIntroText(intro?.usetime);
+          const restDay = cleanIntroText(intro?.restdate);
+          if (useTime || restDay) {
+            const { error: hoursError } = await supabase
+              .schema('core')
+              .from('places')
+              .update({
+                operating_hours_raw: useTime,
+                rest_day_raw: restDay,
+                operating_hours_updated_at: new Date().toISOString(),
+              })
+              .eq('id', placeId);
+            if (hoursError) {
+              await recordSyncError(runId, stats, new Error(hoursError.message), listItem.contentid, true);
+            }
+          }
+        }
       } else {
         stats.itemsUpserted += 1;
       }
@@ -211,6 +239,12 @@ async function syncContent(runId: string, stats: SyncStats, options: RunnerOptio
   }
 
   return stats.errorCount > 0 ? 'partial' : 'completed';
+}
+
+function cleanIntroText(value?: string): string | null {
+  if (!value) return null;
+  const text = value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return text.length > 0 ? text.slice(0, 1000) : null;
 }
 
 function toIsoDate(value: string): string {

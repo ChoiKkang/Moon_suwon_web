@@ -28,6 +28,14 @@ export type KtoImageItem = {
   cpyrhtDivCd?: string;
 };
 
+export type KtoIntroItem = {
+  contentid: string;
+  usetime?: string;
+  restdate?: string;
+  parking?: string;
+  infocenter?: string;
+};
+
 export type KtoPetTourItem = {
   contentid: string;
   acmpyPsblCpam?: string;

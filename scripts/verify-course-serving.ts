@@ -1,5 +1,6 @@
 import { loadEnvConfig } from '@next/env';
 import { createClient } from '@supabase/supabase-js';
+import { isOpenAtStart } from '../src/lib/courses/opening-hours';
 
 loadEnvConfig(process.cwd());
 
@@ -81,6 +82,61 @@ async function main() {
     console.log(`${course.hero_title} | ${course.slug} | ${detailCounts.get(course.id) ?? 0} places`);
   }
   console.log(`Generated drafts with provenance: ${generatedResult.data?.length ?? 0}`);
+
+  await reportOpeningHourConflicts();
+}
+
+// 야간 코스가 권장 시작 시간에 이미 문을 닫은 장소를 포함하면 운영자가 알아야
+// 한다. KTO 운영시간 원문을 보수적으로 해석하고, 판정할 수 없으면 확인 항목으로
+// 남긴다. 공개 코스의 충돌은 실패로 처리하고, 비공개 초안은 검수 안내로 보여준다.
+async function reportOpeningHourConflicts() {
+  const [coursesResult, stopsResult, placesResult, publishResult] = await Promise.all([
+    serviceSupabase.schema('core').from('courses').select('id, slug, recommended_start_time'),
+    serviceSupabase.schema('core').from('course_places').select('course_id, place_id, order_index'),
+    serviceSupabase.schema('core').from('places').select('id, official_name, operating_hours_raw'),
+    serviceSupabase.schema('editorial').from('course_publish_state').select('course_id, is_published'),
+  ]);
+
+  const firstError = coursesResult.error ?? stopsResult.error ?? placesResult.error ?? publishResult.error;
+  if (firstError) throw new Error(`Failed to read course opening hours: ${firstError.message}`);
+
+  const placeById = new Map((placesResult.data ?? []).map((place) => [place.id as string, place]));
+  const publishedCourses = new Set((publishResult.data ?? []).filter((row) => row.is_published).map((row) => row.course_id as string));
+  const stopsByCourse = new Map<string, Array<{ place_id: string; order_index: number }>>();
+  for (const stop of stopsResult.data ?? []) {
+    const rows = stopsByCourse.get(stop.course_id as string) ?? [];
+    rows.push({ place_id: stop.place_id as string, order_index: stop.order_index as number });
+    stopsByCourse.set(stop.course_id as string, rows);
+  }
+
+  const publishedConflicts: string[] = [];
+  const draftConflicts: string[] = [];
+  const unresolved: string[] = [];
+
+  for (const course of coursesResult.data ?? []) {
+    const startTime = String(course.recommended_start_time ?? '');
+    const stops = stopsByCourse.get(course.id as string) ?? [];
+    for (const stop of stops) {
+      const place = placeById.get(stop.place_id);
+      if (!place) continue;
+      const verdict = isOpenAtStart(place.operating_hours_raw as string | null, startTime);
+      const label = `${course.slug} @${startTime} → ${place.official_name}`;
+      if (verdict.open === false) {
+        if (publishedCourses.has(course.id as string)) publishedConflicts.push(`${label} (${verdict.reason})`);
+        else draftConflicts.push(`${label} (${verdict.reason})`);
+      } else if (verdict.open === null) {
+        unresolved.push(`${label} (${verdict.reason})`);
+      }
+    }
+  }
+
+  console.log(`opening-hour check: ${publishedConflicts.length} published conflicts, ${draftConflicts.length} draft conflicts, ${unresolved.length} unresolved`);
+  for (const line of draftConflicts) console.warn(`WARN draft closes early: ${line}`);
+  for (const line of unresolved) console.warn(`WARN hours unknown: ${line}`);
+  if (publishedConflicts.length > 0) {
+    for (const line of publishedConflicts) console.error(`FAIL published course visits a closed place: ${line}`);
+    throw new Error(`${publishedConflicts.length} published course stops close before the recommended start time.`);
+  }
 }
 
 main().catch((error) => {
