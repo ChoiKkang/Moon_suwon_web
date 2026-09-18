@@ -24,6 +24,7 @@
 .DS_Store
 *.pem
 /jira_docs
+/.worktrees/
 
 # debug
 npm-debug.log*
