@@ -218,7 +218,12 @@ async function syncContent(runId: string, stats: SyncStats, options: RunnerOptio
           // and let the course verifier interpret it conservatively.
           const useTime = cleanIntroText(intro?.usetime);
           const restDay = cleanIntroText(intro?.restdate);
-          if (useTime || restDay) {
+          // KTO leaves `tel` empty on every Suwon attraction and publishes the
+          // public enquiry line as detailIntro2.infocenter instead, so every
+          // place detail page showed "연락처 정보 없음". Take the intro value when
+          // detailCommon2 has nothing.
+          const infoCenterPhone = normalizeInfoCenterPhone(intro?.infocenter);
+          if (useTime || restDay || infoCenterPhone) {
             const { error: hoursError } = await supabase
               .schema('core')
               .from('places')
@@ -226,6 +231,9 @@ async function syncContent(runId: string, stats: SyncStats, options: RunnerOptio
                 operating_hours_raw: useTime,
                 rest_day_raw: restDay,
                 operating_hours_updated_at: new Date().toISOString(),
+                ...(infoCenterPhone && !normalizedPlace.contact_phone
+                  ? { contact_phone: infoCenterPhone }
+                  : {}),
               })
               .eq('id', placeId);
             if (hoursError) {
@@ -248,6 +256,22 @@ function cleanIntroText(value?: string): string | null {
   if (!value) return null;
   const text = value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   return text.length > 0 ? text.slice(0, 1000) : null;
+}
+
+/**
+ * detailIntro2.infocenter is free text: it can be a bare number, a number with
+ * a label such as "수원시 콜센터 031-120", or several numbers separated by commas.
+ * Keep the first phone number and the label that precedes it so an operator can
+ * see whose line it is, and drop anything without digits.
+ */
+function normalizeInfoCenterPhone(value?: string): string | null {
+  const text = cleanIntroText(value);
+  if (!text) return null;
+
+  const first = text.split(/[,/]|<br\s*\/?>/i)[0]?.trim() ?? text;
+  if (!/\d{2,}/.test(first)) return null;
+
+  return first.slice(0, 120);
 }
 
 function toIsoDate(value: string): string {
