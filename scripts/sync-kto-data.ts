@@ -10,6 +10,7 @@ import {
   type PetEnrichmentRow,
 } from '../src/lib/kto/pet-sync';
 import { isSuwonFestival, normalizeFestival, normalizeImages, normalizePlace } from '../src/lib/kto/normalize';
+import { assessNightDining, isWithinFortressWalk } from '../src/lib/kto/night-dining';
 import type {
   KtoCrowdForecastItem,
   KtoFestivalItem,
@@ -32,9 +33,20 @@ export type SyncStats = {
   candidatesDiscovered: number;
   staleMarked: number;
   detailsAttempted: number;
+  skippedDaytimeFood: number;
 };
 
 const PET_CONCURRENCY = 3;
+const FOOD_CONTENT_TYPE_ID = '39';
+/**
+ * 콘텐츠 수집 대상 타입. 운영방침에 적힌 큐레이션 범위와 같다.
+ *
+ * 이전에는 관광지(12) 한 종류만, 1페이지만 받았다. 관광지는 39곳이라 문제가
+ * 드러나지 않았지만 문화시설(19곳)과 숙박(13곳)은 아예 수집되지 않았고
+ * 음식점(186곳)은 한 페이지에 담기지도 않는다. 쇼핑(38)은 스타필드 입점
+ * 매장이 층별로 들어와 검수함을 채우므로 계속 제외한다.
+ */
+const CONTENT_TYPE_IDS = ['12', '14', '28', '32', FOOD_CONTENT_TYPE_ID] as const;
 // 수원시 4개 구. 혼잡도 예측은 구 단위로만 조회할 수 있어 전 구를 순회해야
 // 팔달구 밖 공개 장소(장안공원 등)까지 예측이 붙는다.
 const SUWON_SIGUNGU_CODES = ['41111', '41113', '41115', '41117'] as const;
@@ -108,6 +120,7 @@ function createStats(): SyncStats {
     candidatesDiscovered: 0,
     staleMarked: 0,
     detailsAttempted: 0,
+    skippedDaytimeFood: 0,
   };
 }
 
@@ -169,9 +182,48 @@ function toImageRows(listItem: KtoListItem, imageItems: KtoImageItem[]) {
   }));
 }
 
+/**
+ * 큐레이션 범위 타입을 모두 순회해 수집 후보를 모은다.
+ *
+ * 음식점은 성곽에서 걸어갈 수 있는 거리만 남긴다. 수원시 전역 186곳 중
+ * 대부분은 야간 산책 동선과 무관하고, 전부 검수함에 넣으면 실제 후보가 묻힌다.
+ * 한 타입이 실패해도 나머지는 살리고 오류만 기록한다.
+ */
+async function collectContentCandidates(
+  runId: string,
+  stats: SyncStats,
+  options: RunnerOptions,
+): Promise<KtoListItem[]> {
+  const collected: KtoListItem[] = [];
+
+  for (const contentTypeId of CONTENT_TYPE_IDS) {
+    let items: KtoListItem[] = [];
+    try {
+      items = await kto.fetchSuwonContentByType(contentTypeId);
+    } catch (error: unknown) {
+      await recordSyncError(runId, stats, error, `type:${contentTypeId}`, !options.dryRun);
+      continue;
+    }
+
+    const scoped = contentTypeId === FOOD_CONTENT_TYPE_ID
+      ? items.filter((item) => {
+          const lat = Number(item.mapy);
+          const lng = Number(item.mapx);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+          return isWithinFortressWalk({ lat, lng });
+        })
+      : items;
+
+    writeLine(`content: type ${contentTypeId} fetched ${items.length}${scoped.length === items.length ? '' : `, within walk ${scoped.length}`}`);
+    collected.push(...scoped);
+  }
+
+  return collected;
+}
+
 async function syncContent(runId: string, stats: SyncStats, options: RunnerOptions): Promise<'completed' | 'partial'> {
-  const attractions = await kto.fetchSuwonAttractions();
-  if (attractions.length === 0) throw new Error('KTO areaBasedList2에서 수원 관광지 목록을 받지 못했습니다.');
+  const attractions = await collectContentCandidates(runId, stats, options);
+  if (attractions.length === 0) throw new Error('KTO areaBasedList2에서 수원 콘텐츠 목록을 받지 못했습니다.');
 
   stats.itemsFetched = attractions.length;
   writeLine(`content: fetched ${attractions.length}`);
@@ -199,6 +251,17 @@ async function syncContent(runId: string, stats: SyncStats, options: RunnerOptio
       await recordSyncError(runId, stats, error, listItem.contentid, !options.dryRun);
     }
 
+    // 음식점은 영업 종료 시각으로 야간 코스 적합성이 갈린다. 목록 단계에서는
+    // 판단할 수 없으므로 detailIntro2를 받은 뒤 걸러낸다. 저장하지 않으면
+    // 검수함이 커지지 않고, 운영자는 야간에 실제로 열려 있는 곳만 본다.
+    if (listItem.contenttypeid === FOOD_CONTENT_TYPE_ID) {
+      const dining = assessNightDining(intro?.opentimefood);
+      if (!dining.eligible) {
+        stats.skippedDaytimeFood += 1;
+        continue;
+      }
+    }
+
     try {
       const normalizedPlace = normalizePlace(listItem, detail);
       if (!options.dryRun) {
@@ -216,13 +279,14 @@ async function syncContent(runId: string, stats: SyncStats, options: RunnerOptio
           // Operating hours live outside the existing RPC contract so the
           // mobile app's sync payload stays unchanged. Store the raw KTO text
           // and let the course verifier interpret it conservatively.
-          const useTime = cleanIntroText(intro?.usetime);
-          const restDay = cleanIntroText(intro?.restdate);
+          // 음식점은 같은 사실을 opentimefood/restdatefood로 보낸다.
+          const useTime = cleanIntroText(intro?.usetime ?? intro?.opentimefood);
+          const restDay = cleanIntroText(intro?.restdate ?? intro?.restdatefood);
           // KTO leaves `tel` empty on every Suwon attraction and publishes the
           // public enquiry line as detailIntro2.infocenter instead, so every
           // place detail page showed "연락처 정보 없음". Take the intro value when
           // detailCommon2 has nothing.
-          const infoCenterPhone = normalizeInfoCenterPhone(intro?.infocenter);
+          const infoCenterPhone = normalizeInfoCenterPhone(intro?.infocenter ?? intro?.infocenterfood);
           if (useTime || restDay || infoCenterPhone) {
             const { error: hoursError } = await supabase
               .schema('core')
@@ -248,6 +312,11 @@ async function syncContent(runId: string, stats: SyncStats, options: RunnerOptio
       await recordSyncError(runId, stats, error, listItem.contentid, !options.dryRun);
     }
   }
+
+  writeLine(
+    `content: upserted ${stats.itemsUpserted}` +
+      (stats.skippedDaytimeFood > 0 ? `, skipped daytime-only food ${stats.skippedDaytimeFood}` : ''),
+  );
 
   return stats.errorCount > 0 ? 'partial' : 'completed';
 }

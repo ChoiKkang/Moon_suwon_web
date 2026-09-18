@@ -59,14 +59,45 @@ export class KtoClient {
     this.mobileOS = options.mobileOS ?? 'ETC';
   }
 
+  /**
+   * Every Suwon item for one content type, following pagination.
+   *
+   * The previous single-page call was fine for 관광지(12) at 39 rows but silently
+   * truncated any larger type: 음식점(39) alone returns 186. Walk the pages until
+   * totalCount is covered so a type is either fully collected or not requested.
+   */
+  async fetchSuwonContentByType(contentTypeId: string, pageSize = 100): Promise<KtoListItem[]> {
+    const collected: KtoListItem[] = [];
+    const seen = new Set<string>();
+
+    for (let pageNo = 1; ; pageNo += 1) {
+      const page = await this.requestPage<KtoListItem>('areaBasedList2', {
+        areaCode: '31',
+        sigunguCode: '13',
+        contentTypeId,
+        numOfRows: String(pageSize),
+        pageNo: String(pageNo),
+      });
+
+      if (page.items.length === 0) break;
+
+      for (const item of page.items) {
+        // The same contentid can repeat across pages when upstream ordering
+        // shifts mid-walk, and a duplicate would upsert twice.
+        if (item.contentid && !seen.has(item.contentid)) {
+          seen.add(item.contentid);
+          collected.push(item);
+        }
+      }
+
+      if (collected.length >= page.totalCount || page.items.length < pageSize) break;
+    }
+
+    return collected;
+  }
+
   async fetchSuwonAttractions(): Promise<KtoListItem[]> {
-    return this.requestItems<KtoListItem>('areaBasedList2', {
-      areaCode: '31',
-      sigunguCode: '13',
-      contentTypeId: '12',
-      numOfRows: '100',
-      pageNo: '1',
-    });
+    return this.fetchSuwonContentByType('12');
   }
 
   async fetchDetail(contentId: string): Promise<KtoDetailItem | null> {
