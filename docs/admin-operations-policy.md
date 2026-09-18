@@ -1,0 +1,74 @@
+# 달빛수원 관리자 운영방침
+
+이 웹은 모바일 앱을 보조하는 공개 홍보 사이트와 운영 콘솔이다. 공개 웹과 친구가 개발하는 모바일 앱은 승인된 `public` serving view/RPC만 읽고, 원본 수집 데이터와 관리자용 테이블은 외부에 직접 노출하지 않는다.
+
+## 1. 공개 기준
+
+- **수집 성공과 공개 승인은 다르다.** KTO에서 새 장소가 들어오면 `candidate`로 검수함에 넣고, 관리자가 원본·좌표·이미지·운영 정보를 확인한 뒤 승인한다.
+- **승인과 공개도 분리한다.** 승인된 장소에 운영 문구, 대표 이미지, 야간 적합성, 반려동물 정책을 보강한 후 `is_published`를 별도로 켠다.
+- **오래된 값은 숨기지 말고 상태로 표시한다.** 혼잡도는 실시간 인원이 아니라 관광공사의 일 단위 방문 집중도 예측이다. 최신성이 기준을 벗어나면 `STALE`/주의 상태로 보여 주며 실시간이라고 홍보하지 않는다.
+- 공개 화면에서 보이지 않는 장소·코스는 앱에서도 보이지 않는 것이 정상이다. 공개 계약을 우회해 `core`, `raw`, service-role RPC를 앱에 제공하지 않는다.
+
+## 2. 매일 확인할 순서
+
+1. `/admin/operations`에서 원천별 마지막 성공 시각, 48시간 freshness, 오류 수, 후보 검수 대기 수를 확인한다.
+2. `content`, `events`, `crowd`, `pet` 자동 실행이 실패했으면 GitHub Actions 실행 로그와 `raw.sync_runs`/`raw.sync_errors`를 함께 확인한다.
+3. 신규·변경·좌표/이미지 누락·반려동물 `unknown` 후보를 `/admin/places`에서 검수한다.
+4. 필요한 장소만 개별 재수집한다. 재수집했다고 자동 공개하지 않는다.
+5. 공개 상태를 변경한 뒤 `/`, `/courses`, 해당 장소 상세와 모바일 앱의 공개 조회 계약을 확인한다.
+
+현재 예약 실행은 다음과 같다. GitHub Actions cron은 UTC 기준이다.
+
+| 작업 | 한국시간 | 운영 의미 |
+| --- | --- | --- |
+| 행사 | 매일 02:00 | 종료된 행사를 제외하고 예정 행사 갱신 |
+| 혼잡도 | 매일 02:30 | 방문 집중도 예측 갱신 |
+| 반려동물 | 매일 03:30 | 정책 원문과 정규화 상태 갱신 |
+| 장소/이미지 | 일요일 03:00 | 장소·이미지 원본 주간 갱신 |
+| 코스 초안 | 월요일 04:00 | 비공개 초안 최대 3개 생성 |
+
+## 3. 장소·반려동물 검수
+
+- 원본 관광지명과 원본 좌표는 사실 데이터로 보존하고, 웹/앱용 표현은 `editorial`에서 관리한다.
+- 반려동물 자동 결과는 참고값이다. `allowed`, `not_allowed`, `unknown`, `unavailable`을 구분하고 `unknown`/`unavailable`을 허용으로 표시하지 않는다.
+- 현장 확인으로 예외를 정할 때만 수동 override를 사용한다. 사유와 확인 시각을 남기고, 다음 원천 갱신 때 자동값으로 복귀할지 판단한다.
+- 수동 override, 후보 승인·반려·보류, 공개 토글은 관리자 감사 로그에 기록한다.
+
+## 4. 코스와 자동화
+
+- 자동 코스는 **초안 전용**이다. 생성 시 항상 비공개이며, 장소 ID·좌표·운영시간·가격을 AI가 새로 만들 수 없다.
+- 관리자는 장소 순서, 실제 도보 동선, 영업일/휴무일, 반려동물 조건, 소요시간을 확인하고 근거가 없는 문구를 삭제한다.
+- `직선거리 추정`, 품질 경고, 입력 근거와 생성 시각을 확인한 뒤 사람이 공개한다.
+- 공개 코스는 운영자가 직접 유지한다. 자동 실행은 운영자가 공개한 코스를 덮어쓰지 않는다.
+
+## 5. 실패·장애 대응
+
+- **일시 네트워크 오류:** workflow가 최대 3회 재시도한다. 이후 실패하면 같은 작업을 한 번 수동 재실행하고 결과를 비교한다.
+- **403/키 승인 오류:** 코드나 키를 우회하지 말고 공공데이터포털의 API별 활용신청·승인·호출 한도와 GitHub/Vercel secret을 확인한다.
+- **데이터가 오래됨:** 새 값을 추정해 채우지 않고 마지막 정상값과 최신 시각을 유지하며 화면에 주의를 표시한다.
+- **배포 후 오류:** Vercel 로그와 공개 smoke test를 먼저 확인하고, 장애가 지속되면 직전 정상 배포로 rollback한다. 원인 확인 전 DB 공개 상태를 일괄 변경하지 않는다.
+- 장애가 해결되면 실행 링크, 원인, 영향 범위, 재발 방지 조치를 Discord와 운영 기록에 남긴다.
+
+## 6. 보안과 권한
+
+- 관리자 진입과 Server Action 모두 `public.profiles.role = ADMIN`을 확인한다. 로그인만으로 관리자 권한을 주지 않는다.
+- `SUPABASE_SERVICE_ROLE_KEY`, `KTO_SERVICE_KEY`, OAuth secret, Discord webhook은 Vercel/GitHub secret에만 저장한다. `NEXT_PUBLIC_*`로 만들거나 브라우저·앱·로그에 넣지 않는다.
+- 모바일 앱에는 Supabase publishable/anon key와 공개 serving 계약만 배포한다. raw 테이블, 관리자 RPC, GitHub token은 배포하지 않는다.
+- webhook이 노출되면 즉시 폐기·재발급한다. Discord Application ID/Public Key는 GitHub Actions 알림에는 필요하지 않다.
+
+## 7. 배포 전·후 체크리스트
+
+### 배포 전
+
+- Vercel Production에 Supabase 공개 변수, `NEXT_PUBLIC_SITE_URL`, service-role key, KTO key를 올바른 환경으로 등록한다.
+- GitHub Actions에 Supabase URL/키, service-role key, KTO key, 새 Discord webhook을 등록한다.
+- `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`와 `npm run course:verify`, `npm run public:verify`, `npm run admin:verify`, `npm run sync:rpc:verify`를 통과시킨다.
+- 실제 도메인이 생기면 `DEPLOYMENT_URL=https://실제도메인 npm run deployment:verify`를 실행한다.
+
+### 배포 후
+
+- `/`, `/courses`, 공개 장소 상세, `/robots.txt`, `/sitemap.xml`이 2xx인지 확인한다.
+- 인증하지 않은 `/admin/operations`가 3xx/401/403으로 막히는지 확인한다.
+- 관리자 계정으로 장소·코스·운영·행사 화면을 열고, 테스트 변경을 저장한 뒤 공개 화면과 감사 로그를 확인한다.
+- GitHub Actions `Web quality`와 Vercel 배포가 같은 커밋으로 성공했는지 확인한다.
+
