@@ -239,6 +239,7 @@ npm run build
 - [ ] `KTO_SERVICE_KEY` 설정 (Vercel 서버 액션 + GitHub Actions secret; 웹 브라우저에 노출하지 않음)
 - [ ] GitHub Actions `DISCORD_WEBHOOK_URL`을 회전한 새 Discord incoming webhook으로 등록 (채팅에 노출된 기존 주소 재사용 금지)
 - [ ] Apple/Kakao의 Supabase callback과 production redirect URL 등록
+- [ ] Discord 운영 명령용 `DISCORD_PUBLIC_KEY`, `DISCORD_OPERATOR_IDS`, `DISCORD_ADMIN_ACTOR_ID`를 Vercel Production에 등록하고 Interactions Endpoint URL 저장
 - [x] 관리자 role 표준 통일 및 개발 프로필 2개 ADMIN 지정
 - [ ] `/admin/places`, `/admin/courses`, `/admin/operations`, `/admin/events` production smoke test
 - [x] `npm run data:verify -- --job all` 실행 (content/events/crowd/pet 4종 모두 completed)

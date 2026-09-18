@@ -19,6 +19,7 @@
     "course:drafts": "tsx scripts/generate-course-drafts.ts",
     "notify:discord": "tsx scripts/notify-discord.ts",
     "briefing:daily": "tsx scripts/daily-briefing.ts",
+    "discord:register": "tsx scripts/register-discord-commands.ts",
     "deployment:verify": "tsx scripts/verify-deployment.ts",
     "admin:verify": "tsx scripts/verify-admin-serving.ts",
     "sync:data": "tsx scripts/sync-kto-data.ts",
