@@ -29,23 +29,50 @@ async function main() {
   const unpublishedCourse = (coursesResult.data ?? []).find((row) => !publishedCourseIds.has(row.id as string));
   if (!unpublishedPlace || !unpublishedCourse) throw new Error('Need at least one unpublished place and course for the boundary probe');
 
-  const [publicPlaces, publicCourses, publicImported, unpublishedPlaceRpc, unpublishedCourseRpc, anonymousAdminRpc] = await Promise.all([
+  const publishedPlace = (placesResult.data ?? []).find((row) => publishedPlaceIds.has(row.id as string));
+  const publishedCourse = (coursesResult.data ?? []).find((row) => publishedCourseIds.has(row.id as string));
+  if (!publishedPlace || !publishedCourse) throw new Error('Need at least one published place and course for the boundary probe');
+
+  const [publicPlaces, publicCourses, publicImported, publicPlaceRpc, publicCourseRpc, unpublishedPlaceRpc, unpublishedCourseRpc, anonymousAdminRpc, anonymousCheckinRpc] = await Promise.all([
     publicClient.schema('core').from('places').select('id').limit(1000),
     publicClient.schema('core').from('courses').select('id').limit(1000),
     publicClient.from('v_imported_places').select('id').limit(1000),
+    publicClient.rpc('get_place_by_slug', { p_slug: publishedPlace.slug }),
+    publicClient.rpc('get_course_by_slug', { p_slug: publishedCourse.slug }),
     publicClient.rpc('get_place_by_slug', { p_slug: unpublishedPlace.slug }),
     publicClient.rpc('get_course_by_slug', { p_slug: unpublishedCourse.slug }),
     publicClient.rpc('admin_upsert_course', { p_payload: {} }),
+    publicClient.rpc('checkin_place', {
+      p_progress_id: '00000000-0000-0000-0000-000000000001',
+      p_place_id: publishedPlace.id,
+      p_lat: 37.28,
+      p_lng: 127.01,
+      p_mode: 'gps',
+    }),
   ]);
 
   if (publicPlaces.error || publicPlaces.data?.length !== publishedPlaceIds.size) {
-    throw new Error(`direct core.places boundary failed: ${publicPlaces.error?.message ?? `expected ${publishedPlaceIds.size} rows, got ${publicPlaces.data?.length ?? 0}`}`);
+    throw new Error(`direct core.places boundary failed: ${publicPlaces.error?.message ?? `expected ${publishedPlaceIds.size} published rows, got ${publicPlaces.data?.length ?? 0}`}`);
   }
-  if (!publicCourses.error || (publicCourses.data ?? []).length > 0) {
+  if (!publicCourses.error && (publicCourses.data ?? []).length > 0) {
     throw new Error('direct core.courses should not be readable by the anonymous role');
   }
   if (publicImported.error || (publicImported.data ?? []).some((row) => !publishedPlaceIds.has(row.id as string))) {
     throw new Error(`public.v_imported_places boundary failed: ${publicImported.error?.message ?? 'unpublished row returned'}`);
+  }
+  if (publicPlaceRpc.error || !publicPlaceRpc.data || typeof publicPlaceRpc.data !== 'object') {
+    throw new Error(`published place RPC failed: ${publicPlaceRpc.error?.message ?? 'empty payload'}`);
+  }
+  const publicPlacePayload = publicPlaceRpc.data as Record<string, unknown>;
+  if (!('pet_policy' in publicPlacePayload) || !('pet_data_status' in publicPlacePayload)) {
+    throw new Error('published place RPC is missing pet policy/freshness fields');
+  }
+  if (publicCourseRpc.error || !publicCourseRpc.data || typeof publicCourseRpc.data !== 'object') {
+    throw new Error(`published course RPC failed: ${publicCourseRpc.error?.message ?? 'empty payload'}`);
+  }
+  const publicCoursePayload = publicCourseRpc.data as { places?: Array<Record<string, unknown>> };
+  if (!Array.isArray(publicCoursePayload.places) || publicCoursePayload.places.some((place) => !('pet_policy' in place))) {
+    throw new Error('published course RPC is missing per-stop pet policy fields');
   }
   if (unpublishedPlaceRpc.error || unpublishedPlaceRpc.data !== null) {
     throw new Error(`unpublished place RPC returned data: ${unpublishedPlaceRpc.error?.message ?? 'unexpected payload'}`);
@@ -56,8 +83,11 @@ async function main() {
   if (!anonymousAdminRpc.error) {
     throw new Error('admin_upsert_course should not be executable by the anonymous role');
   }
+  if (!anonymousCheckinRpc.error) {
+    throw new Error('checkin_place should not be executable by the anonymous role');
+  }
 
-  console.log(`Public boundary passed: ${publishedPlaceIds.size} places, ${publishedCourseIds.size} courses, unpublished getters blocked.`);
+  console.log(`Public boundary passed: ${publishedPlaceIds.size} places, ${publishedCourseIds.size} courses, additive pet fields exposed, unpublished getters blocked.`);
 }
 
 void main().catch((error: unknown) => {
