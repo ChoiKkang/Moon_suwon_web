@@ -89,6 +89,11 @@ async function main() {
 // 야간 코스가 권장 시작 시간에 이미 문을 닫은 장소를 포함하면 운영자가 알아야
 // 한다. KTO 운영시간 원문을 보수적으로 해석하고, 판정할 수 없으면 확인 항목으로
 // 남긴다. 공개 코스의 충돌은 실패로 처리하고, 비공개 초안은 검수 안내로 보여준다.
+//
+// 예외: 성문·수문처럼 내부 관람이 끝난 뒤에도 조명이 켜진 외관을 밖에서 볼 수
+// 있는 장소는 운영자가 night_exterior_viewing으로 지정한다. 이 경우 마감 시간을
+// 위반으로 보지 않고, 외부 관람 대상으로 집계해 코스 문구가 그 성격을 밝히고
+// 있는지 확인할 수 있게 보고한다.
 async function reportOpeningHourConflicts() {
   const [coursesResult, stopsResult, placesResult, publishResult] = await Promise.all([
     serviceSupabase.schema('core').from('courses').select('id, slug, recommended_start_time'),
@@ -99,6 +104,15 @@ async function reportOpeningHourConflicts() {
 
   const firstError = coursesResult.error ?? stopsResult.error ?? placesResult.error ?? publishResult.error;
   if (firstError) throw new Error(`Failed to read course opening hours: ${firstError.message}`);
+
+  const exteriorResult = await serviceSupabase
+    .schema('editorial')
+    .from('place_publish_state')
+    .select('place_id, night_exterior_viewing');
+  if (exteriorResult.error) throw new Error(`Failed to read night exterior flags: ${exteriorResult.error.message}`);
+  const exteriorPlaceIds = new Set(
+    (exteriorResult.data ?? []).filter((row) => row.night_exterior_viewing === true).map((row) => row.place_id as string),
+  );
 
   const placeById = new Map((placesResult.data ?? []).map((place) => [place.id as string, place]));
   const publishedCourses = new Set((publishResult.data ?? []).filter((row) => row.is_published).map((row) => row.course_id as string));
@@ -112,6 +126,8 @@ async function reportOpeningHourConflicts() {
   const publishedConflicts: string[] = [];
   const draftConflicts: string[] = [];
   const unresolved: string[] = [];
+  const exteriorStops: string[] = [];
+  const exteriorCourseIds = new Set<string>();
 
   for (const course of coursesResult.data ?? []) {
     const startTime = String(course.recommended_start_time ?? '');
@@ -122,6 +138,11 @@ async function reportOpeningHourConflicts() {
       const verdict = isOpenAtStart(place.operating_hours_raw as string | null, startTime);
       const label = `${course.slug} @${startTime} → ${place.official_name}`;
       if (verdict.open === false) {
+        if (exteriorPlaceIds.has(stop.place_id)) {
+          exteriorStops.push(`${label} (${verdict.reason} 외부 야경 관람 대상)`);
+          exteriorCourseIds.add(course.id as string);
+          continue;
+        }
         if (publishedCourses.has(course.id as string)) publishedConflicts.push(`${label} (${verdict.reason})`);
         else draftConflicts.push(`${label} (${verdict.reason})`);
       } else if (verdict.open === null) {
@@ -130,9 +151,43 @@ async function reportOpeningHourConflicts() {
     }
   }
 
-  console.log(`opening-hour check: ${publishedConflicts.length} published conflicts, ${draftConflicts.length} draft conflicts, ${unresolved.length} unresolved`);
+  console.log(
+    `opening-hour check: ${publishedConflicts.length} published conflicts, ${draftConflicts.length} draft conflicts, ` +
+      `${exteriorStops.length} exterior-viewing stops, ${unresolved.length} unresolved`,
+  );
+  for (const line of exteriorStops) console.log(`INFO exterior viewing: ${line}`);
   for (const line of draftConflicts) console.warn(`WARN draft closes early: ${line}`);
   for (const line of unresolved) console.warn(`WARN hours unknown: ${line}`);
+
+  // 예외를 조용히 쓰지 못하게 한다. 외부 관람으로 통과한 공개 코스는 사용자가
+  // 헛걸음하지 않도록 문구에서 그 성격을 밝혀야 한다.
+  const missingDisclosure: string[] = [];
+  const publishedExteriorCourseIds = [...exteriorCourseIds].filter((id) => publishedCourses.has(id));
+  if (publishedExteriorCourseIds.length > 0) {
+    const copyResult = await serviceSupabase
+      .schema('editorial')
+      .from('course_copy')
+      .select('course_id, subtitle, route_summary')
+      .in('course_id', publishedExteriorCourseIds);
+    if (copyResult.error) throw new Error(`Failed to read course copy: ${copyResult.error.message}`);
+    const copyByCourse = new Map((copyResult.data ?? []).map((row) => [row.course_id as string, row]));
+    const slugById = new Map((coursesResult.data ?? []).map((row) => [row.id as string, row.slug as string]));
+
+    for (const courseId of publishedExteriorCourseIds) {
+      const copy = copyByCourse.get(courseId);
+      const text = `${copy?.subtitle ?? ''} ${copy?.route_summary ?? ''}`;
+      if (!/외관|외부|밖에서|야경을 감상|바깥/.test(text)) {
+        missingDisclosure.push(String(slugById.get(courseId) ?? courseId));
+      }
+    }
+  }
+  if (missingDisclosure.length > 0) {
+    for (const slug of missingDisclosure) {
+      console.error(`FAIL published course relies on exterior viewing without disclosing it: ${slug}`);
+    }
+    throw new Error(`${missingDisclosure.length} published courses need an exterior-viewing note in their copy.`);
+  }
+
   if (publishedConflicts.length > 0) {
     for (const line of publishedConflicts) console.error(`FAIL published course visits a closed place: ${line}`);
     throw new Error(`${publishedConflicts.length} published course stops close before the recommended start time.`);
