@@ -11,6 +11,7 @@ import {
 } from '../src/lib/kto/pet-sync';
 import { isSuwonFestival, normalizeFestival, normalizeImages, normalizePlace } from '../src/lib/kto/normalize';
 import { assessNightDining, isWithinFortressWalk } from '../src/lib/kto/night-dining';
+import { readIntroFacts } from '../src/lib/kto/intro-facts';
 import type {
   KtoCrowdForecastItem,
   KtoFestivalItem,
@@ -255,7 +256,7 @@ async function syncContent(runId: string, stats: SyncStats, options: RunnerOptio
     // 판단할 수 없으므로 detailIntro2를 받은 뒤 걸러낸다. 저장하지 않으면
     // 검수함이 커지지 않고, 운영자는 야간에 실제로 열려 있는 곳만 본다.
     if (listItem.contenttypeid === FOOD_CONTENT_TYPE_ID) {
-      const dining = assessNightDining(intro?.opentimefood);
+      const dining = assessNightDining(readIntroFacts(intro).operatingHours);
       if (!dining.eligible) {
         stats.skippedDaytimeFood += 1;
         continue;
@@ -279,14 +280,16 @@ async function syncContent(runId: string, stats: SyncStats, options: RunnerOptio
           // Operating hours live outside the existing RPC contract so the
           // mobile app's sync payload stays unchanged. Store the raw KTO text
           // and let the course verifier interpret it conservatively.
-          // 음식점은 같은 사실을 opentimefood/restdatefood로 보낸다.
-          const useTime = cleanIntroText(intro?.usetime ?? intro?.opentimefood);
-          const restDay = cleanIntroText(intro?.restdate ?? intro?.restdatefood);
+          // detailIntro2 renames the same facts per content type, so read them
+          // through one helper instead of guessing 관광지 field names.
+          const facts = readIntroFacts(intro);
+          const useTime = cleanIntroText(facts.operatingHours);
+          const restDay = cleanIntroText(facts.restDay);
           // KTO leaves `tel` empty on every Suwon attraction and publishes the
-          // public enquiry line as detailIntro2.infocenter instead, so every
-          // place detail page showed "연락처 정보 없음". Take the intro value when
+          // public enquiry line through the type's infocenter field instead, so
+          // every place detail page showed "연락처 정보 없음". Take that value when
           // detailCommon2 has nothing.
-          const infoCenterPhone = normalizeInfoCenterPhone(intro?.infocenter ?? intro?.infocenterfood);
+          const infoCenterPhone = normalizeInfoCenterPhone(facts.infoPhone);
           if (useTime || restDay || infoCenterPhone) {
             const { error: hoursError } = await supabase
               .schema('core')
@@ -321,7 +324,7 @@ async function syncContent(runId: string, stats: SyncStats, options: RunnerOptio
   return stats.errorCount > 0 ? 'partial' : 'completed';
 }
 
-function cleanIntroText(value?: string): string | null {
+function cleanIntroText(value?: string | null): string | null {
   if (!value) return null;
   const text = value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   return text.length > 0 ? text.slice(0, 1000) : null;
@@ -333,7 +336,7 @@ function cleanIntroText(value?: string): string | null {
  * Keep the first phone number and the label that precedes it so an operator can
  * see whose line it is, and drop anything without digits.
  */
-function normalizeInfoCenterPhone(value?: string): string | null {
+function normalizeInfoCenterPhone(value?: string | null): string | null {
   const text = cleanIntroText(value);
   if (!text) return null;
 
