@@ -166,7 +166,14 @@ export function planCourseDrafts(
   for (const [themeIndex, theme] of THEMES.entries()) {
     if (plans.length >= maxPlans) break;
 
-    const offset = Math.min(themeIndex, Math.max(0, places.length - minPlaces));
+    // Themes previously started at offsets 0, 1, 2, so every draft reused the
+    // same handful of top-scored places and publishing more spots did not widen
+    // the candidate pool. Stride the window by maxPlaces so each theme draws
+    // from a different score band, then fall back to a tighter offset when the
+    // pool is too small to stride.
+    const stride = themeIndex * maxPlaces;
+    const maxOffset = Math.max(0, places.length - minPlaces);
+    const offset = Math.min(stride <= maxOffset ? stride : themeIndex, maxOffset);
     const selected = places.slice(offset, offset + maxPlaces);
     if (selected.length < minPlaces) continue;
 

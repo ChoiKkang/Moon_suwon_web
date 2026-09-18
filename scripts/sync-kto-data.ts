@@ -38,7 +38,12 @@ const PET_CONCURRENCY = 3;
 const PET_DISCOVERY: PetDiscoveryConfig = {
   areaCode: '41',
   sigunguCodes: ['111', '113', '115', '117'],
-  contentTypeIds: ['12', '14', '15', '28', '32', '38', '39'],
+  // Content type 38 (쇼핑) returns mall tenants such as individual Starfield
+  // brand floors, which are not night-walk destinations and buried the real
+  // heritage candidates in the admin review queue. 달빛수원 curates 야간 산책
+  // 코스, so pet discovery stays on 관광지(12), 문화시설(14), 행사(15),
+  // 레포츠(28), 숙박(32), 음식점(39).
+  contentTypeIds: ['12', '14', '15', '28', '32', '39'],
   pageSize: 100,
 };
 

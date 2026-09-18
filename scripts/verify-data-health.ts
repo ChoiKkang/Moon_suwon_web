@@ -168,6 +168,37 @@ async function checkPublicServing(failures: string[], warnings: string[]) {
   }
 }
 
+// 달빛수원은 야간 산책 큐레이션 서비스다. 수집이 관광 목적과 무관한 콘텐츠
+// 타입을 끌어오면 검수함이 오염되고 실제 후보가 묻힌다. 예전에 쇼핑(38)
+// 타입이 스타필드 입점 매장을 18건 끌어와 유네스코 세계유산 후보 한 건을
+// 가렸다. 수집 설정을 좁혀도 재발을 자동으로 감지할 수 있게 검수함을 본다.
+const CURATION_CONTENT_TYPES = new Set(['12', '14', '15', '28', '32', '39']);
+
+async function checkReviewQueue(failures: string[], warnings: string[]) {
+  const { data, error } = await serviceClient
+    .schema('core')
+    .from('place_sources')
+    .select('place_id, kto_content_type_id, ingestion_status')
+    .eq('ingestion_status', 'candidate');
+
+  if (error) {
+    warnings.push(`검수 대기 후보 조회 실패 (${error.message})`);
+    return;
+  }
+
+  const rows = data ?? [];
+  const offScope = rows.filter((row) => !CURATION_CONTENT_TYPES.has(String(row.kto_content_type_id)));
+  console.log(`review queue: ${rows.length} candidates, ${offScope.length} off-scope content types`);
+
+  if (offScope.length === 0) return;
+
+  const types = [...new Set(offScope.map((row) => String(row.kto_content_type_id)))].sort();
+  failures.push(
+    `검수 대기에 큐레이션 범위를 벗어난 콘텐츠 타입 ${offScope.length}건이 있습니다(type=${types.join(', ')}). ` +
+      '수집 설정을 확인하고 해당 후보를 제외 처리하세요.',
+  );
+}
+
 async function main() {
   const requestedJob = parseJob();
   const jobs = requestedJob === 'all' ? JOBS : [requestedJob];
@@ -178,6 +209,7 @@ async function main() {
     await checkLatestRun(job, failures, warnings);
   }
   await checkPublicServing(failures, warnings);
+  await checkReviewQueue(failures, warnings);
 
   for (const warning of warnings) console.warn(`WARN ${warning}`);
   if (failures.length > 0) {
