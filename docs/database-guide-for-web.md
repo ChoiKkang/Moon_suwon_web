@@ -109,19 +109,19 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 5. 웹 query adapter에서 읽기
 6. route smoke test
 
-## 5. 장소가 44개인데 웹에는 8개인 이유
+## 5. 장소가 63개인데 웹에는 8개인 이유
 
 현재 원격 DB 상태는 다음과 같다.
 
 | 구분 | 개수 |
 |---|---:|
-| `core.places` | 44 |
-| `public.v_imported_places` | 8 (공개 alias; 내부 `core.places`는 44) |
-| `editorial.place_publish_state` | 44 |
+| `core.places` | 63 |
+| `public.v_imported_places` | 8 (공개 alias; 내부 `core.places`는 63) |
+| `editorial.place_publish_state` | 63 |
 | `public.v_published_places` | 8 |
 | `public.v_now_good_spot_candidates` | 7 |
 
-44개는 KTO 동기화로 보관된 서비스 장소 원본이고, 8개는 운영자가 공개 승인한 장소다. 공개 웹은 8개를 보여주는 것이 정상이다.
+63개는 KTO 동기화로 보관된 서비스 장소 원본이고, 그중 44개는 승인, 19개는 후보 검수 대기다. 8개는 운영자가 공개 승인한 장소다. 공개 웹은 8개를 보여주는 것이 정상이다.
 
 공개 상태를 바꾸는 것은 코드 수정이 아니라 운영 데이터 변경이다. 운영자가 승인할 때 `editorial.place_publish_state.is_published`를 켜고, 필요하면 `display_priority`와 `is_now_good_enabled`를 설정한다.
 
@@ -134,17 +134,19 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 | 영역 | 행 수 | 의미 |
 |---|---:|---|
 | `raw.kto_kor_content` | 129 | 일반 관광정보 원본 |
-| `raw.kto_kor_images` | 348 | 일반 관광 이미지 원본 |
+| `raw.kto_kor_images` | 586 | 일반 관광 이미지 원본 |
 | `raw.kto_crowd_forecast` | 1,980 | 집중률 원본 |
-| `raw.kto_pet_tour` | 3 | 반려동물 원본 |
-| `raw.sync_runs` | 44 | 수집 실행 이력 |
-| `raw.sync_errors` | 47 | 수집 오류 이력 |
-| `core.places` | 44 | 정규화 장소 |
-| `core.place_sources` | 44 | KTO 매핑 |
+| `raw.kto_pet_tour` | 23 | 반려동물 원본 |
+| `raw.kto_pet_candidates` | 20 | 반려동물 후보 목록 원본 |
+| `raw.sync_runs` | 54 | 수집 실행 이력 |
+| `raw.sync_errors` | 182 | 수집 오류 이력 |
+| `core.places` | 63 | 정규화 장소 (승인 44, 후보 19) |
+| `core.place_sources` | 63 | KTO 매핑·검수 lifecycle |
 | `core.place_images` | 330 | 정규화 이미지 |
 | `core.place_crowd_forecasts` | 684 | 장소별 예보 |
 | `core.events` | 6 | 행사 데이터 |
-| `core.courses` | 8 | 공개 코스 3개와 검수 대기 자동 초안 3개 포함 |
+| `core.place_pet_policies` | 34 | 정책 17 fresh, 6 unavailable 포함 |
+| `core.courses` | 8 | 공개 코스 3개와 검수 대기 자동 초안 포함 |
 
 코스는 현재 다음 세 개가 `public.v_home_courses`에서 조회된다.
 
