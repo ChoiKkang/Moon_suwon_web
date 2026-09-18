@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Clock, MapPin, Moon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clock, Dog, MapPin, Moon } from 'lucide-react';
 import { getPublishedCourses } from '@/lib/courses/queries';
 import { ScrollRail } from '@/components/public/scroll-rail';
 
@@ -74,7 +74,15 @@ export default async function CoursesPage() {
                       <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[11px] font-black text-[#ffd700]">
                         운영 공개
                       </span>
-                      <span className="text-xs font-bold text-[#d0c6ab]">{course.theme}</span>
+                      <div className="flex items-center gap-2">
+                        {course.petReadyFlag ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-2.5 py-1 text-[10px] font-black text-emerald-100">
+                            <Dog className="h-3 w-3" />
+                            반려동물 동반
+                          </span>
+                        ) : null}
+                        <span className="text-xs font-bold text-[#d0c6ab]">{course.theme}</span>
+                      </div>
                     </div>
 
                     <h2 className="text-2xl font-black text-white">{course.title}</h2>
@@ -105,13 +113,20 @@ export default async function CoursesPage() {
                         <Link
                           key={place.id}
                           href={`/places/${place.slug}`}
-                          className="group flex items-center gap-3 rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-3 transition hover:border-[#ffd700]/50"
+                          className="group flex items-start gap-3 rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-3 transition hover:border-[#ffd700]/50"
                         >
-                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#ffd700] text-xs font-black text-[#3a3000]">
+                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ffd700] text-xs font-black text-[#3a3000]">
                             {index + 1}
                           </span>
-                          <span className="flex-1 text-sm font-bold text-white">{place.displayName}</span>
-                          <ArrowRight className="h-4 w-4 text-[#ffd700] transition group-hover:translate-x-1" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-bold text-white">{place.displayName}</span>
+                            {/* The night highlight is the reason this stop is on a
+                                night course, so show it instead of only the name. */}
+                            {place.nightHighlight ? (
+                              <span className="mt-1 block text-xs leading-relaxed text-[#d0c6ab]">{place.nightHighlight}</span>
+                            ) : null}
+                          </span>
+                          <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-[#ffd700] transition group-hover:translate-x-1" />
                         </Link>
                       ))}
                     </div>

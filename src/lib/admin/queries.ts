@@ -197,6 +197,55 @@ function todayInSeoul(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
 
+type AuditRow = {
+  id: string;
+  actor_id: string;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  metadata: unknown;
+  created_at: string;
+};
+
+/**
+ * audit.admin_events is deliberately kept out of the PostgREST schema list, so
+ * reading it with schema('audit') fails with "Invalid schema: audit".
+ *
+ * Prefer public.admin_list_audit_events (service-role security definer), then
+ * fall back to a direct schema read for environments where that schema is
+ * reachable. When neither path works the reader reports unavailable so the
+ * console can say the reader is not deployed instead of implying there was no
+ * activity. Writes are unaffected; they go through public.admin_record_audit.
+ */
+async function readAuditEvents(
+  adminClient: ReturnType<typeof getAdminClient>,
+  entityId: string | null,
+  limit: number,
+): Promise<{ events: AdminAuditEvent[]; available: boolean }> {
+  const viaRpc = await adminClient.rpc('admin_list_audit_events', {
+    p_entity_id: entityId,
+    p_limit: limit,
+  });
+  if (!viaRpc.error && Array.isArray(viaRpc.data)) {
+    return { events: (viaRpc.data as AuditRow[]).map(mapAudit), available: true };
+  }
+
+  let query = adminClient
+    .schema('audit')
+    .from('admin_events')
+    .select('id, actor_id, entity_type, entity_id, action, metadata, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (entityId) query = query.eq('entity_id', entityId);
+
+  const viaSchema = await query;
+  if (!viaSchema.error && Array.isArray(viaSchema.data)) {
+    return { events: (viaSchema.data as AuditRow[]).map(mapAudit), available: true };
+  }
+
+  return { events: [], available: false };
+}
+
 function mapCopy(row: PlaceCopyRow | undefined): AdminPlaceCopy {
   return {
     id: row?.id ?? null,
@@ -335,15 +384,8 @@ async function getAdminCandidateDetailForClient(
   const place = placesResult.data.find((item) => item.id === placeId);
   if (!place) return { data: null, error: null };
 
-  const auditResult = await adminClient
-    .schema('audit')
-    .from('admin_events')
-    .select('id, actor_id, entity_type, entity_id, action, metadata, created_at')
-    .eq('entity_id', placeId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (auditResult.error) return { data: null, error: auditResult.error.message };
+  const { events: auditEvents } = await readAuditEvents(adminClient, placeId, 1);
+  const latestAuditRow = auditEvents[0] ?? null;
 
   return {
     data: {
@@ -352,7 +394,7 @@ async function getAdminCandidateDetailForClient(
       lng: place.lng,
       contactPhone: place.contactPhone,
       sourceOverview: place.sourceOverviewRaw,
-      latestAudit: auditResult.data ? mapAudit(auditResult.data as never) : null,
+      latestAudit: latestAuditRow,
     },
     error: null,
   };
@@ -477,18 +519,22 @@ function buildSourceHealth(runs: AdminSyncRun[]): AdminSourceHealth[] {
   }).sort((a, b) => a.source.localeCompare(b.source));
 }
 
-type AdminOperationsData = Pick<AdminDashboardData, 'crowd' | 'syncRuns' | 'syncErrors' | 'candidates' | 'sourceHealth'>;
+type AdminOperationsData = Pick<AdminDashboardData, 'crowd' | 'syncRuns' | 'syncErrors' | 'candidates' | 'sourceHealth'> & {
+  auditEvents: AdminAuditEvent[];
+  auditAvailable: boolean;
+};
 
 function emptyOperations(): AdminOperationsData {
-  return { crowd: emptyCrowd(), syncRuns: [], syncErrors: [], candidates: [], sourceHealth: [] };
+  return { crowd: emptyCrowd(), syncRuns: [], syncErrors: [], candidates: [], sourceHealth: [], auditEvents: [], auditAvailable: false };
 }
 
 async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdminClient>, places: AdminPlace[]): Promise<AdminQueryResult<AdminOperationsData>> {
   const today = todayInSeoul();
-  const [crowdResult, runsResult, errorsResult] = await Promise.all([
+  const [crowdResult, runsResult, errorsResult, auditResult] = await Promise.all([
     adminClient.schema('core').from('place_crowd_forecasts').select('place_id, forecast_date, forecast_score, crowd_level, source_updated_at').order('forecast_date', { ascending: false }).limit(500),
     adminClient.schema('raw').from('sync_runs').select('id, source, status, items_fetched, items_upserted, error_count, metadata, started_at, completed_at').order('started_at', { ascending: false }).limit(30),
     adminClient.schema('raw').from('sync_errors').select('id, sync_run_id, endpoint, content_id, error_code, message, created_at').order('created_at', { ascending: false }).limit(50),
+    readAuditEvents(adminClient, null, 20),
   ]);
   const error = firstError(crowdResult.error, runsResult.error, errorsResult.error);
   if (error) return { data: emptyOperations(), error };
@@ -540,6 +586,8 @@ async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdm
       syncErrors,
       candidates,
       sourceHealth: buildSourceHealth(syncRuns),
+      auditEvents: auditResult.events,
+      auditAvailable: auditResult.available,
     },
     error: null,
   };

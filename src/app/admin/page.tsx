@@ -3,6 +3,7 @@ import { Activity, AlertCircle, CalendarDays, Castle, CheckCircle, Clock3, FileT
 import { getAdminDashboardData } from '@/lib/admin/queries';
 import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
 import { KTOImportPanel } from '@/components/admin/kto-import-panel';
+import { publishBlockers, readinessLabels } from '@/lib/admin/readiness';
 
 function formatDate(value: string | null) {
   if (!value) return '정보 없음';
@@ -18,6 +19,9 @@ export default async function AdminDashboardPage() {
   const activeEvents = data.events.filter((event) => event.endDate >= today);
   const missingCopy = data.places.filter((place) => !place.copy.shortDescription || !place.copy.nightHighlight);
   const reviewQueue = data.candidates.filter((candidate) => candidate.ingestionStatus === 'candidate' || candidate.ingestionStatus === 'stale');
+  // Places that satisfy every publish condition but are still unpublished are
+  // the fastest win available to an operator, so surface them explicitly.
+  const readyToPublish = data.places.filter((place) => !place.isPublished && publishBlockers(place).length === 0);
 
   const kpis = [
     { label: '전체 활성 장소', value: `${data.places.length}개`, helper: 'core.places', href: '/admin/places', icon: Castle, tone: 'info' as const },
@@ -27,6 +31,7 @@ export default async function AdminDashboardPage() {
     { label: '오늘 예측', value: `${data.crowd.todayRows}건`, helper: data.crowd.stale ? '최신성 확인 필요' : '정상 최신 상태', href: '/admin/operations', icon: Activity, tone: data.crowd.stale ? 'warning' as const : 'success' as const },
     { label: '최근 sync 오류', value: `${data.syncErrors.length}건`, helper: '최근 50건 기준', href: '/admin/operations', icon: AlertCircle, tone: data.syncErrors.length > 0 ? 'danger' as const : 'success' as const },
     { label: '검수 대기 후보', value: `${reviewQueue.length}건`, helper: 'KTO 원본 후보', href: '/admin/places?filter=candidate', icon: ShieldAlert, tone: reviewQueue.length > 0 ? 'warning' as const : 'success' as const },
+    { label: '공개만 남은 장소', value: `${readyToPublish.length}개`, helper: '조건 충족·비공개', href: '/admin/places?filter=ready', icon: CheckCircle, tone: readyToPublish.length > 0 ? 'warning' as const : 'success' as const },
   ];
 
   return (
@@ -106,20 +111,25 @@ export default async function AdminDashboardPage() {
             <Link href="/admin/places?filter=missing-copy" className="text-xs font-black text-[#ffd700]">편집하기 →</Link>
           </div>
           <div className="space-y-3">
-            {missingCopy.slice(0, 6).map((place) => (
-              <Link key={place.id} href={`/admin/places?place=${place.id}`} className="flex items-center justify-between rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-4 transition hover:border-[#ffd700]/30">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#ffd700]/10 text-[#ffd700]">
-                    {place.heroImageUrl ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+            {missingCopy.slice(0, 6).map((place) => {
+              const blockers = publishBlockers(place);
+              return (
+                <Link key={place.id} href={`/admin/places?place=${place.id}`} className="flex items-center justify-between rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-4 transition hover:border-[#ffd700]/30">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#ffd700]/10 text-[#ffd700]">
+                      {place.heroImageUrl ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-white">{place.displayName}</p>
+                      <p className="mt-1 truncate text-[11px] text-[#8f9bb3]">
+                        {blockers.length > 0 ? blockers.map((blocker) => readinessLabels[blocker]).join(' · ') : '공개 조건 충족'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-white">{place.displayName}</p>
-                    <p className="mt-1 text-[11px] text-[#8f9bb3]">{place.copy.shortDescription ? '야간 포인트 보강 필요' : '운영 문구 없음'}</p>
-                  </div>
-                </div>
-                <MapPin className="h-4 w-4 shrink-0 text-[#ffd700]" />
-              </Link>
-            ))}
+                  <MapPin className="h-4 w-4 shrink-0 text-[#ffd700]" />
+                </Link>
+              );
+            })}
             {missingCopy.length === 0 ? <p className="rounded-2xl bg-[#0b1326]/60 p-5 text-sm text-[#8f9bb3]">필수 운영 문구가 모두 준비되었습니다.</p> : null}
           </div>
         </div>

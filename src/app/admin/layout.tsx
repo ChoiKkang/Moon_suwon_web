@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, Map, MapPin, Settings, LogOut, Moon } from 'lucide-react';
+import { LogOut, Moon } from 'lucide-react';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/admin/server';
+import { AdminMobileNav, AdminNav } from '@/components/admin/admin-nav';
 
 export default async function AdminLayout({
   children,
@@ -46,30 +47,7 @@ export default async function AdminLayout({
           </Link>
         </div>
 
-        {/* Navigation Links */}
-        <div className="flex-1 overflow-y-auto px-2 space-y-1">
-          {/* Active Tab Mockup (지정 라우트에 맞추어 스타일 제어 가능) */}
-          <Link href="/admin" className="flex items-center gap-3 bg-[#3e495d]/50 text-[#fff6df] border-l-4 border-[#ffd700] px-4 py-3 rounded-r text-sm font-semibold transition-all">
-            <LayoutDashboard className="w-4 h-4 text-[#ffd700]" />
-            <span>대시보드 통계</span>
-          </Link>
-          <Link className="flex items-center gap-3 text-[#d0c6ab] px-4 py-3 text-sm font-semibold hover:bg-slate-800/40 hover:text-white transition-all border-l-4 border-transparent rounded-r" href="/admin/courses">
-            <Map className="w-4 h-4" />
-            <span>코스 관리</span>
-          </Link>
-          <Link className="flex items-center gap-3 text-[#d0c6ab] px-4 py-3 text-sm font-semibold hover:bg-slate-800/40 hover:text-white transition-all border-l-4 border-transparent rounded-r" href="/admin/places">
-            <MapPin className="w-4 h-4" />
-            <span>스팟 관리</span>
-          </Link>
-          <Link className="flex items-center gap-3 text-[#d0c6ab] px-4 py-3 text-sm font-semibold hover:bg-slate-800/40 hover:text-white transition-all border-l-4 border-transparent rounded-r" href="/admin/operations">
-            <Settings className="w-4 h-4" />
-            <span>운영 상태</span>
-          </Link>
-          <Link className="flex items-center gap-3 text-[#d0c6ab] px-4 py-3 text-sm font-semibold hover:bg-slate-800/40 hover:text-white transition-all border-l-4 border-transparent rounded-r" href="/admin/events">
-            <MapPin className="w-4 h-4" />
-            <span>행사 관리</span>
-          </Link>
-        </div>
+        <AdminNav />
 
         {/* Footer Link */}
         <div className="mt-auto px-2 pt-6 border-t border-[#4d4732]/20">
@@ -85,13 +63,7 @@ export default async function AdminLayout({
 
       {/* Main Content Area */}
       <div className="flex-1 md:ml-[280px] min-h-screen flex flex-col">
-        <div className="sticky top-0 z-40 flex gap-2 overflow-x-auto border-b border-[#4d4732]/20 bg-[#0b1326]/95 px-4 py-3 backdrop-blur-xl md:hidden">
-          <Link href="/admin" className="shrink-0 rounded-full bg-[#171f33] px-3 py-2 text-xs font-bold text-[#fff6df]">대시보드</Link>
-          <Link href="/admin/places" className="shrink-0 rounded-full bg-[#171f33] px-3 py-2 text-xs font-bold text-[#d0c6ab]">장소</Link>
-          <Link href="/admin/courses" className="shrink-0 rounded-full bg-[#171f33] px-3 py-2 text-xs font-bold text-[#d0c6ab]">코스</Link>
-          <Link href="/admin/operations" className="shrink-0 rounded-full bg-[#171f33] px-3 py-2 text-xs font-bold text-[#d0c6ab]">운영</Link>
-          <Link href="/admin/events" className="shrink-0 rounded-full bg-[#171f33] px-3 py-2 text-xs font-bold text-[#d0c6ab]">행사</Link>
-        </div>
+        <AdminMobileNav />
         {children}
       </div>
     </div>

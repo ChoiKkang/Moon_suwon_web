@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { getAdminClient, requireAdmin } from '@/lib/admin/server';
 import { planCourseDrafts, type CoursePlannerPlace } from '@/lib/courses/draft-planner';
+import { EXTERIOR_DISCLOSURE_MESSAGE, disclosesExteriorViewing } from '@/lib/courses/exterior-disclosure';
 import { isUuid, validatePetPolicy, validateReviewDecision, validateReviewNote } from '@/lib/admin/review';
 import type {
   AdminActionResult,
@@ -90,6 +91,35 @@ async function recordAdminAudit(
     p_metadata: metadata,
   });
   if (error) throw new Error(`감사 로그를 기록하지 못했습니다. ${error.message}`);
+}
+
+/**
+ * Record an audit entry for a change that is already committed.
+ *
+ * The strict recordAdminAudit above runs before the write and must fail loudly.
+ * Here the database change has already landed, so throwing would tell the
+ * operator the action failed and skip revalidation, tempting them to redo work
+ * that already applied. Log the gap for operations instead and let the action
+ * report the truth: the change succeeded.
+ */
+async function recordAdminAuditAfterCommit(
+  adminClient: ReturnType<typeof getAdminClient>,
+  actorId: string,
+  entityType: string,
+  entityId: string,
+  action: string,
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    await recordAdminAudit(adminClient, actorId, entityType, entityId, action, metadata);
+  } catch (error) {
+    console.error('[admin-audit] failed to record a committed change', JSON.stringify({
+      entityType,
+      entityId,
+      action,
+      message: error instanceof Error ? error.message : String(error),
+    }));
+  }
 }
 
 export async function reviewPlaceCandidateAction(input: ReviewPlaceCandidateInput): Promise<AdminActionResult> {
@@ -220,6 +250,13 @@ export async function updatePlacePublishStateAction(input: PlacePublishInput): P
     );
 
     if (error) return fail('장소 공개 상태를 저장하지 못했습니다.');
+    // Publishing is the action that changes what the public site serves, so it
+    // needs the same audit trail as candidate review and pet overrides.
+    await recordAdminAuditAfterCommit(adminClient, user.id, 'place', input.placeId, input.isPublished ? 'publish_enable' : 'publish_disable', {
+      display_priority: displayPriority,
+      is_now_good_enabled: Boolean(input.isNowGoodEnabled),
+      night_suitability_score: nightSuitabilityScore,
+    });
     revalidatePlace(slug);
     return { success: true, message: input.isPublished ? '장소를 공개했습니다.' : '장소를 비공개로 전환했습니다.' };
   } catch (error) {
@@ -305,6 +342,21 @@ export async function saveCourseAction(input: CourseInput): Promise<AdminActionR
       if (!allPlacesServable) {
         throw new Error('공개 코스에는 공개·활성 상태인 장소만 연결할 수 있습니다.');
       }
+
+      // 야간에 내부 관람이 끝난 장소가 있으면 코스 문구에서 외관 관람임을 밝혀야
+      // 한다. 배포 후 검증(course:verify)과 같은 규칙을 공개 시점에 적용한다.
+      const exteriorResult = await adminClient
+        .schema('editorial')
+        .from('place_publish_state')
+        .select('place_id, night_exterior_viewing')
+        .in('place_id', placeIds)
+        .eq('night_exterior_viewing', true);
+      if (exteriorResult.error) {
+        throw new Error('야간 외부 관람 설정을 확인하지 못했습니다.');
+      }
+      if ((exteriorResult.data ?? []).length > 0 && !disclosesExteriorViewing(subtitle, routeSummary)) {
+        throw new Error(EXTERIOR_DISCLOSURE_MESSAGE);
+      }
     }
 
     let courseId = input.id;
@@ -347,6 +399,12 @@ export async function saveCourseAction(input: CourseInput): Promise<AdminActionR
     });
     if (courseResult.error || !courseResult.data) return fail(`코스 저장에 실패했습니다. ${courseResult.error?.message ?? ''}`.trim());
     courseId = courseResult.data as string;
+
+    await recordAdminAuditAfterCommit(adminClient, user.id, 'course', courseId, input.id ? 'course_update' : 'course_create', {
+      slug,
+      is_published: Boolean(input.id ? input.isPublished : false),
+      place_count: placeIds.length,
+    });
 
     revalidatePath('/');
     revalidatePath('/courses');

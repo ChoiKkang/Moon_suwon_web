@@ -29,6 +29,9 @@ export type CourseDetailRow = {
   category?: string | null;
   recommended_stay_min?: number | null;
   hero_image_url: string | null;
+  night_highlight?: string | null;
+  photo_tip?: string | null;
+  short_story?: string | null;
   pet_policy?: PetPolicy | string | null;
   pet_note?: string | null;
   pet_data_status?: DataFreshness | string | null;
@@ -76,6 +79,9 @@ export function mapCoursePlace(detail: CourseDetailRow): ImportedPlace {
     petNote: detail.pet_note ?? null,
     petDataStatus,
     petSourceUpdatedAt: detail.pet_source_updated_at ?? null,
+    nightHighlight: detail.night_highlight ?? null,
+    photoTip: detail.photo_tip ?? null,
+    shortStory: detail.short_story ?? null,
     crowdForecast: detail.crowd_forecast_date || detail.crowd_forecast_rate !== null && detail.crowd_forecast_rate !== undefined || detail.crowd_forecast_level
       ? {
           forecastDate: detail.crowd_forecast_date ?? null,
@@ -100,7 +106,7 @@ export async function getPublishedCourses(): Promise<{
       .order('display_priority', { ascending: true }),
     supabase
       .from('v_course_detail')
-      .select('course_id, order_index, place_id, place_slug, display_name, lat, lng, category, recommended_stay_min, hero_image_url, pet_policy, pet_note, pet_data_status, pet_source_updated_at, crowd_forecast_date, crowd_forecast_rate, crowd_forecast_level, crowd_data_status')
+      .select('course_id, order_index, place_id, place_slug, display_name, lat, lng, category, recommended_stay_min, hero_image_url, night_highlight, photo_tip, short_story, pet_policy, pet_note, pet_data_status, pet_source_updated_at, crowd_forecast_date, crowd_forecast_rate, crowd_forecast_level, crowd_data_status')
       .order('order_index', { ascending: true }),
     supabase
       .from('v_published_places')

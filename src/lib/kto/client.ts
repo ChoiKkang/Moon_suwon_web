@@ -15,8 +15,18 @@ const KTO_BASE_URL = 'https://apis.data.go.kr/B551011/KorService2';
 const PET_BASE_URL = 'https://apis.data.go.kr/B551011/KorPetTourService2';
 const CROWD_BASE_URL = 'https://apis.data.go.kr/B551011/TatsCnctrRateService';
 const REQUEST_TIMEOUT_MS = 20_000;
-const PET_REQUEST_TIMEOUT_MS = 15_000;
-const MAX_RETRIES = 2;
+// KorPetTourService2 is the slowest of the three services. Its old 15s budget
+// was shorter than the default, so slow-but-healthy replies were aborted and
+// logged as sync errors. Healthy replies measured well under 1s, so the extra
+// room only covers genuinely slow responses.
+const PET_REQUEST_TIMEOUT_MS = 30_000;
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 800;
+// Retries multiply the per-attempt timeout, which can outlive the sync
+// workflow's 30 minute budget when a whole batch stalls. Cap the total time
+// spent on one logical request so a degraded upstream fails fast enough for the
+// run to finish and report errors instead of being killed mid-run.
+const MAX_TOTAL_REQUEST_MS = 45_000;
 
 export class KtoApiError extends Error {
   readonly endpoint: string;
@@ -178,10 +188,17 @@ export class KtoClient {
     url.searchParams.set('serviceKey', this.serviceKey);
 
     let lastError: unknown = null;
+    const startedAt = Date.now();
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+      // Leave at least one second of headroom, otherwise the attempt cannot
+      // make progress and only burns the remaining budget.
+      const remainingMs = MAX_TOTAL_REQUEST_MS - (Date.now() - startedAt);
+      if (attempt > 0 && remainingMs < 1_000) break;
+      const attemptTimeoutMs = attempt === 0 ? timeoutMs : Math.min(timeoutMs, remainingMs);
+
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      const timeout = setTimeout(() => controller.abort(), attemptTimeoutMs);
 
       try {
         const response = await fetch(url, {
@@ -256,7 +273,9 @@ export class KtoClient {
       }
 
       if (attempt < MAX_RETRIES) {
-        await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+        const backoffMs = RETRY_BASE_DELAY_MS * 2 ** attempt;
+        if (MAX_TOTAL_REQUEST_MS - (Date.now() - startedAt) <= backoffMs) break;
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
       }
     }
 

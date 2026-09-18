@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { useMemo, useState, useTransition } from 'react';
-import { CheckCircle, FileText, ImageIcon, MapPin, Search, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, FileText, ImageIcon, MapPin, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { updatePlaceCopyAction, updatePlacePublishStateAction } from '@/app/actions/admin';
 import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
+import { publishBlockers, readinessLabels } from '@/lib/admin/readiness';
 import type { AdminPlace, AdminPlaceCopy } from '@/lib/admin/types';
 
-type Filter = 'all' | 'published' | 'unpublished' | 'missing-copy';
+type Filter = 'all' | 'published' | 'unpublished' | 'missing-copy' | 'ready';
 
 const copyFields: Array<{ key: keyof AdminPlaceCopy; label: string; placeholder: string; multiline?: boolean }> = [
   { key: 'displayName', label: '표시 이름', placeholder: '공개 페이지에 표시할 이름' },
@@ -37,7 +38,11 @@ export function PlaceManager({
 }) {
   const router = useRouter();
   const initialPlace = places.find((place) => place.id === initialPlaceId) ?? places[0] ?? null;
-  const [filter, setFilter] = useState<Filter>(initialFilter === 'published' || initialFilter === 'unpublished' || initialFilter === 'missing-copy' ? initialFilter : 'all');
+  const [filter, setFilter] = useState<Filter>(
+    initialFilter === 'published' || initialFilter === 'unpublished' || initialFilter === 'missing-copy' || initialFilter === 'ready'
+      ? initialFilter
+      : 'all',
+  );
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(initialPlace?.id ?? null);
   const [copyDraft, setCopyDraft] = useState<AdminPlaceCopy>(initialPlace?.copy ?? emptyCopy());
@@ -55,6 +60,8 @@ export function PlaceManager({
   const [isPending, startTransition] = useTransition();
 
   const selected = places.find((place) => place.id === selectedId) ?? null;
+  const blockers = selected ? publishBlockers(selected) : [];
+  const readyCount = places.filter((place) => publishBlockers(place).length === 0).length;
 
   function selectPlace(place: AdminPlace) {
     setSelectedId(place.id);
@@ -78,7 +85,8 @@ export function PlaceManager({
       const matchesFilter = filter === 'all'
         || (filter === 'published' && place.isPublished)
         || (filter === 'unpublished' && !place.isPublished)
-        || (filter === 'missing-copy' && (!place.copy.shortDescription || !place.copy.nightHighlight));
+        || (filter === 'missing-copy' && (!place.copy.shortDescription || !place.copy.nightHighlight))
+        || (filter === 'ready' && publishBlockers(place).length === 0);
       const matchesSearch = !normalizedSearch || [place.displayName, place.officialName, place.slug, place.ktoContentId ?? ''].join(' ').toLowerCase().includes(normalizedSearch);
       return matchesFilter && matchesSearch;
     });
@@ -114,6 +122,7 @@ export function PlaceManager({
               ['published', `공개 ${places.filter((place) => place.isPublished).length}`],
               ['unpublished', `비공개 ${places.filter((place) => !place.isPublished).length}`],
               ['missing-copy', `보강 필요 ${places.filter((place) => !place.copy.shortDescription || !place.copy.nightHighlight).length}`],
+              ['ready', `공개 준비 완료 ${readyCount}`],
             ] as Array<[Filter, string]>).map(([value, label]) => (
               <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-full border px-3 py-2 text-xs font-black transition ${filter === value ? 'border-[#ffd700]/60 bg-[#ffd700]/15 text-[#ffd700]' : 'border-[#3e495d]/40 text-[#8f9bb3] hover:text-white'}`}>
                 {label}
@@ -130,18 +139,26 @@ export function PlaceManager({
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[720px] text-left">
             <thead className="border-b border-[#3e495d]/30 text-[11px] uppercase tracking-wider text-[#8f9bb3]">
-              <tr><th className="px-3 py-3">장소</th><th className="px-3 py-3">공개</th><th className="px-3 py-3">문구</th><th className="px-3 py-3">미디어</th><th className="px-3 py-3">우선순위</th></tr>
+              <tr><th className="px-3 py-3">장소</th><th className="px-3 py-3">공개</th><th className="px-3 py-3">공개 준비</th><th className="px-3 py-3">문구</th><th className="px-3 py-3">미디어</th><th className="px-3 py-3">우선순위</th></tr>
             </thead>
             <tbody className="divide-y divide-[#3e495d]/20">
-              {filteredPlaces.map((place) => (
+              {filteredPlaces.map((place) => {
+                const placeBlockers = publishBlockers(place);
+                return (
                 <tr key={place.id} className={`cursor-pointer transition hover:bg-[#0b1326]/50 ${selectedId === place.id ? 'bg-[#ffd700]/5' : ''}`} onClick={() => selectPlace(place)}>
                   <td className="px-3 py-4"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0b1326] text-[#ffd700]"><MapPin className="h-4 w-4" /></div><div><p className="font-bold text-white">{place.displayName}</p><p className="mt-1 text-[11px] text-[#8f9bb3]">{place.ktoContentId ?? 'KTO ID 없음'}</p></div></div></td>
                   <td className="px-3 py-4"><AdminStatusBadge label={place.isPublished ? 'PUBLIC' : 'DRAFT'} tone={place.isPublished ? 'success' : 'muted'} /></td>
+                  <td className="px-3 py-4">
+                    {placeBlockers.length === 0
+                      ? <AdminStatusBadge label="준비 완료" tone="success" />
+                      : <span title={placeBlockers.map((blocker) => readinessLabels[blocker]).join(', ')}><AdminStatusBadge label={`${placeBlockers.length}개 보완`} tone="warning" /></span>}
+                  </td>
                   <td className="px-3 py-4">{place.copy.shortDescription && place.copy.nightHighlight ? <CheckCircle className="h-4 w-4 text-emerald-300" /> : <FileText className="h-4 w-4 text-amber-300" />}</td>
                   <td className="px-3 py-4">{place.heroImageUrl ? <ImageIcon className="h-4 w-4 text-emerald-300" /> : <ImageIcon className="h-4 w-4 text-amber-300" />}</td>
                   <td className="px-3 py-4 text-sm font-bold text-[#d0c6ab]">{place.displayPriority}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {filteredPlaces.length === 0 ? <p className="py-12 text-center text-sm text-[#8f9bb3]">조건에 맞는 장소가 없습니다.</p> : null}
@@ -164,6 +181,28 @@ export function PlaceManager({
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3"><label className="text-xs font-bold text-[#d0c6ab]">노출 우선순위<input type="number" min="0" value={publishDraft.displayPriority} onChange={(event) => setPublishDraft((draft) => ({ ...draft, displayPriority: Number(event.target.value) }))} className={inputClassName()} /></label><label className="text-xs font-bold text-[#d0c6ab]">야간 적합도<input type="number" min="0" max="100" value={publishDraft.nightSuitabilityScore} onChange={(event) => setPublishDraft((draft) => ({ ...draft, nightSuitabilityScore: Number(event.target.value) }))} className={inputClassName()} /></label></div>
               <label className="mt-3 block text-xs font-bold text-[#d0c6ab]">운영 메모<textarea value={publishDraft.opsMemo ?? ''} onChange={(event) => setPublishDraft((draft) => ({ ...draft, opsMemo: event.target.value }))} className={`${inputClassName()} min-h-20`} /></label>
+
+              {/* Show exactly what blocks publication so the operator does not
+                  have to guess which field is missing. */}
+              {blockers.length > 0 ? (
+                <div className="mt-3 rounded-xl border border-amber-300/30 bg-amber-300/10 p-3">
+                  <div className="flex items-center gap-2 text-xs font-black text-amber-100">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    공개 전 보완할 항목 {blockers.length}개
+                  </div>
+                  <ul className="mt-2 space-y-1">
+                    {blockers.map((blocker) => (
+                      <li key={blocker} className="text-[11px] text-amber-100/85">· {readinessLabels[blocker]}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-300/10 p-3 text-xs font-bold text-emerald-100">
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  공개 조건을 모두 만족했습니다.
+                </p>
+              )}
+
               <button type="button" disabled={isPending} onClick={savePublishState} className="mt-3 w-full rounded-xl bg-[#ffd700] px-4 py-3 text-sm font-black text-[#3a3000] transition hover:bg-[#ffe16d] disabled:cursor-wait disabled:opacity-50">{isPending ? '저장 중…' : '공개 상태 저장'}</button>
             </section>
 
