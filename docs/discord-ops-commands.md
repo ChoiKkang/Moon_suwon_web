@@ -10,7 +10,9 @@
 
 지금 쓰는 방식은 두 갈래다. 자동 브리핑은 **incoming webhook**으로 채널에 메시지를 보낸다. 단방향이라 이미 동작하고 있고 추가 설정이 없다. 반면 `/달빛` 슬래시 명령은 Discord가 우리 서버로 요청을 보내야 하므로 webhook으로는 할 수 없다. 애플리케이션과 Interactions Endpoint URL이 필요하다.
 
-**봇 사용자(Bot User)는 필요하지 않다.** 슬래시 명령을 HTTP Interactions로 받으면 Gateway 연결이 없어도 되고, 봇이 채널에 상주하지 않아도 명령이 동작한다. 명령 등록도 OAuth2 client credentials로 처리할 수 있다.
+애플리케이션을 만들면 Discord가 봇 사용자를 함께 생성한다. 다만 **봇 토큰을 발급하거나 봇 권한을 주지는 않는다.** 슬래시 명령을 HTTP Interactions로 받으면 Gateway 연결이 필요하지 않고, 명령 등록도 OAuth2 client credentials로 처리한다. 이 애플리케이션의 설치 권한은 `permissions=0`이라 메시지 읽기나 채널 접근 권한이 없다.
+
+**애플리케이션은 운영 서버에 설치해야 한다.** 길드 전용 명령은 설치된 서버에만 등록할 수 있고, 설치 전에는 등록 API가 403(`code 50001`)을 반환한다.
 
 ## 1. Discord 애플리케이션 설정
 
@@ -27,6 +29,16 @@ https://<배포-도메인>/api/discord/interactions
 ```
 
 Discord가 저장 시점에 PING 요청을 보내 서명 검증을 확인한다. `DISCORD_PUBLIC_KEY`가 Vercel Production에 등록된 뒤에 저장해야 통과한다.
+
+## 1-1. 운영 서버에 설치
+
+아래 주소를 열어 운영 서버를 선택하고 승인한다. `<APPLICATION_ID>`는 Developer Portal의 Application ID다.
+
+```text
+https://discord.com/oauth2/authorize?client_id=<APPLICATION_ID>&scope=applications.commands&integration_type=0
+```
+
+`scope=applications.commands`만 요청하므로 메시지 읽기·전송 권한을 부여하지 않는다. 설치하지 않으면 다음 단계의 명령 등록이 403으로 실패한다.
 
 ## 2. 환경변수
 

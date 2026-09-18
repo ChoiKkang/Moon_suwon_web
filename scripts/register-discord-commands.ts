@@ -108,6 +108,13 @@ async function main() {
 
   if (!response.ok) {
     const detail = await response.text();
+    if (response.status === 403) {
+      throw new Error(
+        'Discord 명령 등록 실패 (HTTP 403): 애플리케이션이 해당 서버에 설치되어 있지 않습니다.\n' +
+          `https://discord.com/oauth2/authorize?client_id=${applicationId}&scope=applications.commands&integration_type=0\n` +
+          '위 주소로 운영 서버에 설치한 뒤 다시 실행하세요.',
+      );
+    }
     throw new Error(`Discord 명령 등록 실패 (HTTP ${response.status}): ${detail.slice(0, 300)}`);
   }
 
