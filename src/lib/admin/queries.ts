@@ -64,6 +64,9 @@ type CourseRow = {
   walking_distance_km: number | string | null;
   recommended_start_time: string | null;
   pet_ready_flag: boolean | null;
+  automation_source: string | null;
+  automation_key: string | null;
+  last_automated_at: string | null;
   updated_at: string | null;
 };
 type CourseStateRow = {
@@ -215,7 +218,7 @@ async function getAdminCoursesForClient(
   places: AdminPlace[],
 ): Promise<AdminQueryResult<AdminCourse[]>> {
   const [coursesResult, stateResult, copyResult, linksResult] = await Promise.all([
-    adminClient.schema('core').from('courses').select('id, slug, theme_tags, estimated_duration_min, walking_distance_km, recommended_start_time, pet_ready_flag, updated_at').order('updated_at', { ascending: false }),
+    adminClient.schema('core').from('courses').select('id, slug, theme_tags, estimated_duration_min, walking_distance_km, recommended_start_time, pet_ready_flag, automation_source, automation_key, last_automated_at, updated_at').order('updated_at', { ascending: false }),
     adminClient.schema('editorial').from('course_publish_state').select('course_id, is_published, display_priority, ops_memo'),
     adminClient.schema('editorial').from('course_copy').select('course_id, hero_title, subtitle, route_summary, og_title, og_description, og_image_url'),
     adminClient.schema('core').from('course_places').select('course_id, place_id, order_index').order('order_index', { ascending: true }),
@@ -255,6 +258,8 @@ async function getAdminCoursesForClient(
         displayPriority: state?.display_priority ?? 0,
         opsMemo: state?.ops_memo ?? null,
         updatedAt: course.updated_at,
+        automationSource: course.automation_source ?? null,
+        lastAutomatedAt: course.last_automated_at ?? null,
         copy: {
           heroTitle: copy?.hero_title ?? '',
           subtitle: copy?.subtitle ?? null,
@@ -338,6 +343,7 @@ async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdm
         metadata: asRecord(row.metadata),
         startedAt: row.started_at,
         completedAt: row.completed_at,
+        isStale: row.status === 'running' && Number.isFinite(Date.parse(row.started_at)) && Date.now() - Date.parse(row.started_at) > 90 * 60 * 1000,
       })),
       syncErrors: ((errorsResult.data ?? []) as SyncErrorRow[]).map((row): AdminSyncError => ({
         id: row.id,

@@ -61,6 +61,8 @@ export type AdminCourse = {
   displayPriority: number;
   opsMemo: string | null;
   updatedAt: string | null;
+  automationSource: string | null;
+  lastAutomatedAt: string | null;
   copy: {
     heroTitle: string;
     subtitle: string | null;
@@ -112,6 +114,7 @@ export type AdminSyncRun = {
   metadata: Record<string, unknown>;
   startedAt: string;
   completedAt: string | null;
+  isStale: boolean;
 };
 
 export type AdminSyncError = {
@@ -181,6 +184,8 @@ export type CourseInput = {
   ogDescription: string | null;
   ogImageUrl: string | null;
   placeIds: string[];
+  automationSource?: string | null;
+  automationKey?: string | null;
 };
 
 export type EventInput = {

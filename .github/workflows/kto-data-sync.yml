@@ -33,6 +33,13 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      job: ${{ steps.resolve.outputs.job }}
+      should_run: ${{ steps.resolve.outputs.should_run }}
+      status: ${{ steps.run_sync.outputs.status }}
+      items_fetched: ${{ steps.run_sync.outputs.items_fetched }}
+      items_upserted: ${{ steps.run_sync.outputs.items_upserted }}
+      error_count: ${{ steps.run_sync.outputs.error_count }}
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -107,6 +114,7 @@ jobs:
           : "${KTO_SERVICE_KEY:?KTO_SERVICE_KEY secret is required}"
 
       - name: Run sync
+        id: run_sync
         if: steps.resolve.outputs.should_run == 'true'
         shell: bash
         run: |
@@ -147,3 +155,35 @@ jobs:
               echo "- result: failed; inspect the sync run and error rows in the admin operations console"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: sync
+    if: always()
+    timeout-minutes: 5
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      DISCORD_NOTIFICATION_TITLE: Moon Suwon KTO data sync
+      DISCORD_NOTIFICATION_STATUS: ${{ needs.sync.result }}
+      DISCORD_NOTIFICATION_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      DISCORD_NOTIFICATION_DETAILS: >-
+        job=${{ needs.sync.outputs.job || 'unknown' }} · should_run=${{ needs.sync.outputs.should_run || 'unknown' }} ·
+        status=${{ needs.sync.outputs.status || needs.sync.result }} · fetched=${{ needs.sync.outputs.items_fetched || '0' }} ·
+        upserted=${{ needs.sync.outputs.items_upserted || '0' }} · errors=${{ needs.sync.outputs.error_count || '0' }} · commit=${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Notify Discord
+        if: always()
+        continue-on-error: true
+        run: npm run notify:discord

@@ -1,4 +1,5 @@
 import { loadEnvConfig } from '@next/env';
+import { appendFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getRequiredServerEnv } from '../src/lib/env/server';
 import { KtoApiError, KtoClient } from '../src/lib/kto/client';
@@ -35,6 +36,12 @@ function writeLine(message: string) {
 
 function writeError(message: string) {
   process.stderr.write(`${message}\n`);
+}
+
+function writeGithubOutput(stats: SyncStats, status: 'completed' | 'failed') {
+  const outputPath = process.env.GITHUB_OUTPUT;
+  if (!outputPath) return;
+  appendFileSync(outputPath, `status=${status}\nitems_fetched=${stats.itemsFetched}\nitems_upserted=${stats.itemsUpserted}\nerror_count=${stats.errorCount}\n`);
 }
 
 function parseJob(): SyncJob {
@@ -279,6 +286,14 @@ async function main() {
   const job = parseJob();
   const source = `GitHubActions:${job}`;
   const stats = createStats();
+  try {
+    const reconciled = await callRpc<number>(supabase, 'sync_reconcile_stale_runs', { p_max_age_minutes: 90 });
+    if (Number(reconciled) > 0) writeLine(`reconciled ${Number(reconciled)} stale sync run(s)`);
+  } catch (error: unknown) {
+    // Keep older deployments runnable while the maintenance RPC propagates;
+    // the actual sync still records a complete run below.
+    writeError(`stale sync run reconciliation skipped: ${error instanceof Error ? error.message : String(error)}`);
+  }
   const runId = await callRpc<string>(supabase, 'sync_run_start', {
     p_source: source,
     p_metadata: { job, runner: 'scripts/sync-kto-data.ts' },
@@ -315,6 +330,7 @@ async function main() {
   }
 
   writeLine(`${source}: ${fatalError ? 'failed' : 'completed'} (fetched=${stats.itemsFetched}, upserted=${stats.itemsUpserted}, errors=${stats.errorCount})`);
+  writeGithubOutput(stats, fatalError ? 'failed' : 'completed');
 
   if (fatalError) {
     throw fatalError;

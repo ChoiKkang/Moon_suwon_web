@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { ArrowDown, ArrowUp, Plus, Route, Save, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus, Route, Save, Sparkles, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { saveCourseAction } from '@/app/actions/admin';
+import { generateCourseDraftsAction, saveCourseAction } from '@/app/actions/admin';
 import type { AdminCourse, AdminPlace, CourseInput } from '@/lib/admin/types';
 import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
 
@@ -30,6 +30,7 @@ function fromCourse(course: AdminCourse): CourseInput {
     ogDescription: course.copy.ogDescription,
     ogImageUrl: course.copy.ogImageUrl,
     placeIds: [...course.places].sort((a, b) => a.orderIndex - b.orderIndex).map((place) => place.placeId),
+    automationSource: course.automationSource,
   };
 }
 
@@ -103,6 +104,15 @@ export function CourseManager({
     });
   }
 
+  function generateDrafts() {
+    setMessage(null);
+    startTransition(async () => {
+      const result = await generateCourseDraftsAction();
+      setMessage(result.success ? { type: 'success', text: result.message } : { type: 'error', text: result.error });
+      if (result.success) router.refresh();
+    });
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
       <section className="rounded-3xl border border-white/10 bg-[#171f33]/80 p-5">
@@ -111,7 +121,7 @@ export function CourseManager({
       </section>
 
       <section className="rounded-3xl border border-[#ffd700]/20 bg-[#171f33]/90 p-5 md:p-7">
-        <div className="flex flex-col justify-between gap-4 border-b border-[#3e495d]/30 pb-5 md:flex-row md:items-center"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">Course Editor</p><h2 className="mt-2 text-2xl font-black text-white">{selected ? selected.copy.heroTitle || selected.slug : '새 코스'}</h2></div><div className="flex items-center gap-3"><AdminStatusBadge label={draft.isPublished ? 'PUBLIC' : 'DRAFT'} tone={draft.isPublished ? 'success' : 'muted'} /><button type="button" disabled={isPending} onClick={save} className="inline-flex items-center gap-2 rounded-xl bg-[#ffd700] px-4 py-2.5 text-sm font-black text-[#3a3000] disabled:opacity-50"><Save className="h-4 w-4" />{isPending ? '저장 중…' : '저장'}</button></div></div>
+        <div className="flex flex-col justify-between gap-4 border-b border-[#3e495d]/30 pb-5 md:flex-row md:items-center"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">Course Editor</p><h2 className="mt-2 text-2xl font-black text-white">{selected ? selected.copy.heroTitle || selected.slug : '새 코스'}</h2></div><div className="flex flex-wrap items-center gap-3"><AdminStatusBadge label={draft.isPublished ? 'PUBLIC' : 'DRAFT'} tone={draft.isPublished ? 'success' : 'muted'} /><button type="button" disabled={isPending} onClick={generateDrafts} className="inline-flex items-center gap-2 rounded-xl border border-[#ffd700]/40 px-4 py-2.5 text-sm font-black text-[#ffd700] disabled:opacity-50"><Sparkles className="h-4 w-4" />{isPending ? '생성 중…' : '자동 초안 생성'}</button><button type="button" disabled={isPending} onClick={save} className="inline-flex items-center gap-2 rounded-xl bg-[#ffd700] px-4 py-2.5 text-sm font-black text-[#3a3000] disabled:opacity-50"><Save className="h-4 w-4" />{isPending ? '저장 중…' : '저장'}</button></div></div>
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
           <label className="text-xs font-bold text-[#d0c6ab]">slug<input value={draft.slug} onChange={(event) => update('slug', event.target.value)} placeholder="night-wall-route" className={fieldClass()} /></label>
           <label className="text-xs font-bold text-[#d0c6ab]">코스 제목<input value={draft.heroTitle} onChange={(event) => update('heroTitle', event.target.value)} placeholder="야경 사진 집중 코스" className={fieldClass()} /></label>

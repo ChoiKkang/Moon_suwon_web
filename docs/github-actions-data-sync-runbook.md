@@ -2,13 +2,14 @@
 
 ## 저장소 secrets
 
-저장소 `ChoiKkang/Moon_suwon_web`에 아래 네 가지 Actions secret을 등록한다.
+저장소 `ChoiKkang/Moon_suwon_web`에 아래 다섯 가지 Actions secret을 등록한다.
 
 ```bash
 gh secret set NEXT_PUBLIC_SUPABASE_URL --repo ChoiKkang/Moon_suwon_web
 gh secret set NEXT_PUBLIC_SUPABASE_ANON_KEY --repo ChoiKkang/Moon_suwon_web
 gh secret set SUPABASE_SERVICE_ROLE_KEY --repo ChoiKkang/Moon_suwon_web
 gh secret set KTO_SERVICE_KEY --repo ChoiKkang/Moon_suwon_web
+gh secret set DISCORD_WEBHOOK_URL --repo ChoiKkang/Moon_suwon_web
 ```
 
 각 명령은 값을 표준입력으로 받아 저장한다. 값은 터미널·workflow 로그에 출력하지 않는다. `SUPABASE_SERVICE_ROLE_KEY`와 `KTO_SERVICE_KEY`는 절대 `NEXT_PUBLIC_*` 이름으로 만들지 않는다. Vercel 환경변수와 GitHub Actions secrets는 자동으로 동기화되지 않는다.
@@ -16,6 +17,9 @@ gh secret set KTO_SERVICE_KEY --repo ChoiKkang/Moon_suwon_web
 `KTO_SERVICE_KEY`는 GitHub Actions 예약 동기화뿐 아니라 관리자 콘솔의 KTO 미리보기/승인 Server Action에서도 사용한다. 따라서 해당 기능을 production에서 계속 사용할 경우 같은 키를 Vercel Production에도 서버 전용 변수로 등록한다. 브라우저 번들에는 포함되지 않는다.
 
 `KTO_SERVICE_KEY`는 코드에서 붙인 환경변수 이름일 뿐 별도의 관광공사 키 종류가 아니다. 공공데이터포털에서 발급한 인증키를 사용하되, `KorService2`와 `TatsCnctrRateService`는 API별 활용신청·승인 상태가 각각 적용된다. 이 저장소의 클라이언트가 요청 URL을 직접 인코딩하므로, 포털의 **일반 인증키(Decoding)** 값을 한 번만 저장하고 이미 `%`로 인코딩된 값을 다시 넣어 이중 인코딩하지 않는다.
+
+`DISCORD_WEBHOOK_URL`은 GitHub Actions 결과를 Discord 채널에 보내는 incoming webhook 주소다. 채팅·이슈·로그에 주소가 노출되면 누구나 메시지를 보낼 수 있으므로 해당 Discord 채널에서 webhook을 삭제/재생성한 뒤 새 주소를 secret 표준입력으로 등록한다. 워크플로는 `allowed_mentions.parse=[]`로 알림을 보내며 webhook 오류가 데이터 작업을 실패시키지는 않는다. Discord Developer Portal의 Application ID/Public Key는 이 알림 경로에 필요하지 않다. Public Key는 나중에 슬래시 커맨드 같은 HTTP Interaction 서명 검증을 붙일 때만 사용한다.
+보안상 `Web quality`의 Discord job은 pull request(특히 fork)에서는 실행하지 않고 protected branch push 결과만 전송한다. KTO/코스 자동화는 schedule 또는 수동 실행 결과를 전송한다.
 
 ## 자동 일정
 
@@ -29,6 +33,8 @@ workflow는 Node.js 22와 IPv4 우선 DNS 설정으로 실행한다.
 | 장소/이미지 | UTC 28~31일 19:00 (한국시간 1일만 실행) | 매월 1일 04:00 |
 
 작업이 겹치면 `concurrency`가 이전 실행을 취소하지 않고 KTO 요청을 직렬화한다.
+
+`Course draft generation`은 매주 월요일 04:00 KST와 수동 실행을 지원한다. 공개·활성·좌표가 있는 장소를 기준으로 최대 세 개의 후보를 `core.courses`에 저장하지만 모두 비공개 초안이다. `/admin/courses`에서 실제 도보 동선과 운영 가능 여부를 검수한 뒤 공개 상태를 직접 켜야 한다. 같은 장소 조합은 automation key로 갱신되므로 반복 실행으로 중복 코스가 쌓이지 않는다.
 
 각 작업은 일시적인 네트워크 실패에 대비해 최대 3회 실행을 시도하고, 성공 뒤 `npm run data:verify -- --job <job>`로 최근 실행 이력과 공개 serving view를 확인한다. 실패·검증 결과는 GitHub Actions Step Summary와 `/admin/operations`의 `raw.sync_runs`/`raw.sync_errors`에서 확인한다.
 
@@ -50,9 +56,11 @@ gh run list --repo ChoiKkang/Moon_suwon_web --workflow kto-data-sync.yml --limit
 - 반려동물 sync는 `raw.kto_pet_tour`, `core.place_pet_policies`를 갱신한다.
 - 혼잡도 sync의 원천값은 실시간 현장 인원이 아니라 한국관광공사의 일 단위 방문 집중도 예측이다. 공개 화면에서는 `오늘 방문 집중도 예측`으로 표시하고, 데이터 갱신 시각을 함께 확인한다.
 - `editorial.place_copy`, `editorial.place_publish_state`, 코스 테이블은 자동 sync가 변경하지 않는다.
+- 코스 초안 워크플로는 예외적으로 `core.courses`, `editorial.course_copy`, `editorial.course_publish_state`, `core.course_places`를 원자 RPC로 갱신하지만 `is_published=false`를 유지한다. 기존에 운영자가 공개한 자동 코스는 다음 자동 실행에서 덮어쓰지 않는다.
 - 새 장소는 게시 상태가 자동으로 공개되지 않는다.
 - KTO 이미지 URL은 정규화 단계에서 HTTPS로 저장하며, 공개 query adapter도 기존 값을 HTTPS로 보정한다.
 - 예정 행사는 `core.events`에서 `public.v_upcoming_events`로 제공되며 종료일이 지난 행사는 공개 웹에서 숨긴다.
+- 익명 브라우저는 curated serving view/RPC만 사용하며 unpublished core/editorial 행을 직접 읽을 수 없다.
 
 ## 실행 이력 확인
 

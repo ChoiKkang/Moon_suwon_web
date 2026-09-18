@@ -60,7 +60,7 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 
 | 테이블 | 역할 | 주요 컬럼 |
 |---|---|---|
-| `core.courses` | 코스 기본 정의 | `id`, `slug`, `theme_tags`, `estimated_duration_min`, `walking_distance_km` |
+| `core.courses` | 코스 기본 정의 | `id`, `slug`, `theme_tags`, `estimated_duration_min`, `walking_distance_km`, `automation_source`, `automation_key` |
 | `core.course_places` | 코스와 장소의 N:M 연결 | `course_id`, `place_id`, `order_index` |
 | `editorial.course_copy` | 코스 제목·설명·SEO 문구 | `hero_title`, `subtitle`, `route_summary`, `og_*` |
 | `editorial.course_publish_state` | 코스 공개 여부·순서 | `is_published`, `display_priority`, `published_at` |
@@ -116,7 +116,7 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 | 구분 | 개수 |
 |---|---:|
 | `core.places` | 44 |
-| `public.v_imported_places` | 44 |
+| `public.v_imported_places` | 8 (공개 alias; 내부 `core.places`는 44) |
 | `editorial.place_publish_state` | 44 |
 | `public.v_published_places` | 8 |
 | `public.v_now_good_spot_candidates` | 7 |
@@ -137,14 +137,14 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 | `raw.kto_kor_images` | 348 | 일반 관광 이미지 원본 |
 | `raw.kto_crowd_forecast` | 1,980 | 집중률 원본 |
 | `raw.kto_pet_tour` | 3 | 반려동물 원본 |
-| `raw.sync_runs` | 37 | 수집 실행 이력 |
-| `raw.sync_errors` | 34 | 수집 오류 이력 |
+| `raw.sync_runs` | 44 | 수집 실행 이력 |
+| `raw.sync_errors` | 47 | 수집 오류 이력 |
 | `core.places` | 44 | 정규화 장소 |
 | `core.place_sources` | 44 | KTO 매핑 |
 | `core.place_images` | 330 | 정규화 이미지 |
 | `core.place_crowd_forecasts` | 684 | 장소별 예보 |
 | `core.events` | 6 | 행사 데이터 |
-| `core.courses` | 5 | 공개 코스 3개 포함 |
+| `core.courses` | 8 | 공개 코스 3개와 검수 대기 자동 초안 3개 포함 |
 
 코스는 현재 다음 세 개가 `public.v_home_courses`에서 조회된다.
 
@@ -184,6 +184,7 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 - 적재 후 관련 Next.js 경로 revalidate
 - `/admin/places`: 장소 공개/비공개, 노출 우선순위, 지금 추천 토글, editorial 문구 편집
 - `/admin/courses`: 코스 생성/수정, 장소 순서 변경, 공개 상태와 홈 노출 순서 관리
+- `/admin/courses`의 `자동 초안 생성`: 공개·활성·좌표가 있는 장소로 최대 3개 후보를 원자적으로 생성하며, 항상 비공개로 저장
 - `/admin/operations`: 혼잡도 최신성·분포, sync run, sync error 이력 조회
 - `/admin/events`: 행사 생성·수정·삭제와 기간/장소/프로그램 편집
 - 모든 관리자 화면과 Server Action은 `public.profiles.role = ADMIN`을 확인
@@ -218,7 +219,7 @@ npm run build
 
 현재 성공 기준:
 
-- `kto:verify`: Public serving rows 20
+- `kto:verify`: Public serving rows 8
 - `course:verify`: Published courses 3
 - 공개 웹: publish된 장소 8개와 오늘 예보 7개
 - 비공개 장소 slug: 404
@@ -232,6 +233,7 @@ npm run build
 - [ ] Vercel `NEXT_PUBLIC_SITE_URL`을 localhost가 아닌 실제 도메인으로 설정
 - [ ] 서버 전용 `SUPABASE_SERVICE_ROLE_KEY` 설정 (Vercel)
 - [ ] `KTO_SERVICE_KEY` 설정 (Vercel 서버 액션 + GitHub Actions secret; 웹 브라우저에 노출하지 않음)
+- [ ] GitHub Actions `DISCORD_WEBHOOK_URL`을 회전한 새 Discord incoming webhook으로 등록 (채팅에 노출된 기존 주소 재사용 금지)
 - [ ] Apple/Kakao의 Supabase callback과 production redirect URL 등록
 - [x] 관리자 role 표준 통일 및 개발 프로필 2개 ADMIN 지정
 - [ ] `/admin/places`, `/admin/courses`, `/admin/operations`, `/admin/events` production smoke test
@@ -241,9 +243,10 @@ npm run build
 - [ ] 반려동물 API 승인 또는 반려동물 수집 기능 비활성화 결정
 - [ ] 원격 migration 이력과 저장소 migration 동기화
 - [x] `normalize_profile_role_values` migration 원격 적용 및 `USER`/`ADMIN` check 확인
-- [ ] Supabase Advisor의 `public.spatial_ref_sys` RLS 오류와 SECURITY DEFINER 권한 검토
+- [ ] Supabase Advisor의 `public.spatial_ref_sys` RLS 오류(확장 소유 테이블이라 프로젝트 owner가 직접 변경할 수 없음)와 남은 SECURITY DEFINER 권한 검토
 - [ ] production에서 `/`, `/courses`, `/places/{published-slug}`, `/admin` smoke test
 - [x] `public.v_upcoming_events` migration 적용 확인
+- [x] 코스 원자 저장·자동 초안·공개 경계 migration 원격 적용 확인
 
 ## 참고 문서
 

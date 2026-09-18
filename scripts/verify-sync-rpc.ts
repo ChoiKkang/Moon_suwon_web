@@ -46,7 +46,14 @@ async function main() {
     throw new Error('sync_list_places returned a non-array response');
   }
 
-  console.log(`Sync RPC smoke test passed; enabled places: ${places.length}`);
+  const { data: reconciled, error: reconcileError } = await supabase.rpc('sync_reconcile_stale_runs', {
+    p_max_age_minutes: 90,
+  });
+  if (reconcileError || !Number.isInteger(Number(reconciled))) {
+    throw new Error(`sync_reconcile_stale_runs failed: ${reconcileError?.message ?? 'invalid count'}`);
+  }
+
+  console.log(`Sync RPC smoke test passed; enabled places: ${places.length}; stale runs reconciled: ${Number(reconciled)}`);
 }
 
 void main().catch((error: unknown) => {

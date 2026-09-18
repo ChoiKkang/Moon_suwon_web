@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getAdminClient, requireAdmin } from '@/lib/admin/server';
+import { planCourseDrafts, type CoursePlannerPlace } from '@/lib/courses/draft-planner';
 import type {
   AdminActionResult,
   CourseInput,
@@ -195,50 +196,30 @@ export async function saveCourseAction(input: CourseInput): Promise<AdminActionR
     let courseId = input.id;
     if (courseId !== undefined && !isUuid(courseId)) throw new Error('코스 식별자가 올바르지 않습니다.');
 
-    const coursePayload = {
-      ...(courseId ? { id: courseId } : {}),
-      slug,
-      theme_tags: themeTags,
-      estimated_duration_min: estimatedDurationMin,
-      walking_distance_km: walkingDistanceKm,
-      recommended_start_time: recommendedStartTime,
-      pet_ready_flag: Boolean(input.petReadyFlag),
-      updated_at: new Date().toISOString(),
-    };
-    const courseResult = await adminClient.schema('core').from('courses').upsert(coursePayload).select('id').single();
-    if (courseResult.error || !courseResult.data?.id) return fail('코스 기본 정보를 저장하지 못했습니다.');
-    courseId = courseResult.data.id as string;
-
-    const [copyResult, stateResult] = await Promise.all([
-      adminClient.schema('editorial').from('course_copy').upsert({
-        course_id: courseId,
+    const courseResult = await adminClient.rpc('admin_upsert_course', {
+      p_payload: {
+        ...(courseId ? { id: courseId } : {}),
+        slug,
+        theme_tags: themeTags,
+        estimated_duration_min: estimatedDurationMin,
+        walking_distance_km: walkingDistanceKm,
+        recommended_start_time: recommendedStartTime,
+        pet_ready_flag: Boolean(input.petReadyFlag),
+        is_published: Boolean(input.id ? input.isPublished : false),
+        display_priority: readNumber(input.displayPriority, '노출 우선순위', 0, 9999, true),
+        ops_memo: opsMemo,
         hero_title: heroTitle,
         subtitle,
         route_summary: routeSummary,
         og_title: ogTitle,
         og_description: ogDescription,
         og_image_url: ogImageUrl,
+        place_ids: placeIds,
         updated_by: user.id,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'course_id' }),
-      adminClient.schema('editorial').from('course_publish_state').upsert({
-        course_id: courseId,
-        is_published: Boolean(input.id ? input.isPublished : false),
-        display_priority: readNumber(input.displayPriority, '노출 우선순위', 0, 9999, true),
-        ops_memo: opsMemo,
-        published_at: input.id && input.isPublished ? new Date().toISOString() : null,
-        updated_by: user.id,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'course_id' }),
-    ]);
-    if (copyResult.error || stateResult.error) return fail('코스 운영 문구 또는 공개 상태를 저장하지 못했습니다.');
-
-    const deleteLinksResult = await adminClient.schema('core').from('course_places').delete().eq('course_id', courseId);
-    if (deleteLinksResult.error) return fail('코스의 기존 장소 연결을 정리하지 못했습니다.');
-    const insertLinksResult = await adminClient.schema('core').from('course_places').insert(
-      placeIds.map((placeId, orderIndex) => ({ course_id: courseId, place_id: placeId, order_index: orderIndex })),
-    );
-    if (insertLinksResult.error) return fail('코스 장소 순서를 저장하지 못했습니다.');
+      },
+    });
+    if (courseResult.error || !courseResult.data) return fail(`코스 저장에 실패했습니다. ${courseResult.error?.message ?? ''}`.trim());
+    courseId = courseResult.data as string;
 
     revalidatePath('/');
     revalidatePath('/courses');
@@ -247,6 +228,104 @@ export async function saveCourseAction(input: CourseInput): Promise<AdminActionR
     return { success: true, message: input.id ? '코스를 수정했습니다.' : '새 코스를 저장했습니다.', courseId };
   } catch (error) {
     return toActionError(error, '코스 저장 중 오류가 발생했습니다.');
+  }
+}
+
+type DraftPlaceRow = {
+  id: string;
+  slug: string;
+  official_name: string;
+  lat: number | string;
+  lng: number | string;
+  category: string | null;
+  is_active: boolean | null;
+};
+type DraftStateRow = {
+  place_id: string;
+  is_published: boolean | null;
+  night_suitability_score: number | string | null;
+  recommendation_boost: number | string | null;
+};
+type DraftCopyRow = { place_id: string; display_name: string | null };
+type DraftPetRow = { place_id: string; pet_policy: string | null };
+
+function draftNumber(value: number | string | null | undefined): number {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function isPetReady(policy: string | null | undefined): boolean {
+  return ['allowed', '가능', '동반 가능', '동반가능'].includes(String(policy ?? '').trim().toLowerCase());
+}
+
+export async function generateCourseDraftsAction(): Promise<AdminActionResult & { generatedCount?: number }> {
+  try {
+    const { adminClient } = await requireAdmin();
+    const [placesResult, statesResult, copiesResult, petsResult] = await Promise.all([
+      adminClient.schema('core').from('places').select('id, slug, official_name, lat, lng, category, is_active').eq('is_active', true),
+      adminClient.schema('editorial').from('place_publish_state').select('place_id, is_published, night_suitability_score, recommendation_boost'),
+      adminClient.schema('editorial').from('place_copy').select('place_id, display_name'),
+      adminClient.schema('core').from('place_pet_policies').select('place_id, pet_policy'),
+    ]);
+    const sourceError = placesResult.error ?? statesResult.error ?? copiesResult.error ?? petsResult.error;
+    if (sourceError) return fail(`코스 초안 후보를 불러오지 못했습니다. ${sourceError.message}`);
+
+    const placesById = new Map((placesResult.data as DraftPlaceRow[]).map((place) => [place.id, place]));
+    const copiesById = new Map((copiesResult.data as DraftCopyRow[]).map((copy) => [copy.place_id, copy]));
+    const petsById = new Map((petsResult.data as DraftPetRow[]).map((pet) => [pet.place_id, pet]));
+    const plannerPlaces: CoursePlannerPlace[] = (statesResult.data as DraftStateRow[]).flatMap((state) => {
+      if (state.is_published !== true) return [];
+      const place = placesById.get(state.place_id);
+      if (!place) return [];
+      return [{
+        id: place.id,
+        slug: place.slug,
+        displayName: copiesById.get(place.id)?.display_name?.trim() || place.official_name,
+        lat: draftNumber(place.lat),
+        lng: draftNumber(place.lng),
+        category: place.category,
+        nightSuitabilityScore: draftNumber(state.night_suitability_score),
+        recommendationBoost: draftNumber(state.recommendation_boost),
+        petReady: isPetReady(petsById.get(place.id)?.pet_policy),
+      }];
+    });
+
+    const plans = planCourseDrafts(plannerPlaces);
+    let generatedCount = 0;
+    for (const plan of plans) {
+      const { data, error } = await adminClient.rpc('admin_upsert_course', {
+        p_payload: {
+          slug: plan.slug,
+          theme_tags: plan.themeTags,
+          estimated_duration_min: plan.estimatedDurationMin,
+          walking_distance_km: plan.walkingDistanceKm,
+          recommended_start_time: plan.recommendedStartTime,
+          pet_ready_flag: plan.petReadyFlag,
+          is_published: false,
+          display_priority: plan.displayPriority,
+          ops_memo: plan.opsMemo,
+          hero_title: plan.heroTitle,
+          subtitle: plan.subtitle,
+          route_summary: plan.routeSummary,
+          og_title: plan.ogTitle,
+          og_description: plan.ogDescription,
+          og_image_url: null,
+          place_ids: plan.placeIds,
+          automation_source: plan.automationSource,
+          automation_key: plan.automationKey,
+        },
+      });
+      if (error || !data) return fail(`코스 초안 저장에 실패했습니다. ${error?.message ?? ''}`.trim());
+      generatedCount += 1;
+    }
+
+    revalidatePath('/');
+    revalidatePath('/courses');
+    revalidatePath('/admin');
+    revalidatePath('/admin/courses');
+    return { success: true, message: generatedCount ? `${generatedCount}개 자동 코스 초안을 생성·갱신했습니다. 검수 후 공개해 주세요.` : '생성할 수 있는 공개 장소 조합이 없습니다.', generatedCount };
+  } catch (error) {
+    return toActionError(error, '코스 초안 생성 중 오류가 발생했습니다.');
   }
 }
 
