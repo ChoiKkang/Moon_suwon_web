@@ -25,7 +25,10 @@ function validateWebhook(raw: string): string {
 
 function statusColor(status: string): number {
   if (status === 'success' || status === 'completed') return 0x2ecc71;
-  if (status === 'cancelled' || status === 'skipped') return 0xf1c40f;
+  // 브리핑 상태: healthy는 정상, review는 확인 권장, action_required는 조치 필요.
+  if (status === 'healthy') return 0x2ecc71;
+  if (status === 'cancelled' || status === 'skipped' || status === 'review') return 0xf1c40f;
+  if (status === 'action_required') return 0xe67e22;
   return 0xe74c3c;
 }
 

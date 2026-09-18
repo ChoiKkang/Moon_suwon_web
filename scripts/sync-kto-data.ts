@@ -330,12 +330,33 @@ async function syncEvents(runId: string, stats: SyncStats, options: RunnerOption
 
   for (const item of items) {
     try {
-      const normalizedEvent = normalizeFestival(item);
+      // searchFestival2 list rows omit eventplace/playtime/program, so the
+      // detail call is required to know when a festival actually runs. The
+      // course verifier uses these hours to decide whether an evening course
+      // can enter a venue that is otherwise closed.
+      let enriched = item;
+      try {
+        // Festival content type is 15 in the KTO taxonomy.
+        const intro = await kto.fetchIntro(item.contentid, '15');
+        if (intro) {
+          enriched = {
+            ...item,
+            eventplace: item.eventplace || (intro as Record<string, string>).eventplace,
+            playtime: item.playtime || (intro as Record<string, string>).playtime,
+            usetimefestival: item.usetimefestival || (intro as Record<string, string>).usetimefestival,
+            program: item.program || (intro as Record<string, string>).program,
+          };
+        }
+      } catch (error: unknown) {
+        await recordSyncError(runId, stats, error, item.contentid, !options.dryRun);
+      }
+
+      const normalizedEvent = normalizeFestival(enriched);
       if (!options.dryRun) {
         const eventId = await callRpc<string>(supabase, 'sync_kto_event_item', {
           p_run_id: runId,
           p_content_id: item.contentid,
-          p_payload: item,
+          p_payload: enriched,
           p_normalized_event: normalizedEvent,
         });
         if (eventId) stats.itemsUpserted += 1;
