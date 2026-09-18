@@ -307,7 +307,7 @@ export function LandingClient({
                         </span>
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0b1326]/70 px-3 py-2">
                           <MapPin className="h-3.5 w-3.5 text-[#ffd700]" />
-                          {course.distanceKm === null ? '거리 정보 없음' : `${course.distanceKm}km`}
+                          {course.distanceKm === null ? '준비 중' : `${course.distanceKm}km`}
                         </span>
                       </div>
                       <div className="mt-5 space-y-2">
@@ -483,7 +483,7 @@ export function LandingClient({
               </div>
             ) : events.length === 0 ? (
               <div className="rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/70 p-8 text-sm text-[#d0c6ab]">
-                현재 공개할 예정 행사가 없습니다. 운영 콘솔에서 행사 일정을 확인하세요.
+                지금은 예정된 행사가 없습니다. 새 일정이 잡히면 이곳에서 알려드립니다.
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-5 md:grid-cols-3">

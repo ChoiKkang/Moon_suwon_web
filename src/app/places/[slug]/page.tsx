@@ -82,7 +82,7 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
 
           {error ? (
             <div className="rounded-3xl border border-amber-400/30 bg-amber-400/10 p-6 text-sm text-amber-100">
-              장소 데이터를 불러오지 못했습니다. {error}
+              장소 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
             </div>
           ) : place ? (
             <div className="max-w-4xl">
