@@ -48,6 +48,12 @@ function mapCoursePlace(detail: CourseDetailRow): ImportedPlace {
     lng: null,
     contactPhone: null,
     sourceModifiedAt: null,
+    petPolicy: 'unknown',
+    petNote: null,
+    petDataStatus: 'unknown',
+    petSourceUpdatedAt: null,
+    crowdForecast: null,
+    crowdDataStatus: 'unknown',
   };
 }
 

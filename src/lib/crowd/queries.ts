@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { toSecureImageUrl } from '@/lib/media/urls';
+import type { DataFreshness } from '@/lib/pet/policy';
 
 export type NowGoodSpot = {
   placeId: string;
@@ -9,6 +10,7 @@ export type NowGoodSpot = {
   forecastScore: number | null;
   crowdLevel: string | null;
   forecastAvailable: boolean;
+  dataStatus: DataFreshness;
 };
 
 type NowGoodSpotRow = {
@@ -19,6 +21,7 @@ type NowGoodSpotRow = {
   forecast_score: number | string | null;
   crowd_level: string | null;
   forecast_available: boolean;
+  data_status: DataFreshness | null;
 };
 
 export async function getNowGoodSpots(): Promise<{
@@ -28,7 +31,7 @@ export async function getNowGoodSpots(): Promise<{
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('v_now_good_spot_candidates')
-    .select('place_id, slug, display_name, hero_image_url, forecast_score, crowd_level, forecast_available')
+    .select('place_id, slug, display_name, hero_image_url, forecast_score, crowd_level, forecast_available, data_status')
     .order('forecast_score', { ascending: true, nullsFirst: false });
 
   if (error) {
@@ -44,6 +47,7 @@ export async function getNowGoodSpots(): Promise<{
       forecastScore: spot.forecast_score === null ? null : Number(spot.forecast_score),
       crowdLevel: spot.crowd_level,
       forecastAvailable: spot.forecast_available,
+      dataStatus: spot.data_status ?? (spot.forecast_available ? 'fresh' : 'unknown'),
     })),
     error: null,
   };

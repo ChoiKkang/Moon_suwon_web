@@ -35,6 +35,12 @@ function mapPlace(place: ImportedPlaceRow): ImportedPlace {
     lng: place.lng === null ? null : Number(place.lng),
     contactPhone: place.contact_phone,
     sourceModifiedAt: place.source_modified_at,
+    petPolicy: 'unknown',
+    petNote: null,
+    petDataStatus: 'unknown',
+    petSourceUpdatedAt: null,
+    crowdForecast: null,
+    crowdDataStatus: 'unknown',
   };
 }
 

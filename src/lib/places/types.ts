@@ -1,3 +1,5 @@
+import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
+
 export type ImportedPlace = {
   id: string;
   slug: string;
@@ -11,4 +13,14 @@ export type ImportedPlace = {
   lng: number | null;
   contactPhone: string | null;
   sourceModifiedAt: string | null;
+  petPolicy: PetPolicy;
+  petNote: string | null;
+  petDataStatus: DataFreshness;
+  petSourceUpdatedAt: string | null;
+  crowdForecast: {
+    forecastDate: string | null;
+    rate: number | null;
+    level: string | null;
+  } | null;
+  crowdDataStatus: DataFreshness;
 };
