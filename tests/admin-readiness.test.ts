@@ -17,6 +17,7 @@ function place(overrides: Partial<AdminPlace> = {}): AdminPlace {
     sourceOverviewRaw: null,
     category: null,
     ktoContentId: '2613658',
+    ktoContentTypeId: '12',
     ingestionStatus: 'approved',
     firstSeenAt: null,
     lastSeenAt: null,

@@ -40,6 +40,7 @@ type PlaceRow = {
 type PlaceSourceRow = {
   place_id: string;
   kto_content_id: string | null;
+  kto_content_type_id: string | null;
   ingestion_status: CandidateIngestionStatus | null;
   first_seen_at: string | null;
   last_seen_at: string | null;
@@ -264,7 +265,7 @@ function mapCopy(row: PlaceCopyRow | undefined): AdminPlaceCopy {
 async function getAdminPlacesForClient(adminClient: ReturnType<typeof getAdminClient>): Promise<AdminQueryResult<AdminPlace[]>> {
   const [placesResult, sourceResult, imageResult, stateResult, copyResult, petResult] = await Promise.all([
     adminClient.schema('core').from('places').select('id, slug, official_name, address_full, lat, lng, contact_phone, source_overview_raw, category, is_active, source_modified_at, updated_at').order('official_name', { ascending: true }),
-    adminClient.schema('core').from('place_sources').select('place_id, kto_content_id, ingestion_status, first_seen_at, last_seen_at'),
+    adminClient.schema('core').from('place_sources').select('place_id, kto_content_id, kto_content_type_id, ingestion_status, first_seen_at, last_seen_at'),
     adminClient.schema('core').from('place_images').select('place_id, image_url, is_hero').eq('is_hero', true),
     adminClient.schema('editorial').from('place_publish_state').select('place_id, is_published, display_priority, is_now_good_enabled, night_suitability_score, recommended_from, recommended_until, recommendation_boost, ops_memo'),
     adminClient.schema('editorial').from('place_copy').select('id, place_id, display_name, short_description, night_highlight, photo_tip, mission_title, mission_body, mission_prompt, couple_question, short_story'),
@@ -301,6 +302,7 @@ async function getAdminPlacesForClient(adminClient: ReturnType<typeof getAdminCl
         sourceOverviewRaw: place.source_overview_raw,
         category: place.category,
         ktoContentId: source?.kto_content_id ?? null,
+        ktoContentTypeId: source?.kto_content_type_id ?? null,
         ingestionStatus: asIngestionStatus(source?.ingestion_status),
         firstSeenAt: source?.first_seen_at ?? null,
         lastSeenAt: source?.last_seen_at ?? null,
@@ -336,6 +338,7 @@ function mapCandidate(place: AdminPlace): AdminCandidate {
     displayName: place.displayName,
     officialName: place.officialName,
     ktoContentId: place.ktoContentId,
+    ktoContentTypeId: place.ktoContentTypeId,
     ingestionStatus: place.ingestionStatus,
     firstSeenAt: place.firstSeenAt,
     lastSeenAt: place.lastSeenAt,

@@ -29,6 +29,7 @@ export type AdminPlace = {
   sourceOverviewRaw: string | null;
   category: string | null;
   ktoContentId: string | null;
+  ktoContentTypeId: string | null;
   ingestionStatus: CandidateIngestionStatus;
   firstSeenAt: string | null;
   lastSeenAt: string | null;
@@ -65,6 +66,7 @@ export type AdminCandidate = {
   displayName: string;
   officialName: string;
   ktoContentId: string | null;
+  ktoContentTypeId: string | null;
   ingestionStatus: CandidateIngestionStatus;
   firstSeenAt: string | null;
   lastSeenAt: string | null;
