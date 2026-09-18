@@ -44,8 +44,8 @@ test('fetches a paginated pet list from the dedicated KTO pet endpoint', async (
 
   const url = new URL(requestedUrl);
   assert.equal(url.origin + url.pathname, 'https://apis.data.go.kr/B551011/KorPetTourService2/petTourSyncList2');
-  assert.equal(url.searchParams.get('areaCode'), '41');
-  assert.equal(url.searchParams.get('sigunguCode'), '111');
+  assert.equal(url.searchParams.get('lDongRegnCd'), '41');
+  assert.equal(url.searchParams.get('lDongSignguCd'), '111');
   assert.equal(url.searchParams.get('contentTypeId'), '12');
   assert.equal(url.searchParams.get('pageNo'), '2');
   assert.equal(url.searchParams.get('numOfRows'), '1');

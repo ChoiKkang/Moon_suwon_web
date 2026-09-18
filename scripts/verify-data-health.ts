@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 loadEnvConfig(process.cwd());
 
-type SyncJob = 'content' | 'crowd' | 'pet';
+type SyncJob = 'content' | 'events' | 'crowd' | 'pet';
 type RunRow = {
   source: string;
   status: string;
@@ -19,9 +19,10 @@ type ForecastHealthRow = {
   source_updated_at: string | null;
 };
 
-const JOBS: SyncJob[] = ['content', 'crowd', 'pet'];
+const JOBS: SyncJob[] = ['content', 'events', 'crowd', 'pet'];
 const MAX_AGE_HOURS: Record<SyncJob, number> = {
   crowd: 36,
+  events: 36,
   pet: 24 * 8,
   content: 24 * 40,
 };
@@ -101,9 +102,9 @@ async function checkLatestRun(job: SyncJob, failures: string[], warnings: string
 
 async function checkPublicServing(failures: string[], warnings: string[]) {
   const [placesResult, coursesResult, detailResult, eventsResult, forecastResult] = await Promise.all([
-    publicClient.from('v_published_places').select('id, slug, hero_image_url, short_description, kto_content_id'),
+    publicClient.from('v_published_places').select('id, slug, hero_image_url, short_description, kto_content_id, pet_policy, pet_data_status, crowd_data_status'),
     publicClient.from('v_home_courses').select('id, slug, hero_title, spot_count'),
-    publicClient.from('v_course_detail').select('course_id, place_id, place_slug, display_name'),
+    publicClient.from('v_course_detail').select('course_id, place_id, place_slug, display_name, pet_policy, pet_data_status'),
     publicClient.from('v_upcoming_events').select('id, event_name, start_date, end_date'),
     serviceClient
       .schema('core')
@@ -149,6 +150,11 @@ async function checkPublicServing(failures: string[], warnings: string[]) {
   }
   if (brokenLinks.length > 0) {
     failures.push(`공개 코스에 비공개 장소 링크 ${brokenLinks.length}건이 있습니다: ${brokenLinks.join(', ')}`);
+  }
+
+  const missingPetContract = places.filter((place) => !place.pet_policy || !place.pet_data_status).map((place) => place.slug as string);
+  if (missingPetContract.length > 0) {
+    failures.push(`공개 장소 반려동물 데이터 계약이 없는 행 ${missingPetContract.length}건: ${missingPetContract.join(', ')}`);
   }
 
   const missingCopy = places.filter((place) => !place.short_description).map((place) => place.slug as string);

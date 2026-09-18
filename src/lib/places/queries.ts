@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { ImportedPlace } from './types';
 import { toSecureImageUrl } from '@/lib/media/urls';
+import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
 
 type PlaceViewName = 'v_imported_places' | 'v_published_places';
 
@@ -17,9 +18,25 @@ type ImportedPlaceRow = {
   lng: number | string | null;
   contact_phone: string | null;
   source_modified_at: string | null;
+  pet_policy?: string | null;
+  pet_note?: string | null;
+  pet_data_status?: string | null;
+  pet_source_updated_at?: string | null;
+  crowd_forecast_date?: string | null;
+  crowd_forecast_rate?: number | string | null;
+  crowd_forecast_level?: string | null;
+  crowd_data_status?: string | null;
 };
 
-const PLACE_SELECT = 'id, slug, display_name, address_full, short_description, hero_image_url, hero_thumbnail_url, kto_content_id, lat, lng, contact_phone, source_modified_at';
+const PLACE_SELECT = 'id, slug, display_name, address_full, short_description, hero_image_url, hero_thumbnail_url, kto_content_id, lat, lng, contact_phone, source_modified_at, pet_policy, pet_note, pet_data_status, pet_source_updated_at, crowd_forecast_date, crowd_forecast_rate, crowd_forecast_level, crowd_data_status';
+
+function asPetPolicy(value: string | null | undefined): PetPolicy {
+  return value === 'allowed' || value === 'partial' || value === 'not_allowed' || value === 'unknown' ? value : 'unknown';
+}
+
+function asFreshness(value: string | null | undefined): DataFreshness {
+  return value === 'fresh' || value === 'stale' || value === 'unavailable' || value === 'unknown' ? value : 'unknown';
+}
 
 function mapPlace(place: ImportedPlaceRow): ImportedPlace {
   return {
@@ -35,12 +52,18 @@ function mapPlace(place: ImportedPlaceRow): ImportedPlace {
     lng: place.lng === null ? null : Number(place.lng),
     contactPhone: place.contact_phone,
     sourceModifiedAt: place.source_modified_at,
-    petPolicy: 'unknown',
-    petNote: null,
-    petDataStatus: 'unknown',
-    petSourceUpdatedAt: null,
-    crowdForecast: null,
-    crowdDataStatus: 'unknown',
+    petPolicy: asPetPolicy(place.pet_policy),
+    petNote: place.pet_note ?? null,
+    petDataStatus: asFreshness(place.pet_data_status),
+    petSourceUpdatedAt: place.pet_source_updated_at ?? null,
+    crowdForecast: place.crowd_forecast_date || place.crowd_forecast_rate !== null && place.crowd_forecast_rate !== undefined || place.crowd_forecast_level
+      ? {
+          forecastDate: place.crowd_forecast_date ?? null,
+          rate: place.crowd_forecast_rate === null || place.crowd_forecast_rate === undefined ? null : Number(place.crowd_forecast_rate),
+          level: place.crowd_forecast_level ?? null,
+        }
+      : null,
+    crowdDataStatus: asFreshness(place.crowd_data_status),
   };
 }
 

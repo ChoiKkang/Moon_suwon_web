@@ -46,6 +46,13 @@ async function main() {
     throw new Error('sync_list_places returned a non-array response');
   }
 
+  const { data: petQueue, error: petQueueError } = await supabase.rpc('sync_list_pet_enrichment', {
+    p_limit: 5,
+  });
+  if (petQueueError || !Array.isArray(petQueue)) {
+    throw new Error(`sync_list_pet_enrichment failed: ${petQueueError?.message ?? 'non-array response'}`);
+  }
+
   const { data: reconciled, error: reconcileError } = await supabase.rpc('sync_reconcile_stale_runs', {
     p_max_age_minutes: 90,
   });
@@ -53,7 +60,7 @@ async function main() {
     throw new Error(`sync_reconcile_stale_runs failed: ${reconcileError?.message ?? 'invalid count'}`);
   }
 
-  console.log(`Sync RPC smoke test passed; enabled places: ${places.length}; stale runs reconciled: ${Number(reconciled)}`);
+  console.log(`Sync RPC smoke test passed; enabled places: ${places.length}; pet queue: ${petQueue.length}; stale runs reconciled: ${Number(reconciled)}`);
 }
 
 void main().catch((error: unknown) => {

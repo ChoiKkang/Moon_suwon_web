@@ -7,18 +7,28 @@ on:
         description: 동기화할 데이터 영역
         required: true
         type: choice
-        options:
-          - content
-          - crowd
-          - pet
+      options:
+        - content
+        - events
+        - crowd
+        - pet
+      dry_run:
+        description: API 조회만 하고 DB에는 저장하지 않기
+        required: false
+        default: false
+        type: boolean
+      limit:
+        description: 미리보기 항목 제한(비워두면 전체)
+        required: false
+        default: ''
+        type: string
   schedule:
     # GitHub Actions cron is UTC (KST = UTC+9).
     - cron: '30 17 * * *'
-    # Monday 03:00 KST = Sunday 18:00 UTC.
-    - cron: '0 18 * * 0'
-    # Run on the UTC dates that can contain the first day in KST, then guard
-    # on Seoul's local date below so this is exactly the 1st at 04:00 KST.
-    - cron: '0 19 28-31 * *'
+    - cron: '0 17 * * *'
+    - cron: '30 18 * * *'
+    # Sunday 03:00 KST = Saturday 18:00 UTC.
+    - cron: '0 18 * * 6'
 
 permissions:
   contents: read
@@ -80,25 +90,19 @@ jobs:
           else
             case "$EVENT_SCHEDULE" in
               '30 17 * * *') job='crowd' ;;
-              '0 18 * * 0') job='pet' ;;
-              '0 19 28-31 * *') job='content' ;;
+              '0 17 * * *') job='events' ;;
+              '30 18 * * *') job='pet' ;;
+              '0 18 * * 6') job='content' ;;
               *) echo "Unknown schedule: $EVENT_SCHEDULE" >&2; exit 1 ;;
             esac
           fi
 
           case "$job" in
-            content|crowd|pet) ;;
+            content|events|crowd|pet) ;;
             *) echo "Unknown sync job: $job" >&2; exit 1 ;;
           esac
 
           should_run=true
-          if [[ "$EVENT_NAME" != "workflow_dispatch" && "$job" == "content" ]]; then
-            seoul_day="$(TZ=Asia/Seoul date +%d)"
-            if [[ "$seoul_day" != "01" ]]; then
-              should_run=false
-              echo "Skipping monthly content sync: Seoul local date is day $seoul_day"
-            fi
-          fi
 
           echo "job=$job" >> "$GITHUB_OUTPUT"
           echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
@@ -120,9 +124,14 @@ jobs:
         run: |
           set -euo pipefail
           job="${{ steps.resolve.outputs.job }}"
+          dry_run="${{ inputs.dry_run || 'false' }}"
+          limit="${{ inputs.limit || '' }}"
+          args=(--job "$job")
+          if [[ "$dry_run" == "true" ]]; then args+=(--dry-run); fi
+          if [[ -n "$limit" ]]; then args+=(--limit "$limit"); fi
           for attempt in 1 2 3; do
             echo "Starting $job sync (attempt $attempt/3)"
-            if npm run sync:data -- --job "$job"; then
+            if npm run sync:data -- "${args[@]}"; then
               exit 0
             fi
             if [[ "$attempt" -lt 3 ]]; then

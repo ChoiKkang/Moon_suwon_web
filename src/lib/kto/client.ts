@@ -94,8 +94,10 @@ export class KtoClient {
     return this.requestPage<KtoPetListItem>(
       'petTourSyncList2',
       {
-        areaCode: options.areaCode,
-        sigunguCode: options.sigunguCode,
+        // KorPetTourService2 filters the legal-dong codes even though the
+        // portal UI labels them as area/sigungu codes.
+        lDongRegnCd: options.areaCode,
+        lDongSignguCd: options.sigunguCode,
         contentTypeId: options.contentTypeId,
         numOfRows: String(options.numOfRows),
         pageNo: String(options.pageNo),

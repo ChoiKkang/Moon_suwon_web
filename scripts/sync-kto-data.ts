@@ -3,22 +3,44 @@ import { appendFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getRequiredServerEnv } from '../src/lib/env/server';
 import { KtoApiError, KtoClient } from '../src/lib/kto/client';
-import { normalizeImages, normalizePlace } from '../src/lib/kto/normalize';
-import type { KtoCrowdForecastItem, KtoImageItem, KtoListItem, KtoPetTourItem } from '../src/lib/kto/types';
+import {
+  classifySyncStatus,
+  paginatePetCandidates,
+  type PetDiscoveryConfig,
+  type PetEnrichmentRow,
+} from '../src/lib/kto/pet-sync';
+import { normalizeFestival, normalizeImages, normalizePlace } from '../src/lib/kto/normalize';
+import type {
+  KtoCrowdForecastItem,
+  KtoFestivalItem,
+  KtoImageItem,
+  KtoListItem,
+  KtoPetTourItem,
+} from '../src/lib/kto/types';
 
 loadEnvConfig(process.cwd());
 
-type SyncJob = 'content' | 'crowd' | 'pet';
-type SyncPlace = { place_id: string; kto_content_id: string; official_name: string };
+export type SyncJob = 'content' | 'events' | 'crowd' | 'pet';
+type SyncPlace = PetEnrichmentRow & { place_id: string };
+type RunnerOptions = { job: SyncJob; dryRun: boolean; limit: number | null };
 
-type SyncStats = {
+export type SyncStats = {
   itemsFetched: number;
   itemsUpserted: number;
   errorCount: number;
   zeroResultContentIds: string[];
+  candidatesDiscovered: number;
+  staleMarked: number;
+  detailsAttempted: number;
 };
 
-const PET_CONCURRENCY = 6;
+const PET_CONCURRENCY = 3;
+const PET_DISCOVERY: PetDiscoveryConfig = {
+  areaCode: '41',
+  sigunguCodes: ['111', '113', '115', '117'],
+  contentTypeIds: ['12', '14', '15', '28', '32', '38', '39'],
+  pageSize: 100,
+};
 
 const supabase = createClient(
   getRequiredServerEnv('NEXT_PUBLIC_SUPABASE_URL'),
@@ -38,30 +60,47 @@ function writeError(message: string) {
   process.stderr.write(`${message}\n`);
 }
 
-function writeGithubOutput(stats: SyncStats, status: 'completed' | 'failed') {
+function writeGithubOutput(stats: SyncStats, status: 'completed' | 'partial' | 'failed') {
   const outputPath = process.env.GITHUB_OUTPUT;
   if (!outputPath) return;
-  appendFileSync(outputPath, `status=${status}\nitems_fetched=${stats.itemsFetched}\nitems_upserted=${stats.itemsUpserted}\nerror_count=${stats.errorCount}\n`);
+  appendFileSync(
+    outputPath,
+    `status=${status}\nitems_fetched=${stats.itemsFetched}\nitems_upserted=${stats.itemsUpserted}\nerror_count=${stats.errorCount}\n`,
+  );
 }
 
-function parseJob(): SyncJob {
-  const index = process.argv.indexOf('--job');
-  const value = index >= 0 ? process.argv[index + 1] : undefined;
-
-  if (value === 'content' || value === 'crowd' || value === 'pet') {
-    return value;
-  }
+function parseOptions(): RunnerOptions {
+  const jobIndex = process.argv.indexOf('--job');
+  const jobValue = jobIndex >= 0 ? process.argv[jobIndex + 1] : undefined;
+  const limitIndex = process.argv.indexOf('--limit');
+  const limitValue = limitIndex >= 0 ? Number(process.argv[limitIndex + 1]) : null;
 
   if (process.argv.includes('--help') || process.argv.includes('-h')) {
-    writeLine('Usage: npm run sync:data -- --job content|crowd|pet');
+    writeLine('Usage: npm run sync:data -- --job content|events|crowd|pet [--dry-run] [--limit N]');
     process.exit(0);
   }
 
-  throw new Error('작업을 지정해야 합니다. --job content|crowd|pet 중 하나를 사용하세요.');
+  if (jobValue !== 'content' && jobValue !== 'events' && jobValue !== 'crowd' && jobValue !== 'pet') {
+    throw new Error('작업을 지정해야 합니다. --job content|events|crowd|pet 중 하나를 사용하세요.');
+  }
+
+  if (limitValue !== null && (!Number.isInteger(limitValue) || limitValue < 0)) {
+    throw new Error('--limit은 0 이상의 정수여야 합니다.');
+  }
+
+  return { job: jobValue, dryRun: process.argv.includes('--dry-run'), limit: limitValue };
 }
 
 function createStats(): SyncStats {
-  return { itemsFetched: 0, itemsUpserted: 0, errorCount: 0, zeroResultContentIds: [] };
+  return {
+    itemsFetched: 0,
+    itemsUpserted: 0,
+    errorCount: 0,
+    zeroResultContentIds: [],
+    candidatesDiscovered: 0,
+    staleMarked: 0,
+    detailsAttempted: 0,
+  };
 }
 
 function errorDetails(error: unknown): { endpoint: string; code: string | null; message: string } {
@@ -80,36 +119,28 @@ function errorDetails(error: unknown): { endpoint: string; code: string | null; 
   };
 }
 
-function isPetAccessError(error: unknown): boolean {
-  if (!(error instanceof KtoApiError)) {
-    return false;
-  }
-
-  return error.status === 401 || error.status === 403 || error.resultCode === '20' || error.resultCode === '30';
-}
-
 async function callRpc<T>(client: SupabaseClient, functionName: string, params: Record<string, unknown>): Promise<T> {
   const { data, error } = await client.rpc(functionName, params);
-  if (error) {
-    throw new Error(`${functionName} failed: ${error.message}`);
-  }
+  if (error) throw new Error(`${functionName} failed: ${error.message}`);
   return data as T;
 }
 
-async function recordSyncError(runId: string, stats: SyncStats, error: unknown, contentId?: string) {
+async function recordSyncError(runId: string, stats: SyncStats, error: unknown, contentId?: string, persist = true) {
   const details = errorDetails(error);
   stats.errorCount += 1;
 
-  try {
-    await callRpc(supabase, 'sync_run_error', {
-      p_run_id: runId,
-      p_endpoint: details.endpoint,
-      p_content_id: contentId ?? null,
-      p_error_code: details.code,
-      p_message: details.message,
-    });
-  } catch (recordError: unknown) {
-    writeError(`sync error 기록 실패: ${recordError instanceof Error ? recordError.message : String(recordError)}`);
+  if (persist && runId !== 'dry-run') {
+    try {
+      await callRpc(supabase, 'sync_run_error', {
+        p_run_id: runId,
+        p_endpoint: details.endpoint,
+        p_content_id: contentId ?? null,
+        p_error_code: details.code,
+        p_message: details.message,
+      });
+    } catch (recordError: unknown) {
+      writeError(`sync error 기록 실패: ${recordError instanceof Error ? recordError.message : String(recordError)}`);
+    }
   }
 
   writeError(`${details.endpoint}${contentId ? ` (${contentId})` : ''}: ${details.message}`);
@@ -130,11 +161,9 @@ function toImageRows(listItem: KtoListItem, imageItems: KtoImageItem[]) {
   }));
 }
 
-async function syncContent(runId: string, stats: SyncStats) {
+async function syncContent(runId: string, stats: SyncStats, options: RunnerOptions): Promise<'completed' | 'partial'> {
   const attractions = await kto.fetchSuwonAttractions();
-  if (attractions.length === 0) {
-    throw new Error('KTO areaBasedList2에서 수원 관광지 목록을 받지 못했습니다.');
-  }
+  if (attractions.length === 0) throw new Error('KTO areaBasedList2에서 수원 관광지 목록을 받지 못했습니다.');
 
   stats.itemsFetched = attractions.length;
   writeLine(`content: fetched ${attractions.length}`);
@@ -146,51 +175,48 @@ async function syncContent(runId: string, stats: SyncStats) {
     try {
       detail = await kto.fetchDetail(listItem.contentid);
     } catch (error: unknown) {
-      await recordSyncError(runId, stats, error, listItem.contentid);
+      await recordSyncError(runId, stats, error, listItem.contentid, !options.dryRun);
     }
 
     try {
       images = await kto.fetchImages(listItem.contentid);
     } catch (error: unknown) {
-      await recordSyncError(runId, stats, error, listItem.contentid);
+      await recordSyncError(runId, stats, error, listItem.contentid, !options.dryRun);
     }
 
     try {
       const normalizedPlace = normalizePlace(listItem, detail);
-      const placeId = await callRpc<string>(supabase, 'sync_kto_content_item', {
-        p_run_id: runId,
-        p_content_id: listItem.contentid,
-        p_content_type_id: listItem.contenttypeid,
-        p_list_payload: listItem,
-        p_detail_payload: detail ?? {},
-        p_normalized_place: normalizedPlace,
-        p_images: toImageRows(listItem, images),
-      });
-
-      if (placeId) {
+      if (!options.dryRun) {
+        const placeId = await callRpc<string>(supabase, 'sync_kto_content_item', {
+          p_run_id: runId,
+          p_content_id: listItem.contentid,
+          p_content_type_id: listItem.contenttypeid,
+          p_list_payload: listItem,
+          p_detail_payload: detail ?? {},
+          p_normalized_place: normalizedPlace,
+          p_images: toImageRows(listItem, images),
+        });
+        if (placeId) stats.itemsUpserted += 1;
+      } else {
         stats.itemsUpserted += 1;
       }
     } catch (error: unknown) {
-      await recordSyncError(runId, stats, error, listItem.contentid);
+      await recordSyncError(runId, stats, error, listItem.contentid, !options.dryRun);
     }
   }
+
+  return stats.errorCount > 0 ? 'partial' : 'completed';
 }
 
 function toIsoDate(value: string): string {
-  if (!/^\d{8}$/.test(value)) {
-    throw new Error(`잘못된 혼잡도 날짜입니다: ${value}`);
-  }
-
+  if (!/^\d{8}$/.test(value)) throw new Error(`잘못된 혼잡도 날짜입니다: ${value}`);
   return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
 }
 
 function toCrowdRows(items: KtoCrowdForecastItem[]) {
   return items.flatMap((item) => {
     const rate = Number(item.cnctrRate);
-    if (!Number.isFinite(rate) || !item.areaCd || !item.signguCd || !item.tAtsNm) {
-      return [];
-    }
-
+    if (!Number.isFinite(rate) || !item.areaCd || !item.signguCd || !item.tAtsNm) return [];
     return [{
       area_code: item.areaCd,
       sigungu_code: item.signguCd,
@@ -202,139 +228,254 @@ function toCrowdRows(items: KtoCrowdForecastItem[]) {
   });
 }
 
-async function syncCrowd(runId: string, stats: SyncStats) {
+async function syncCrowd(runId: string, stats: SyncStats, options: RunnerOptions): Promise<'completed' | 'partial'> {
   const items = await kto.fetchCrowdForecasts({ areaCode: '41', sigunguCode: '41115' });
   if (items.length === 0) {
-    throw new Error('TatsCnctrRateService에서 수원 혼잡도 예보를 받지 못했습니다.');
+    writeLine('crowd: valid zero-result response');
+    return 'completed';
   }
 
   const rows = toCrowdRows(items);
   stats.itemsFetched = rows.length;
   if (rows.length === 0) {
-    throw new Error('혼잡도 응답에 유효한 예보 행이 없습니다.');
+    writeLine('crowd: response contained no valid rows');
+    return 'partial';
   }
 
-  const matchedCount = await callRpc<number>(supabase, 'sync_kto_crowd_batch', {
-    p_run_id: runId,
-    p_rows: rows,
-  });
+  if (!options.dryRun) {
+    const matchedCount = await callRpc<number>(supabase, 'sync_kto_crowd_batch', { p_run_id: runId, p_rows: rows });
+    stats.itemsUpserted = Number(matchedCount) || 0;
+  } else {
+    stats.itemsUpserted = rows.length;
+  }
 
-  stats.itemsUpserted = Number(matchedCount) || 0;
   writeLine(`crowd: fetched ${stats.itemsFetched}, matched/upserted ${stats.itemsUpserted}`);
+  return stats.errorCount > 0 ? 'partial' : 'completed';
 }
 
-async function syncPet(runId: string, stats: SyncStats) {
-  const places = await callRpc<SyncPlace[]>(supabase, 'sync_list_places', {});
-  if (places.length === 0) {
-    throw new Error('반려동물 동기화 대상 KTO 장소가 없습니다.');
+function seoulDate(offsetDays = 0): string {
+  const seoul = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  seoul.setDate(seoul.getDate() + offsetDays);
+  return `${seoul.getFullYear()}${String(seoul.getMonth() + 1).padStart(2, '0')}${String(seoul.getDate()).padStart(2, '0')}`;
+}
+
+async function paginateFestivalItems(options: { startDate: string; endDate: string; limit: number | null }): Promise<KtoFestivalItem[]> {
+  const items: KtoFestivalItem[] = [];
+  const seen = new Set<string>();
+  const pageSize = 100;
+  let pageNo = 1;
+
+  while (true) {
+    const page = await kto.fetchSuwonFestivals({ eventStartDate: options.startDate, eventEndDate: options.endDate, pageNo, numOfRows: pageSize });
+    for (const item of page.items) {
+      if (!item.contentid || seen.has(item.contentid)) continue;
+      seen.add(item.contentid);
+      items.push(item);
+      if (options.limit !== null && items.length >= options.limit) return items;
+    }
+    const rowsPerPage = page.numOfRows || pageSize;
+    if (page.items.length === 0 || pageNo * rowsPerPage >= (page.totalCount || page.items.length)) break;
+    pageNo += 1;
+  }
+  return items;
+}
+
+async function syncEvents(runId: string, stats: SyncStats, options: RunnerOptions): Promise<'completed' | 'partial'> {
+  const items = await paginateFestivalItems({ startDate: seoulDate(), endDate: seoulDate(120), limit: options.limit });
+  stats.itemsFetched = items.length;
+  if (items.length === 0) {
+    writeLine('events: valid zero-result response');
+    return 'completed';
   }
 
-  stats.itemsFetched = places.length;
-  let successfulResults = 0;
-  writeLine(`pet: checking ${places.length} places`);
+  for (const item of items) {
+    try {
+      const normalizedEvent = normalizeFestival(item);
+      if (!options.dryRun) {
+        const eventId = await callRpc<string>(supabase, 'sync_kto_event_item', {
+          p_run_id: runId,
+          p_content_id: item.contentid,
+          p_payload: item,
+          p_normalized_event: normalizedEvent,
+        });
+        if (eventId) stats.itemsUpserted += 1;
+      } else {
+        stats.itemsUpserted += 1;
+      }
+    } catch (error: unknown) {
+      await recordSyncError(runId, stats, error, item.contentid, !options.dryRun);
+    }
+  }
 
-  for (let offset = 0; offset < places.length; offset += PET_CONCURRENCY) {
-    const batch = places.slice(offset, offset + PET_CONCURRENCY);
-    let accessError: Error | null = null;
+  writeLine(`events: fetched ${stats.itemsFetched}, upserted ${stats.itemsUpserted}`);
+  return stats.errorCount > 0 ? 'partial' : 'completed';
+}
 
+async function syncPet(runId: string, stats: SyncStats, options: RunnerOptions): Promise<'completed' | 'partial' | 'failed'> {
+  const discovery = await paginatePetCandidates(kto, { ...PET_DISCOVERY, limit: options.limit ?? undefined });
+  stats.itemsFetched = discovery.length;
+  stats.candidatesDiscovered = discovery.length;
+  if (discovery.length === 0) {
+    writeLine('pet: valid zero-result discovery response');
+    return 'completed';
+  }
+
+  const localEnrichment: SyncPlace[] = [];
+  for (const candidate of discovery) {
+    try {
+      const normalizedPlace = normalizePlace(candidate, null);
+      if (!options.dryRun) {
+        const source = candidate as KtoListItem & { __areaCode?: string; __sigunguCode?: string };
+        await callRpc<string | null>(supabase, 'sync_kto_pet_candidate', {
+          p_run_id: runId,
+          p_content_id: candidate.contentid,
+          p_content_type_id: candidate.contenttypeid,
+          p_payload: candidate,
+          p_normalized_place: normalizedPlace,
+          p_area_code: source.__areaCode ?? PET_DISCOVERY.areaCode,
+          p_sigungu_code: source.__sigunguCode ?? '',
+        });
+      }
+      localEnrichment.push({
+        place_id: '',
+        kto_content_id: candidate.contentid,
+        source_modified_at: normalizedPlace.source_modified_at,
+        source_updated_at: null,
+        last_pet_checked_at: null,
+        data_status: 'unknown',
+      });
+    } catch (error: unknown) {
+      await recordSyncError(runId, stats, error, candidate.contentid, !options.dryRun);
+    }
+  }
+
+  const enrichment = options.dryRun
+    ? localEnrichment
+    : await callRpc<SyncPlace[]>(supabase, 'sync_list_pet_enrichment', { p_limit: options.limit ?? 250 });
+  stats.detailsAttempted = enrichment.length;
+  writeLine(`pet: discovered ${discovery.length}, enriching ${enrichment.length}`);
+
+  for (let offset = 0; offset < enrichment.length; offset += PET_CONCURRENCY) {
+    const batch = enrichment.slice(offset, offset + PET_CONCURRENCY);
     await Promise.all(batch.map(async (place) => {
       let pet: KtoPetTourItem | null;
-
       try {
         pet = await kto.fetchPetDetail(place.kto_content_id);
       } catch (error: unknown) {
-        await recordSyncError(runId, stats, error, place.kto_content_id);
-        if (isPetAccessError(error) && !accessError) {
-          accessError = new Error('KorService2 detailPetTour2 사용 권한이 없습니다. 공공데이터포털에서 해당 API 활용신청/승인을 확인하세요.');
-        }
+        await recordSyncError(runId, stats, error, place.kto_content_id, !options.dryRun);
         return;
       }
 
       if (!pet) {
         stats.zeroResultContentIds.push(place.kto_content_id);
+        if (!options.dryRun) {
+          try {
+            await callRpc<boolean>(supabase, 'sync_mark_pet_check', {
+              p_run_id: runId,
+              p_content_id: place.kto_content_id,
+              p_status: 'unavailable',
+              p_payload: {},
+            });
+          } catch (error: unknown) {
+            await recordSyncError(runId, stats, error, place.kto_content_id, true);
+          }
+        }
         return;
       }
 
-      try {
-        const upserted = await callRpc<boolean>(supabase, 'sync_kto_pet_item', {
-          p_run_id: runId,
-          p_content_id: place.kto_content_id,
-          p_payload: pet,
-        });
-        if (upserted) {
-          successfulResults += 1;
-          stats.itemsUpserted += 1;
+      if (!options.dryRun) {
+        try {
+          const upserted = await callRpc<boolean>(supabase, 'sync_kto_pet_item', {
+            p_run_id: runId,
+            p_content_id: place.kto_content_id,
+            p_payload: pet,
+          });
+          if (upserted) stats.itemsUpserted += 1;
+        } catch (error: unknown) {
+          await recordSyncError(runId, stats, error, place.kto_content_id, true);
         }
-      } catch (error: unknown) {
-        await recordSyncError(runId, stats, error, place.kto_content_id);
+      } else {
+        stats.itemsUpserted += 1;
       }
     }));
+  }
 
-    if (accessError) {
-      throw accessError;
+  if (!options.dryRun) {
+    try {
+      stats.staleMarked = Number(await callRpc<number>(supabase, 'sync_finalize_pet_discovery', { p_run_id: runId })) || 0;
+    } catch (error: unknown) {
+      await recordSyncError(runId, stats, error, undefined, true);
     }
   }
 
-  if (successfulResults === 0) {
-    throw new Error('반려동물 API에서 저장할 수 있는 결과가 없습니다. API 승인 상태와 contentId를 확인하세요.');
-  }
-
-  writeLine(`pet: fetched ${stats.itemsFetched}, upserted ${stats.itemsUpserted}, zero-result ${stats.zeroResultContentIds.length}`);
+  writeLine(`pet: discovered ${stats.candidatesDiscovered}, attempted ${stats.detailsAttempted}, upserted ${stats.itemsUpserted}, zero-result ${stats.zeroResultContentIds.length}, stale ${stats.staleMarked}`);
+  return classifySyncStatus({ listRequestFailed: false, itemErrors: stats.errorCount, itemsAttempted: stats.detailsAttempted, validEmpty: stats.zeroResultContentIds.length });
 }
 
 async function main() {
-  const job = parseJob();
-  const source = `GitHubActions:${job}`;
+  const options = parseOptions();
+  const source = `GitHubActions:${options.job}`;
   const stats = createStats();
-  try {
-    const reconciled = await callRpc<number>(supabase, 'sync_reconcile_stale_runs', { p_max_age_minutes: 90 });
-    if (Number(reconciled) > 0) writeLine(`reconciled ${Number(reconciled)} stale sync run(s)`);
-  } catch (error: unknown) {
-    // Keep older deployments runnable while the maintenance RPC propagates;
-    // the actual sync still records a complete run below.
-    writeError(`stale sync run reconciliation skipped: ${error instanceof Error ? error.message : String(error)}`);
-  }
-  const runId = await callRpc<string>(supabase, 'sync_run_start', {
-    p_source: source,
-    p_metadata: { job, runner: 'scripts/sync-kto-data.ts' },
-  });
+  const shouldPersist = !options.dryRun;
+  if (options.dryRun) writeLine(`dry-run: ${source}`);
 
-  let fatalError: unknown = null;
-
-  try {
-    if (job === 'content') await syncContent(runId, stats);
-    if (job === 'crowd') await syncCrowd(runId, stats);
-    if (job === 'pet') await syncPet(runId, stats);
-  } catch (error: unknown) {
-    fatalError = error;
-    await recordSyncError(runId, stats, error);
-  } finally {
-    const status = fatalError ? 'failed' : 'completed';
+  if (shouldPersist) {
     try {
-      await callRpc(supabase, 'sync_run_finish', {
-        p_run_id: runId,
-        p_status: status,
-        p_items_fetched: stats.itemsFetched,
-        p_items_upserted: stats.itemsUpserted,
-        p_error_count: stats.errorCount,
-        p_metadata: {
-          job,
-          runner: 'scripts/sync-kto-data.ts',
-          zero_result_content_ids: stats.zeroResultContentIds,
-        },
-      });
-    } catch (finishError: unknown) {
-      if (!fatalError) fatalError = finishError;
-      writeError(`sync run 종료 기록 실패: ${finishError instanceof Error ? finishError.message : String(finishError)}`);
+      const reconciled = await callRpc<number>(supabase, 'sync_reconcile_stale_runs', { p_max_age_minutes: 90 });
+      if (Number(reconciled) > 0) writeLine(`reconciled ${Number(reconciled)} stale sync run(s)`);
+    } catch (error: unknown) {
+      writeError(`stale sync run reconciliation skipped: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  writeLine(`${source}: ${fatalError ? 'failed' : 'completed'} (fetched=${stats.itemsFetched}, upserted=${stats.itemsUpserted}, errors=${stats.errorCount})`);
-  writeGithubOutput(stats, fatalError ? 'failed' : 'completed');
+  const runId = options.dryRun
+    ? 'dry-run'
+    : await callRpc<string>(supabase, 'sync_run_start', {
+        p_source: source,
+        p_metadata: { job: options.job, runner: 'scripts/sync-kto-data.ts', dry_run: false, limit: options.limit },
+      });
 
-  if (fatalError) {
-    throw fatalError;
+  let fatalError: unknown = null;
+  let status: 'completed' | 'partial' | 'failed' = 'completed';
+  try {
+    if (options.job === 'content') status = await syncContent(runId, stats, options);
+    if (options.job === 'events') status = await syncEvents(runId, stats, options);
+    if (options.job === 'crowd') status = await syncCrowd(runId, stats, options);
+    if (options.job === 'pet') status = await syncPet(runId, stats, options);
+  } catch (error: unknown) {
+    fatalError = error;
+    status = 'failed';
+    await recordSyncError(runId, stats, error, undefined, shouldPersist);
+  } finally {
+    if (shouldPersist) {
+      try {
+        await callRpc(supabase, 'sync_run_finish', {
+          p_run_id: runId,
+          p_status: status,
+          p_items_fetched: stats.itemsFetched,
+          p_items_upserted: stats.itemsUpserted,
+          p_error_count: stats.errorCount,
+          p_metadata: {
+            job: options.job,
+            runner: 'scripts/sync-kto-data.ts',
+            zero_result_content_ids: stats.zeroResultContentIds,
+            candidates_discovered: stats.candidatesDiscovered,
+            details_attempted: stats.detailsAttempted,
+            stale_marked: stats.staleMarked,
+          },
+        });
+      } catch (finishError: unknown) {
+        if (!fatalError) fatalError = finishError;
+        status = 'failed';
+        writeError(`sync run 종료 기록 실패: ${finishError instanceof Error ? finishError.message : String(finishError)}`);
+      }
+    }
   }
+
+  writeLine(`${source}: ${fatalError ? 'failed' : status} (fetched=${stats.itemsFetched}, upserted=${stats.itemsUpserted}, errors=${stats.errorCount})`);
+  writeGithubOutput(stats, fatalError ? 'failed' : status);
+  if (fatalError) throw fatalError;
+  if (status === 'failed') process.exitCode = 1;
 }
 
 void main().catch((error: unknown) => {

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { ImportedPlace } from '@/lib/places/types';
 import type { ServiceCourse } from './types';
 import { toSecureImageUrl } from '@/lib/media/urls';
+import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
 
 type HomeCourseRow = {
   id: string;
@@ -23,6 +24,14 @@ type CourseDetailRow = {
   place_slug: string;
   display_name: string;
   hero_image_url: string | null;
+  pet_policy?: PetPolicy | string | null;
+  pet_note?: string | null;
+  pet_data_status?: DataFreshness | string | null;
+  pet_source_updated_at?: string | null;
+  crowd_forecast_date?: string | null;
+  crowd_forecast_rate?: number | string | null;
+  crowd_forecast_level?: string | null;
+  crowd_data_status?: DataFreshness | string | null;
 };
 
 /**
@@ -35,6 +44,16 @@ export function courseHasPublishedPlaces(placeIds: string[], publishedPlaceIds: 
 }
 
 function mapCoursePlace(detail: CourseDetailRow): ImportedPlace {
+  const petPolicy: PetPolicy = detail.pet_policy === 'allowed' || detail.pet_policy === 'partial' || detail.pet_policy === 'not_allowed' || detail.pet_policy === 'unknown'
+    ? detail.pet_policy
+    : 'unknown';
+  const petDataStatus: DataFreshness = detail.pet_data_status === 'fresh' || detail.pet_data_status === 'stale' || detail.pet_data_status === 'unavailable' || detail.pet_data_status === 'unknown'
+    ? detail.pet_data_status
+    : 'unknown';
+  const crowdDataStatus: DataFreshness = detail.crowd_data_status === 'fresh' || detail.crowd_data_status === 'stale' || detail.crowd_data_status === 'unavailable' || detail.crowd_data_status === 'unknown'
+    ? detail.crowd_data_status
+    : 'unknown';
+
   return {
     id: detail.place_id,
     slug: detail.place_slug,
@@ -48,12 +67,18 @@ function mapCoursePlace(detail: CourseDetailRow): ImportedPlace {
     lng: null,
     contactPhone: null,
     sourceModifiedAt: null,
-    petPolicy: 'unknown',
-    petNote: null,
-    petDataStatus: 'unknown',
-    petSourceUpdatedAt: null,
-    crowdForecast: null,
-    crowdDataStatus: 'unknown',
+    petPolicy,
+    petNote: detail.pet_note ?? null,
+    petDataStatus,
+    petSourceUpdatedAt: detail.pet_source_updated_at ?? null,
+    crowdForecast: detail.crowd_forecast_date || detail.crowd_forecast_rate !== null && detail.crowd_forecast_rate !== undefined || detail.crowd_forecast_level
+      ? {
+          forecastDate: detail.crowd_forecast_date ?? null,
+          rate: detail.crowd_forecast_rate === null || detail.crowd_forecast_rate === undefined ? null : Number(detail.crowd_forecast_rate),
+          level: detail.crowd_forecast_level ?? null,
+        }
+      : null,
+    crowdDataStatus,
   };
 }
 
@@ -70,7 +95,7 @@ export async function getPublishedCourses(): Promise<{
       .order('display_priority', { ascending: true }),
     supabase
       .from('v_course_detail')
-      .select('course_id, order_index, place_id, place_slug, display_name, hero_image_url')
+      .select('course_id, order_index, place_id, place_slug, display_name, hero_image_url, pet_policy, pet_note, pet_data_status, pet_source_updated_at, crowd_forecast_date, crowd_forecast_rate, crowd_forecast_level, crowd_data_status')
       .order('order_index', { ascending: true }),
     supabase
       .from('v_published_places')
