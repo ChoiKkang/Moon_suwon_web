@@ -58,10 +58,10 @@ function serviceClient() {
   );
 }
 
-// 운영 서버에는 운영자 두 명과 봇만 있으므로 개인 사용자 ID 목록을 관리하지
-// 않는다. 대신 명령이 등록된 길드에서 온 요청만 처리한다. 슬래시 명령은 길드
-// 전용으로 등록하므로 다른 서버에서는 명령 자체가 보이지 않고, 길드 확인이
-// 남아 있으면 애플리케이션이 다른 서버에 추가되더라도 조작을 막을 수 있다.
+// 운영 서버에는 운영자만 있으므로 개인 사용자 ID 목록을 관리하지 않는다. 대신
+// 명령이 등록된 길드에서 온 요청만 처리한다. 슬래시 명령은 길드 전용으로
+// 등록하므로 다른 서버에서는 명령 자체가 보이지 않고, 길드 확인이 남아 있으면
+// 애플리케이션이 다른 서버에 추가되더라도 조작을 막을 수 있다.
 function isAllowedGuild(guildId: string | undefined): boolean {
   const expected = process.env.DISCORD_GUILD_ID?.trim();
   if (!expected) return false;

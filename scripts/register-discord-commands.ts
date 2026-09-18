@@ -4,13 +4,19 @@ loadEnvConfig(process.cwd());
 
 // Discord 슬래시 명령을 길드에 등록한다.
 //
-// 길드 전용으로 등록하면 즉시 반영되고 다른 서버에 노출되지 않는다. 운영 채널이
-// 둘만 있는 서버이므로 전역 등록은 사용하지 않는다.
+// 봇 사용자는 필요하지 않다. 슬래시 명령은 Interactions Endpoint URL로 받는
+// HTTP 방식이므로 Gateway 연결이 없어도 되고, 등록에는 OAuth2 client credentials
+// 토큰(applications.commands.update 스코프)을 쓸 수 있다. 봇 토큰이 이미 있으면
+// 그대로 써도 된다.
 //
-// 필요한 값:
-//   DISCORD_APPLICATION_ID  애플리케이션 ID (비밀값 아님)
-//   DISCORD_BOT_TOKEN       봇 토큰 (비밀값, 로그에 출력하지 않는다)
-//   DISCORD_GUILD_ID        명령을 등록할 서버 ID
+// 길드 전용으로 등록하면 즉시 반영되고 다른 서버에 노출되지 않는다.
+//
+// 필요한 값 (택 1):
+//   A. DISCORD_CLIENT_SECRET  OAuth2 Client Secret (봇 없이 등록)
+//   B. DISCORD_BOT_TOKEN      봇 토큰 (봇을 이미 만든 경우)
+// 공통:
+//   DISCORD_APPLICATION_ID   애플리케이션 ID (비밀값 아님)
+//   DISCORD_GUILD_ID         명령을 등록할 서버 ID
 
 const ID_OPTION = {
   type: 3, // STRING
@@ -42,19 +48,59 @@ function required(name: string): string {
   return value;
 }
 
+/**
+ * Exchange the application's client credentials for a short-lived token that can
+ * update commands. This avoids creating a bot user for an app that only needs
+ * HTTP interactions.
+ */
+async function fetchClientCredentialsToken(applicationId: string, clientSecret: string): Promise<string> {
+  const response = await fetch('https://discord.com/api/v10/oauth2/token', {
+    method: 'POST',
+    headers: {
+      authorization: `Basic ${Buffer.from(`${applicationId}:${clientSecret}`).toString('base64')}`,
+      'content-type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      scope: 'applications.commands.update',
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!response.ok) {
+    // 응답 본문에 자격증명이 반영될 수 있으므로 상태 코드만 알린다.
+    throw new Error(`Discord 토큰 발급 실패 (HTTP ${response.status}). Application ID와 Client Secret을 확인해 주세요.`);
+  }
+
+  const payload = (await response.json()) as { access_token?: string };
+  if (!payload.access_token) throw new Error('Discord 토큰 응답에 access_token이 없습니다.');
+  return payload.access_token;
+}
+
 async function main() {
   const applicationId = required('DISCORD_APPLICATION_ID');
-  const botToken = required('DISCORD_BOT_TOKEN');
   const guildId = required('DISCORD_GUILD_ID');
+
+  const botToken = process.env.DISCORD_BOT_TOKEN?.trim();
+  const clientSecret = process.env.DISCORD_CLIENT_SECRET?.trim();
+
+  let authorization: string;
+  let mode: string;
+  if (clientSecret) {
+    authorization = `Bearer ${await fetchClientCredentialsToken(applicationId, clientSecret)}`;
+    mode = 'client credentials (봇 없음)';
+  } else if (botToken) {
+    authorization = `Bot ${botToken}`;
+    mode = '봇 토큰';
+  } else {
+    throw new Error('DISCORD_CLIENT_SECRET 또는 DISCORD_BOT_TOKEN 중 하나가 필요합니다.');
+  }
 
   const response = await fetch(
     `https://discord.com/api/v10/applications/${applicationId}/guilds/${guildId}/commands`,
     {
       method: 'PUT',
-      headers: {
-        authorization: `Bot ${botToken}`,
-        'content-type': 'application/json',
-      },
+      headers: { authorization, 'content-type': 'application/json' },
       body: JSON.stringify([COMMAND]),
       signal: AbortSignal.timeout(15_000),
     },
@@ -62,12 +108,11 @@ async function main() {
 
   if (!response.ok) {
     const detail = await response.text();
-    // 토큰이 본문에 포함될 수 있는 응답은 그대로 출력하지 않는다.
     throw new Error(`Discord 명령 등록 실패 (HTTP ${response.status}): ${detail.slice(0, 300)}`);
   }
 
   const registered = (await response.json()) as Array<{ name: string }>;
-  process.stdout.write(`등록 완료: ${registered.map((item) => `/${item.name}`).join(', ')}\n`);
+  process.stdout.write(`등록 완료 (${mode}): ${registered.map((item) => `/${item.name}`).join(', ')}\n`);
   process.stdout.write(`서브명령 ${COMMAND.options.length}개\n`);
 }
 

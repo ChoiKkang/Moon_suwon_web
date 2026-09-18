@@ -6,15 +6,19 @@
 
 관리자 콘솔을 매일 열지 않아도 되게 하려는 목적이다. 매일 09:00 KST 자동 브리핑이 상태를 알려주고, 조치가 필요하면 그 자리에서 명령으로 끝낸다. 판정 로직은 자동 브리핑과 Discord 명령이 [같은 모듈](../src/lib/ops/briefing.ts)을 공유하므로 두 경로의 결론이 어긋나지 않는다.
 
+## 웹훅과 슬래시 명령의 차이
+
+지금 쓰는 방식은 두 갈래다. 자동 브리핑은 **incoming webhook**으로 채널에 메시지를 보낸다. 단방향이라 이미 동작하고 있고 추가 설정이 없다. 반면 `/달빛` 슬래시 명령은 Discord가 우리 서버로 요청을 보내야 하므로 webhook으로는 할 수 없다. 애플리케이션과 Interactions Endpoint URL이 필요하다.
+
+**봇 사용자(Bot User)는 필요하지 않다.** 슬래시 명령을 HTTP Interactions로 받으면 Gateway 연결이 없어도 되고, 봇이 채널에 상주하지 않아도 명령이 동작한다. 명령 등록도 OAuth2 client credentials로 처리할 수 있다.
+
 ## 1. Discord 애플리케이션 설정
 
 Discord Developer Portal에서 애플리케이션을 열고 다음을 확인한다.
 
 - **Application ID**: 슬래시 명령 등록에 사용한다. 비밀값이 아니다.
 - **Public Key**: 요청 서명 검증에 사용한다. 비밀값이 아니지만 환경변수로 관리한다.
-- **Bot Token**: 명령 등록에만 사용한다. 비밀값이므로 채팅·로그·커밋에 남기지 않는다.
-
-`Bot` 탭에서 봇을 만들고, `OAuth2 > URL Generator`에서 `applications.commands` 스코프로 초대 링크를 만들어 운영 서버에 추가한다. 봇에 메시지 읽기 권한은 필요하지 않다.
+- **Client Secret**: 명령 등록에만 사용한다. 비밀값이므로 채팅·로그·커밋에 남기지 않는다.
 
 `General Information > Interactions Endpoint URL`에 아래 주소를 입력한다.
 
@@ -34,7 +38,7 @@ DISCORD_GUILD_ID=<운영 서버 ID>
 DISCORD_ADMIN_ACTOR_ID=<public.profiles의 ADMIN 계정 UUID>
 ```
 
-운영 서버에는 운영자 두 명과 봇만 있으므로 개인 사용자 ID 목록을 관리하지 않는다. 대신 `DISCORD_GUILD_ID`와 일치하는 서버에서 온 요청만 처리한다. 슬래시 명령을 길드 전용으로 등록하므로 다른 서버에서는 명령 자체가 보이지 않고, 길드 확인이 남아 있으면 애플리케이션이 다른 서버에 추가되더라도 조작을 막는다. DM에서 실행한 요청도 서버 정보가 없어 거절된다.
+운영 서버에는 운영자 두 명만 있으므로 개인 사용자 ID 목록을 관리하지 않는다. 대신 `DISCORD_GUILD_ID`와 일치하는 서버에서 온 요청만 처리한다. 슬래시 명령을 길드 전용으로 등록하므로 다른 서버에서는 명령 자체가 보이지 않고, 길드 확인이 남아 있으면 애플리케이션이 다른 서버에 추가되더라도 조작을 막는다. DM에서 실행한 요청도 서버 정보가 없어 거절된다.
 
 서버 ID는 Discord 개발자 모드를 켜고 서버 이름을 우클릭해 복사한다.
 
@@ -44,9 +48,11 @@ DISCORD_ADMIN_ACTOR_ID=<public.profiles의 ADMIN 계정 UUID>
 
 ```dotenv
 DISCORD_APPLICATION_ID=<Application ID>
-DISCORD_BOT_TOKEN=<Bot Token>
+DISCORD_CLIENT_SECRET=<OAuth2 Client Secret>
 DISCORD_GUILD_ID=<운영 서버 ID·Production과 같은 값>
 ```
+
+봇을 이미 만들어 두었다면 `DISCORD_CLIENT_SECRET` 대신 `DISCORD_BOT_TOKEN`을 넣어도 된다. 등록 스크립트가 둘 중 있는 값을 사용하며, Client Secret이 있으면 그쪽을 우선한다.
 
 ## 3. 슬래시 명령 등록
 
@@ -55,6 +61,8 @@ npm run discord:register
 ```
 
 길드 전용으로 등록하므로 즉시 반영되고 다른 서버에는 노출되지 않는다. 명령을 추가·수정한 뒤에도 같은 명령을 다시 실행한다.
+
+Client Secret을 쓰면 스크립트가 `applications.commands.update` 스코프로 짧은 수명의 토큰을 받아 등록한다. 봇 초대 링크를 만들거나 서버에 봇을 추가하는 단계가 없다.
 
 ## 4. 사용법
 
@@ -115,4 +123,4 @@ Interactions Endpoint URL 저장이 실패하면 `DISCORD_PUBLIC_KEY`가 Product
 
 명령이 "이 서버에서는 사용할 수 없는 명령입니다"로 응답하면 `DISCORD_GUILD_ID`가 실제 서버 ID와 같은지 확인한다. "감사 로그 계정이 설정되지 않았습니다"는 `DISCORD_ADMIN_ACTOR_ID`가 비어 있거나 ADMIN 프로필이 아닌 경우다.
 
-봇 토큰이 노출되면 Developer Portal에서 즉시 재발급하고 `npm run discord:register`를 다시 실행한다.
+Client Secret이나 봇 토큰이 노출되면 Developer Portal에서 즉시 재발급한다. Client Secret은 명령 등록에만 쓰므로 재발급 후 `.env.local` 값만 바꾸면 되고, 운영 중인 명령 동작에는 영향이 없다.
