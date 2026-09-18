@@ -34,6 +34,14 @@ export type KtoIntroItem = {
   restdate?: string;
   parking?: string;
   infocenter?: string;
+  // 음식점(39) uses its own field names for the same facts. KTO leaves the
+  // 관광지 fields empty on these rows, so a food place reports its hours only
+  // through opentimefood.
+  opentimefood?: string;
+  restdatefood?: string;
+  firstmenu?: string;
+  treatmenu?: string;
+  infocenterfood?: string;
 };
 
 export type KtoPetTourItem = {
