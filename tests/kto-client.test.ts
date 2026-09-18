@@ -54,7 +54,7 @@ test('fetches a paginated pet list from the dedicated KTO pet endpoint', async (
   assert.equal(page.items[0].contentid, 'pet-1');
 });
 
-test('uses searchFestival2 for Suwon event pages', async () => {
+test('requests searchFestival2 without area filters', async () => {
   let requestedUrl = '';
   globalThis.fetch = (async (input) => {
     requestedUrl = String(input);
@@ -78,8 +78,10 @@ test('uses searchFestival2 for Suwon event pages', async () => {
 
   const url = new URL(requestedUrl);
   assert.equal(url.pathname, '/B551011/KorService2/searchFestival2');
-  assert.equal(url.searchParams.get('areaCode'), '31');
-  assert.equal(url.searchParams.get('sigunguCode'), '13');
+  // searchFestival2 returns zero rows when areaCode/sigunguCode are supplied,
+  // so the client requests the nationwide list and callers filter by address.
+  assert.equal(url.searchParams.get('areaCode'), null);
+  assert.equal(url.searchParams.get('sigunguCode'), null);
   assert.equal(url.searchParams.get('eventStartDate'), '20260918');
   assert.equal(url.searchParams.get('eventEndDate'), '20261018');
   assert.equal(page.totalCount, 0);

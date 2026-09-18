@@ -113,9 +113,11 @@ export class KtoClient {
     pageNo: number;
     numOfRows: number;
   }): Promise<KtoPage<KtoFestivalItem>> {
+    // searchFestival2 currently returns zero rows whenever areaCode/sigunguCode
+    // are supplied, and its response items carry empty areacode/sigungucode
+    // fields. Request the nationwide festival list and select Suwon by address
+    // so scheduled syncs keep finding local events.
     return this.requestPage<KtoFestivalItem>('searchFestival2', {
-      areaCode: '31',
-      sigunguCode: '13',
       eventStartDate: options.eventStartDate,
       eventEndDate: options.eventEndDate,
       numOfRows: String(options.numOfRows),

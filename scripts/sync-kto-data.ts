@@ -9,7 +9,7 @@ import {
   type PetDiscoveryConfig,
   type PetEnrichmentRow,
 } from '../src/lib/kto/pet-sync';
-import { normalizeFestival, normalizeImages, normalizePlace } from '../src/lib/kto/normalize';
+import { isSuwonFestival, normalizeFestival, normalizeImages, normalizePlace } from '../src/lib/kto/normalize';
 import type {
   KtoCrowdForecastItem,
   KtoFestivalItem,
@@ -269,6 +269,7 @@ async function paginateFestivalItems(options: { startDate: string; endDate: stri
     const page = await kto.fetchSuwonFestivals({ eventStartDate: options.startDate, eventEndDate: options.endDate, pageNo, numOfRows: pageSize });
     for (const item of page.items) {
       if (!item.contentid || seen.has(item.contentid)) continue;
+      if (!isSuwonFestival(item)) continue;
       seen.add(item.contentid);
       items.push(item);
       if (options.limit !== null && items.length >= options.limit) return items;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { normalizeFestival, normalizeImages, normalizePlace, normalizeSlug, parseKtoTimestamp } from '../src/lib/kto/normalize';
+import { isSuwonFestival, normalizeFestival, normalizeImages, normalizePlace, normalizeSlug, parseKtoTimestamp } from '../src/lib/kto/normalize';
 import { toSecureImageUrl } from '../src/lib/media/urls';
 
 test('normalizes KTO image URLs to HTTPS without changing secure URLs', () => {
@@ -86,4 +86,18 @@ test('normalizes festival dates and public event fields', () => {
     program_raw: '공연',
     source_modified_at: '2026-09-18T01:02:03+09:00',
   });
+});
+
+test('selects Suwon festivals from the nationwide list', () => {
+  const suwonByAddress = { contentid: '1', title: '가을 축제', addr1: '경기도 수원시 팔달구' } as never;
+  const suwonByVenue = { contentid: '2', title: '야시장', addr1: '', eventplace: '수원남문시장' } as never;
+  const suwonByTitle = { contentid: '3', title: '수원화성 미디어아트', addr1: '경기도 화성시' } as never;
+  const otherCity = { contentid: '4', title: '강남 페스타', addr1: '서울특별시 강남구' } as never;
+  const noLocation = { contentid: '5', title: '전국 투어' } as never;
+
+  assert.equal(isSuwonFestival(suwonByAddress), true);
+  assert.equal(isSuwonFestival(suwonByVenue), true);
+  assert.equal(isSuwonFestival(suwonByTitle), true);
+  assert.equal(isSuwonFestival(otherCity), false);
+  assert.equal(isSuwonFestival(noLocation), false);
 });

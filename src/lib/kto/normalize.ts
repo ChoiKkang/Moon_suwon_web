@@ -133,3 +133,13 @@ export function normalizeFestival(item: KtoFestivalItem): NormalizedEvent {
     source_modified_at: parseKtoTimestamp(item.modifiedtime),
   };
 }
+
+// searchFestival2 ignores areaCode/sigunguCode and returns items whose own
+// areacode/sigungucode fields are empty, so Suwon events are selected from the
+// nationwide list by matching the address, venue, or title text instead.
+export function isSuwonFestival(item: KtoFestivalItem): boolean {
+  const haystack = [item.addr1, item.addr2, item.eventplace, item.title]
+    .filter(Boolean)
+    .join(' ');
+  return haystack.includes('수원');
+}
