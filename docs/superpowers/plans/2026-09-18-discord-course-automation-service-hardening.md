@@ -119,5 +119,5 @@
 - [x] Run `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, `npm run data:verify -- --job all`, `npm run kto:verify`, `npm run course:verify`, `npm run admin:verify`, and `npm run sync:rpc:verify`.
 - [x] Run the draft generator in dry-run and write modes, then confirm generated courses remain unpublished until an admin action.
 - [x] Verify anonymous counts for published serving views, anonymous rejection of an unpublished course/place, and service-role access to the atomic RPC.
-- [ ] Verify GitHub workflow syntax and inspect the next workflow run/Discord delivery after the user adds the rotated secret.
-- [ ] Record any remaining external setup (Discord webhook rotation/secret entry, optional bot interactions) explicitly; do not claim it is complete until observed.
+- [x] Verify GitHub workflow syntax and inspect the next workflow run/Discord delivery after the user adds the rotated secret.
+- [x] Record any remaining external setup (Discord webhook rotation/secret entry, optional bot interactions) explicitly; webhook delivery was observed in web-quality, course-draft, and KTO failure runs; optional bot interactions remain out of scope.
