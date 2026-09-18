@@ -14,13 +14,14 @@ const publicClient = createClient(url, anonKey, { auth: { persistSession: false 
 const serviceClient = createClient(url, serviceRoleKey, { auth: { persistSession: false } });
 
 async function main() {
-  const [placesResult, placeStatesResult, coursesResult, courseStatesResult] = await Promise.all([
+  const [placesResult, placeStatesResult, coursesResult, courseStatesResult, candidateSourcesResult] = await Promise.all([
     serviceClient.schema('core').from('places').select('id, slug').eq('is_active', true),
     serviceClient.schema('editorial').from('place_publish_state').select('place_id, is_published'),
     serviceClient.schema('core').from('courses').select('id, slug'),
     serviceClient.schema('editorial').from('course_publish_state').select('course_id, is_published'),
+    serviceClient.schema('core').from('place_sources').select('place_id, ingestion_status').eq('ingestion_status', 'candidate').limit(1),
   ]);
-  const sourceError = placesResult.error ?? placeStatesResult.error ?? coursesResult.error ?? courseStatesResult.error;
+  const sourceError = placesResult.error ?? placeStatesResult.error ?? coursesResult.error ?? courseStatesResult.error ?? candidateSourcesResult.error;
   if (sourceError) throw new Error(`service boundary source query failed: ${sourceError.message}`);
 
   const publishedPlaceIds = new Set((placeStatesResult.data ?? []).filter((row) => row.is_published === true).map((row) => row.place_id as string));
@@ -33,7 +34,7 @@ async function main() {
   const publishedCourse = (coursesResult.data ?? []).find((row) => publishedCourseIds.has(row.id as string));
   if (!publishedPlace || !publishedCourse) throw new Error('Need at least one published place and course for the boundary probe');
 
-  const [publicPlaces, publicCourses, publicImported, publicPlaceRpc, publicCourseRpc, unpublishedPlaceRpc, unpublishedCourseRpc, anonymousAdminRpc, anonymousCheckinRpc] = await Promise.all([
+  const [publicPlaces, publicCourses, publicImported, publicPlaceRpc, publicCourseRpc, unpublishedPlaceRpc, unpublishedCourseRpc, anonymousAdminRpc, anonymousCheckinRpc, anonymousAuditTable, anonymousAuditRpc] = await Promise.all([
     publicClient.schema('core').from('places').select('id').limit(1000),
     publicClient.schema('core').from('courses').select('id').limit(1000),
     publicClient.from('v_imported_places').select('id').limit(1000),
@@ -48,6 +49,13 @@ async function main() {
       p_lat: 37.28,
       p_lng: 127.01,
       p_mode: 'gps',
+    }),
+    publicClient.schema('audit').from('admin_events').select('id').limit(1),
+    publicClient.rpc('admin_record_audit', {
+      p_entity_type: 'place',
+      p_entity_id: unpublishedPlace.id,
+      p_action: 'probe',
+      p_metadata: {},
     }),
   ]);
 
@@ -85,6 +93,16 @@ async function main() {
   }
   if (!anonymousCheckinRpc.error) {
     throw new Error('checkin_place should not be executable by the anonymous role');
+  }
+  if (!anonymousAuditTable.error && (anonymousAuditTable.data ?? []).length > 0) {
+    throw new Error('audit.admin_events should not be readable by the anonymous role');
+  }
+  if (!anonymousAuditRpc.error) {
+    throw new Error('admin_record_audit should not be executable by the anonymous role');
+  }
+  const candidateIds = new Set((candidateSourcesResult.data ?? []).map((row) => row.place_id as string));
+  if (candidateIds.size > 0 && (publicImported.data ?? []).some((row) => candidateIds.has(row.id as string))) {
+    throw new Error('candidate place leaked into public.v_imported_places');
   }
 
   console.log(`Public boundary passed: ${publishedPlaceIds.size} places, ${publishedCourseIds.size} courses, additive pet fields exposed, unpublished getters blocked.`);

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Activity, AlertCircle, CalendarDays, Castle, CheckCircle, Clock3, FileText, ImageIcon, MapPin, Route } from 'lucide-react';
+import { Activity, AlertCircle, CalendarDays, Castle, CheckCircle, Clock3, FileText, ImageIcon, MapPin, Route, ShieldAlert } from 'lucide-react';
 import { getAdminDashboardData } from '@/lib/admin/queries';
 import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
 import { KTOImportPanel } from '@/components/admin/kto-import-panel';
@@ -17,6 +17,7 @@ export default async function AdminDashboardPage() {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
   const activeEvents = data.events.filter((event) => event.endDate >= today);
   const missingCopy = data.places.filter((place) => !place.copy.shortDescription || !place.copy.nightHighlight);
+  const reviewQueue = data.candidates.filter((candidate) => candidate.ingestionStatus === 'candidate' || candidate.ingestionStatus === 'stale');
 
   const kpis = [
     { label: '전체 활성 장소', value: `${data.places.length}개`, helper: 'core.places', href: '/admin/places', icon: Castle, tone: 'info' as const },
@@ -25,6 +26,7 @@ export default async function AdminDashboardPage() {
     { label: '진행·예정 행사', value: `${activeEvents.length}개`, helper: `전체 ${data.events.length}개`, href: '/admin/events', icon: CalendarDays, tone: 'warning' as const },
     { label: '오늘 예측', value: `${data.crowd.todayRows}건`, helper: data.crowd.stale ? '최신성 확인 필요' : '정상 최신 상태', href: '/admin/operations', icon: Activity, tone: data.crowd.stale ? 'warning' as const : 'success' as const },
     { label: '최근 sync 오류', value: `${data.syncErrors.length}건`, helper: '최근 50건 기준', href: '/admin/operations', icon: AlertCircle, tone: data.syncErrors.length > 0 ? 'danger' as const : 'success' as const },
+    { label: '검수 대기 후보', value: `${reviewQueue.length}건`, helper: 'KTO 원본 후보', href: '/admin/places?filter=candidate', icon: ShieldAlert, tone: reviewQueue.length > 0 ? 'warning' as const : 'success' as const },
   ];
 
   return (
@@ -171,6 +173,11 @@ export default async function AdminDashboardPage() {
 
       <section className="mt-10">
         <KTOImportPanel />
+      </section>
+
+      <section className="mt-8 rounded-3xl border border-[#ffd700]/20 bg-[#171f33]/80 p-6">
+        <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">Review Queue</p><h3 className="mt-2 text-xl font-black text-white">최근 검수 대기 후보</h3></div><Link href="/admin/places?filter=candidate" className="text-xs font-black text-[#ffd700]">검수 열기 →</Link></div>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">{reviewQueue.slice(0, 6).map((candidate) => <Link key={candidate.placeId} href={`/admin/places?place=${candidate.placeId}`} className="rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-4 transition hover:border-[#ffd700]/30"><div className="flex items-center justify-between gap-3"><p className="truncate text-sm font-bold text-white">{candidate.displayName}</p><AdminStatusBadge label={candidate.ingestionStatus === 'stale' ? '오래됨' : '대기'} tone={candidate.ingestionStatus === 'stale' ? 'warning' : 'info'} /></div><p className="mt-2 text-xs text-[#8f9bb3]">{candidate.ktoContentId ?? 'KTO ID 없음'} · {candidate.hasCoordinates ? '좌표 있음' : '좌표 확인 필요'}</p></Link>)}{reviewQueue.length === 0 ? <p className="col-span-full rounded-2xl bg-[#0b1326]/60 p-5 text-sm text-[#8f9bb3]">현재 검수 대기 후보가 없습니다.</p> : null}</div>
       </section>
     </main>
   );

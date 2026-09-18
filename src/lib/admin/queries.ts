@@ -2,6 +2,9 @@ import 'server-only';
 
 import { getAdminClient, requireAdmin, asNumber, asRecord } from './server';
 import type {
+  AdminAuditEvent,
+  AdminCandidate,
+  AdminCandidateDetail,
   AdminCourse,
   AdminCoursePlace,
   AdminCrowdSummary,
@@ -10,9 +13,14 @@ import type {
   AdminPlace,
   AdminPlaceCopy,
   AdminQueryResult,
+  AdminSourceHealth,
   AdminSyncError,
   AdminSyncRun,
+  CandidateFilter,
+  CandidateIngestionStatus,
 } from './types';
+import { candidateMatchesFilter, normalizeCandidateFilter } from './review';
+import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
 
 type PlaceRow = {
   id: string;
@@ -29,8 +37,22 @@ type PlaceRow = {
   updated_at: string | null;
 };
 
-type PlaceSourceRow = { place_id: string; kto_content_id: string | null };
+type PlaceSourceRow = {
+  place_id: string;
+  kto_content_id: string | null;
+  ingestion_status: CandidateIngestionStatus | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+};
 type PlaceImageRow = { place_id: string; image_url: string; is_hero: boolean | null };
+type PlacePetPolicyRow = {
+  place_id: string;
+  pet_policy: string | null;
+  pet_note_short: string | null;
+  data_status: string | null;
+  source_updated_at: string | null;
+  is_manual_override: boolean | null;
+};
 type PlaceStateRow = {
   place_id: string;
   is_published: boolean | null;
@@ -66,6 +88,7 @@ type CourseRow = {
   pet_ready_flag: boolean | null;
   automation_source: string | null;
   automation_key: string | null;
+  automation_metadata: unknown;
   last_automated_at: string | null;
   updated_at: string | null;
 };
@@ -138,6 +161,38 @@ function firstError(...errors: Array<{ message?: string } | null | undefined>): 
   return errors.find((error) => error?.message)?.message ?? null;
 }
 
+function asPetPolicy(value: string | null | undefined): PetPolicy {
+  return value === 'allowed' || value === 'partial' || value === 'not_allowed' || value === 'unknown' ? value : 'unknown';
+}
+
+function asFreshness(value: string | null | undefined): DataFreshness {
+  return value === 'fresh' || value === 'stale' || value === 'unavailable' || value === 'unknown' ? value : 'unknown';
+}
+
+function asIngestionStatus(value: string | null | undefined): CandidateIngestionStatus {
+  return value === 'candidate' || value === 'approved' || value === 'rejected' || value === 'stale' ? value : 'candidate';
+}
+
+function mapAudit(row: {
+  id: string;
+  actor_id: string;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  metadata: unknown;
+  created_at: string;
+}): AdminAuditEvent {
+  return {
+    id: row.id,
+    actorId: row.actor_id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    action: row.action,
+    metadata: asRecord(row.metadata),
+    createdAt: row.created_at,
+  };
+}
+
 function todayInSeoul(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date());
 }
@@ -158,14 +213,15 @@ function mapCopy(row: PlaceCopyRow | undefined): AdminPlaceCopy {
 }
 
 async function getAdminPlacesForClient(adminClient: ReturnType<typeof getAdminClient>): Promise<AdminQueryResult<AdminPlace[]>> {
-  const [placesResult, sourceResult, imageResult, stateResult, copyResult] = await Promise.all([
+  const [placesResult, sourceResult, imageResult, stateResult, copyResult, petResult] = await Promise.all([
     adminClient.schema('core').from('places').select('id, slug, official_name, address_full, lat, lng, contact_phone, source_overview_raw, category, is_active, source_modified_at, updated_at').order('official_name', { ascending: true }),
-    adminClient.schema('core').from('place_sources').select('place_id, kto_content_id'),
+    adminClient.schema('core').from('place_sources').select('place_id, kto_content_id, ingestion_status, first_seen_at, last_seen_at'),
     adminClient.schema('core').from('place_images').select('place_id, image_url, is_hero').eq('is_hero', true),
     adminClient.schema('editorial').from('place_publish_state').select('place_id, is_published, display_priority, is_now_good_enabled, night_suitability_score, recommended_from, recommended_until, recommendation_boost, ops_memo'),
     adminClient.schema('editorial').from('place_copy').select('id, place_id, display_name, short_description, night_highlight, photo_tip, mission_title, mission_body, mission_prompt, couple_question, short_story'),
+    adminClient.schema('core').from('place_pet_policies').select('place_id, pet_policy, pet_note_short, data_status, source_updated_at, is_manual_override'),
   ]);
-  const error = firstError(placesResult.error, sourceResult.error, imageResult.error, stateResult.error, copyResult.error);
+  const error = firstError(placesResult.error, sourceResult.error, imageResult.error, stateResult.error, copyResult.error, petResult.error);
 
   if (error) {
     return { data: [], error };
@@ -175,12 +231,15 @@ async function getAdminPlacesForClient(adminClient: ReturnType<typeof getAdminCl
   const heroImages = new Map((imageResult.data as PlaceImageRow[] | null ?? []).map((row) => [row.place_id, row.image_url]));
   const states = new Map((stateResult.data as PlaceStateRow[] | null ?? []).map((row) => [row.place_id, row]));
   const copies = new Map((copyResult.data as PlaceCopyRow[] | null ?? []).map((row) => [row.place_id, row]));
+  const pets = new Map((petResult.data as PlacePetPolicyRow[] | null ?? []).map((row) => [row.place_id, row]));
 
   const places = ((placesResult.data ?? []) as PlaceRow[])
     .filter((place) => place.is_active !== false)
     .map((place): AdminPlace => {
       const state = states.get(place.id);
       const copy = copies.get(place.id);
+      const source = sources.get(place.id);
+      const pet = pets.get(place.id);
       return {
         id: place.id,
         slug: place.slug,
@@ -192,7 +251,15 @@ async function getAdminPlacesForClient(adminClient: ReturnType<typeof getAdminCl
         contactPhone: place.contact_phone,
         sourceOverviewRaw: place.source_overview_raw,
         category: place.category,
-        ktoContentId: sources.get(place.id)?.kto_content_id ?? null,
+        ktoContentId: source?.kto_content_id ?? null,
+        ingestionStatus: asIngestionStatus(source?.ingestion_status),
+        firstSeenAt: source?.first_seen_at ?? null,
+        lastSeenAt: source?.last_seen_at ?? null,
+        petPolicy: asPetPolicy(pet?.pet_policy),
+        petDataStatus: asFreshness(pet?.data_status),
+        petNote: pet?.pet_note_short ?? null,
+        petSourceUpdatedAt: pet?.source_updated_at ?? null,
+        petManualOverride: pet?.is_manual_override === true,
         heroImageUrl: heroImages.get(place.id) ?? null,
         sourceModifiedAt: place.source_modified_at,
         isActive: place.is_active !== false,
@@ -213,12 +280,90 @@ async function getAdminPlacesForClient(adminClient: ReturnType<typeof getAdminCl
   return { data: places, error: null };
 }
 
+function mapCandidate(place: AdminPlace): AdminCandidate {
+  return {
+    placeId: place.id,
+    slug: place.slug,
+    displayName: place.displayName,
+    officialName: place.officialName,
+    ktoContentId: place.ktoContentId,
+    ingestionStatus: place.ingestionStatus,
+    firstSeenAt: place.firstSeenAt,
+    lastSeenAt: place.lastSeenAt,
+    petPolicy: place.petPolicy,
+    petDataStatus: place.petDataStatus,
+    petNote: place.petNote,
+    petSourceUpdatedAt: place.petSourceUpdatedAt,
+    sourceModifiedAt: place.sourceModifiedAt,
+    hasCoordinates: place.lat !== null && place.lng !== null,
+    hasHeroImage: Boolean(place.heroImageUrl),
+    isPublished: place.isPublished,
+    isActive: place.isActive,
+    addressFull: place.addressFull,
+    category: place.category,
+  };
+}
+
+async function getAdminCandidatesForClient(
+  adminClient: ReturnType<typeof getAdminClient>,
+  filter?: CandidateFilter,
+): Promise<AdminQueryResult<AdminCandidate[]>> {
+  const placesResult = await getAdminPlacesForClient(adminClient);
+  if (placesResult.error) return { data: [], error: placesResult.error };
+
+  const normalizedFilter = normalizeCandidateFilter(filter);
+  return {
+    data: placesResult.data
+      .map(mapCandidate)
+      .filter((candidate) => candidateMatchesFilter(candidate, normalizedFilter))
+      .sort((a, b) => {
+        const statusOrder = { candidate: 0, stale: 1, approved: 2, rejected: 3 } as const;
+        return statusOrder[a.ingestionStatus] - statusOrder[b.ingestionStatus]
+          || (a.lastSeenAt ?? '').localeCompare(b.lastSeenAt ?? '')
+          || a.displayName.localeCompare(b.displayName, 'ko');
+      }),
+    error: null,
+  };
+}
+
+async function getAdminCandidateDetailForClient(
+  adminClient: ReturnType<typeof getAdminClient>,
+  placeId: string,
+): Promise<AdminQueryResult<AdminCandidateDetail | null>> {
+  const placesResult = await getAdminPlacesForClient(adminClient);
+  if (placesResult.error) return { data: null, error: placesResult.error };
+  const place = placesResult.data.find((item) => item.id === placeId);
+  if (!place) return { data: null, error: null };
+
+  const auditResult = await adminClient
+    .schema('audit')
+    .from('admin_events')
+    .select('id, actor_id, entity_type, entity_id, action, metadata, created_at')
+    .eq('entity_id', placeId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (auditResult.error) return { data: null, error: auditResult.error.message };
+
+  return {
+    data: {
+      ...mapCandidate(place),
+      lat: place.lat,
+      lng: place.lng,
+      contactPhone: place.contactPhone,
+      sourceOverview: place.sourceOverviewRaw,
+      latestAudit: auditResult.data ? mapAudit(auditResult.data as never) : null,
+    },
+    error: null,
+  };
+}
+
 async function getAdminCoursesForClient(
   adminClient: ReturnType<typeof getAdminClient>,
   places: AdminPlace[],
 ): Promise<AdminQueryResult<AdminCourse[]>> {
   const [coursesResult, stateResult, copyResult, linksResult] = await Promise.all([
-    adminClient.schema('core').from('courses').select('id, slug, theme_tags, estimated_duration_min, walking_distance_km, recommended_start_time, pet_ready_flag, automation_source, automation_key, last_automated_at, updated_at').order('updated_at', { ascending: false }),
+    adminClient.schema('core').from('courses').select('id, slug, theme_tags, estimated_duration_min, walking_distance_km, recommended_start_time, pet_ready_flag, automation_source, automation_key, automation_metadata, last_automated_at, updated_at').order('updated_at', { ascending: false }),
     adminClient.schema('editorial').from('course_publish_state').select('course_id, is_published, display_priority, ops_memo'),
     adminClient.schema('editorial').from('course_copy').select('course_id, hero_title, subtitle, route_summary, og_title, og_description, og_image_url'),
     adminClient.schema('core').from('course_places').select('course_id, place_id, order_index').order('order_index', { ascending: true }),
@@ -259,6 +404,8 @@ async function getAdminCoursesForClient(
         opsMemo: state?.ops_memo ?? null,
         updatedAt: course.updated_at,
         automationSource: course.automation_source ?? null,
+        automationKey: course.automation_key ?? null,
+        automationMetadata: asRecord(course.automation_metadata),
         lastAutomatedAt: course.last_automated_at ?? null,
         copy: {
           heroTitle: copy?.hero_title ?? '',
@@ -303,7 +450,40 @@ async function getAdminEventsForClient(adminClient: ReturnType<typeof getAdminCl
   return { data: ((result.data ?? []) as EventRow[]).map(mapEvent), error: null };
 }
 
-async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdminClient>, places: AdminPlace[]): Promise<AdminQueryResult<Pick<AdminDashboardData, 'crowd' | 'syncRuns' | 'syncErrors'>>> {
+function buildSourceHealth(runs: AdminSyncRun[]): AdminSourceHealth[] {
+  const bySource = new Map<string, AdminSyncRun>();
+  for (const run of runs) {
+    if (!bySource.has(run.source)) bySource.set(run.source, run);
+  }
+
+  return [...bySource.entries()].map(([source, run]) => {
+    const completedAt = run.completedAt ?? null;
+    const age = completedAt ? Date.now() - Date.parse(completedAt) : Number.POSITIVE_INFINITY;
+    const freshness: AdminSourceHealth['freshness'] = run.status === 'completed' && Number.isFinite(age) && age <= 48 * 60 * 60 * 1000
+      ? 'fresh'
+      : completedAt
+        ? 'stale'
+        : 'unknown';
+    return {
+      source,
+      lastStatus: run.status,
+      lastCompletedAt: completedAt,
+      freshness,
+      fetched: run.itemsFetched,
+      upserted: run.itemsUpserted,
+      errors: run.errorCount,
+      metadata: run.metadata,
+    };
+  }).sort((a, b) => a.source.localeCompare(b.source));
+}
+
+type AdminOperationsData = Pick<AdminDashboardData, 'crowd' | 'syncRuns' | 'syncErrors' | 'candidates' | 'sourceHealth'>;
+
+function emptyOperations(): AdminOperationsData {
+  return { crowd: emptyCrowd(), syncRuns: [], syncErrors: [], candidates: [], sourceHealth: [] };
+}
+
+async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdminClient>, places: AdminPlace[]): Promise<AdminQueryResult<AdminOperationsData>> {
   const today = todayInSeoul();
   const [crowdResult, runsResult, errorsResult] = await Promise.all([
     adminClient.schema('core').from('place_crowd_forecasts').select('place_id, forecast_date, forecast_score, crowd_level, source_updated_at').order('forecast_date', { ascending: false }).limit(500),
@@ -311,7 +491,7 @@ async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdm
     adminClient.schema('raw').from('sync_errors').select('id, sync_run_id, endpoint, content_id, error_code, message, created_at').order('created_at', { ascending: false }).limit(50),
   ]);
   const error = firstError(crowdResult.error, runsResult.error, errorsResult.error);
-  if (error) return { data: { crowd: emptyCrowd(), syncRuns: [], syncErrors: [] }, error };
+  if (error) return { data: emptyOperations(), error };
 
   const crowdRows = (crowdResult.data ?? []) as CrowdRow[];
   const latestSource = crowdRows.map((row) => row.source_updated_at).sort().at(-1) ?? null;
@@ -321,6 +501,29 @@ async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdm
   const todayPlaceIds = new Set(crowdRows.filter((row) => row.forecast_date === today).map((row) => row.place_id));
   const latestSourceMs = latestSource ? Date.parse(latestSource) : 0;
   const stale = !latestSource || Number.isNaN(latestSourceMs) || Date.now() - latestSourceMs > 36 * 60 * 60 * 1000 || (latestForecastDate !== null && latestForecastDate < today);
+
+  const syncRuns = ((runsResult.data ?? []) as SyncRunRow[]).map((row): AdminSyncRun => ({
+    id: row.id,
+    source: row.source,
+    status: row.status,
+    itemsFetched: row.items_fetched,
+    itemsUpserted: row.items_upserted,
+    errorCount: row.error_count,
+    metadata: asRecord(row.metadata),
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+    isStale: row.status === 'running' && Number.isFinite(Date.parse(row.started_at)) && Date.now() - Date.parse(row.started_at) > 90 * 60 * 1000,
+  }));
+  const syncErrors = ((errorsResult.data ?? []) as SyncErrorRow[]).map((row): AdminSyncError => ({
+    id: row.id,
+    syncRunId: row.sync_run_id,
+    endpoint: row.endpoint,
+    contentId: row.content_id,
+    errorCode: row.error_code,
+    message: row.message,
+    createdAt: row.created_at,
+  }));
+  const candidates = places.map(mapCandidate);
 
   return {
     data: {
@@ -333,27 +536,10 @@ async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdm
         byLevel,
         missingTodayPlaceNames: places.filter((place) => place.isPublished && !todayPlaceIds.has(place.id)).map((place) => place.displayName),
       },
-      syncRuns: ((runsResult.data ?? []) as SyncRunRow[]).map((row): AdminSyncRun => ({
-        id: row.id,
-        source: row.source,
-        status: row.status,
-        itemsFetched: row.items_fetched,
-        itemsUpserted: row.items_upserted,
-        errorCount: row.error_count,
-        metadata: asRecord(row.metadata),
-        startedAt: row.started_at,
-        completedAt: row.completed_at,
-        isStale: row.status === 'running' && Number.isFinite(Date.parse(row.started_at)) && Date.now() - Date.parse(row.started_at) > 90 * 60 * 1000,
-      })),
-      syncErrors: ((errorsResult.data ?? []) as SyncErrorRow[]).map((row): AdminSyncError => ({
-        id: row.id,
-        syncRunId: row.sync_run_id,
-        endpoint: row.endpoint,
-        contentId: row.content_id,
-        errorCode: row.error_code,
-        message: row.message,
-        createdAt: row.created_at,
-      })),
+      syncRuns,
+      syncErrors,
+      candidates,
+      sourceHealth: buildSourceHealth(syncRuns),
     },
     error: null,
   };
@@ -380,6 +566,24 @@ export async function getAdminPlaces(): Promise<AdminQueryResult<AdminPlace[]>> 
   }
 }
 
+export async function getAdminCandidates(filter?: CandidateFilter): Promise<AdminQueryResult<AdminCandidate[]>> {
+  try {
+    const { adminClient } = await requireAdmin();
+    return getAdminCandidatesForClient(adminClient, filter);
+  } catch (error) {
+    return { data: [], error: error instanceof Error ? error.message : '검수 후보를 불러오지 못했습니다.' };
+  }
+}
+
+export async function getAdminCandidateDetail(placeId: string): Promise<AdminQueryResult<AdminCandidateDetail | null>> {
+  try {
+    const { adminClient } = await requireAdmin();
+    return getAdminCandidateDetailForClient(adminClient, placeId);
+  } catch (error) {
+    return { data: null, error: error instanceof Error ? error.message : '검수 후보 상세를 불러오지 못했습니다.' };
+  }
+}
+
 export async function getAdminCourses(): Promise<AdminQueryResult<{ courses: AdminCourse[]; places: AdminPlace[] }>> {
   try {
     const { adminClient } = await requireAdmin();
@@ -401,14 +605,14 @@ export async function getAdminEvents(): Promise<AdminQueryResult<AdminEvent[]>> 
   }
 }
 
-export async function getAdminOperations(): Promise<AdminQueryResult<Pick<AdminDashboardData, 'crowd' | 'syncRuns' | 'syncErrors'>>> {
+export async function getAdminOperations(): Promise<AdminQueryResult<AdminOperationsData>> {
   try {
     const { adminClient } = await requireAdmin();
     const placesResult = await getAdminPlacesForClient(adminClient);
-    if (placesResult.error) return { data: { crowd: emptyCrowd(), syncRuns: [], syncErrors: [] }, error: placesResult.error };
+    if (placesResult.error) return { data: emptyOperations(), error: placesResult.error };
     return getAdminOperationsForClient(adminClient, placesResult.data);
   } catch (error) {
-    return { data: { crowd: emptyCrowd(), syncRuns: [], syncErrors: [] }, error: error instanceof Error ? error.message : '관리자 데이터를 불러오지 못했습니다.' };
+    return { data: emptyOperations(), error: error instanceof Error ? error.message : '관리자 데이터를 불러오지 못했습니다.' };
   }
 }
 
@@ -417,7 +621,7 @@ export async function getAdminDashboardData(): Promise<AdminQueryResult<AdminDas
     const { adminClient } = await requireAdmin();
     const placesResult = await getAdminPlacesForClient(adminClient);
     if (placesResult.error) {
-      return { data: { places: [], courses: [], events: [], crowd: emptyCrowd(), syncRuns: [], syncErrors: [] }, error: placesResult.error };
+      return { data: { places: [], courses: [], events: [], crowd: emptyCrowd(), syncRuns: [], syncErrors: [], candidates: [], sourceHealth: [] }, error: placesResult.error };
     }
     const [coursesResult, eventsResult, operationsResult] = await Promise.all([
       getAdminCoursesForClient(adminClient, placesResult.data),
@@ -432,10 +636,12 @@ export async function getAdminDashboardData(): Promise<AdminQueryResult<AdminDas
         crowd: operationsResult.data.crowd,
         syncRuns: operationsResult.data.syncRuns,
         syncErrors: operationsResult.data.syncErrors,
+        candidates: operationsResult.data.candidates,
+        sourceHealth: operationsResult.data.sourceHealth,
       },
       error: coursesResult.error ?? eventsResult.error ?? operationsResult.error,
     };
   } catch (error) {
-    return { data: { places: [], courses: [], events: [], crowd: emptyCrowd(), syncRuns: [], syncErrors: [] }, error: error instanceof Error ? error.message : '관리자 데이터를 불러오지 못했습니다.' };
+    return { data: { places: [], courses: [], events: [], crowd: emptyCrowd(), syncRuns: [], syncErrors: [], candidates: [], sourceHealth: [] }, error: error instanceof Error ? error.message : '관리자 데이터를 불러오지 못했습니다.' };
   }
 }

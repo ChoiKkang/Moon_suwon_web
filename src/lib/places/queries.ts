@@ -5,7 +5,7 @@ import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
 
 type PlaceViewName = 'v_imported_places' | 'v_published_places';
 
-type ImportedPlaceRow = {
+export type ImportedPlaceRow = {
   id: string;
   slug: string;
   display_name: string;
@@ -38,7 +38,7 @@ function asFreshness(value: string | null | undefined): DataFreshness {
   return value === 'fresh' || value === 'stale' || value === 'unavailable' || value === 'unknown' ? value : 'unknown';
 }
 
-function mapPlace(place: ImportedPlaceRow): ImportedPlace {
+export function mapPlace(place: ImportedPlaceRow): ImportedPlace {
   return {
     id: place.id,
     slug: place.slug,

@@ -1,3 +1,5 @@
+import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
+
 export type AdminActionResult =
   | { success: true; message: string }
   | { success: false; error: string; field?: string };
@@ -27,6 +29,14 @@ export type AdminPlace = {
   sourceOverviewRaw: string | null;
   category: string | null;
   ktoContentId: string | null;
+  ingestionStatus: CandidateIngestionStatus;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+  petPolicy: PetPolicy;
+  petDataStatus: DataFreshness;
+  petNote: string | null;
+  petSourceUpdatedAt: string | null;
+  petManualOverride: boolean;
   heroImageUrl: string | null;
   sourceModifiedAt: string | null;
   isActive: boolean;
@@ -40,6 +50,64 @@ export type AdminPlace = {
   opsMemo: string | null;
   updatedAt: string | null;
   copy: AdminPlaceCopy;
+};
+
+export type CandidateIngestionStatus = 'candidate' | 'approved' | 'rejected' | 'stale';
+
+export type CandidateFilter = {
+  status?: CandidateIngestionStatus | 'all';
+  search?: string;
+};
+
+export type AdminCandidate = {
+  placeId: string;
+  slug: string;
+  displayName: string;
+  officialName: string;
+  ktoContentId: string | null;
+  ingestionStatus: CandidateIngestionStatus;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+  petPolicy: PetPolicy;
+  petDataStatus: DataFreshness;
+  petNote: string | null;
+  petSourceUpdatedAt: string | null;
+  sourceModifiedAt: string | null;
+  hasCoordinates: boolean;
+  hasHeroImage: boolean;
+  isPublished: boolean;
+  isActive: boolean;
+  addressFull: string | null;
+  category: string | null;
+};
+
+export type AdminCandidateDetail = AdminCandidate & {
+  lat: number | null;
+  lng: number | null;
+  contactPhone: string | null;
+  sourceOverview: string | null;
+  latestAudit: AdminAuditEvent | null;
+};
+
+export type AdminAuditEvent = {
+  id: string;
+  actorId: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type AdminSourceHealth = {
+  source: string;
+  lastStatus: string | null;
+  lastCompletedAt: string | null;
+  freshness: 'fresh' | 'stale' | 'unknown';
+  fetched: number;
+  upserted: number;
+  errors: number;
+  metadata: Record<string, unknown>;
 };
 
 export type AdminCoursePlace = {
@@ -62,6 +130,8 @@ export type AdminCourse = {
   opsMemo: string | null;
   updatedAt: string | null;
   automationSource: string | null;
+  automationKey: string | null;
+  automationMetadata: Record<string, unknown>;
   lastAutomatedAt: string | null;
   copy: {
     heroTitle: string;
@@ -134,6 +204,8 @@ export type AdminDashboardData = {
   crowd: AdminCrowdSummary;
   syncRuns: AdminSyncRun[];
   syncErrors: AdminSyncError[];
+  candidates: AdminCandidate[];
+  sourceHealth: AdminSourceHealth[];
 };
 
 export type AdminQueryResult<T> = {
@@ -203,4 +275,16 @@ export type EventInput = {
   playTime: string | null;
   usageFee: string | null;
   programRaw: string | null;
+};
+
+export type ReviewPlaceCandidateInput = {
+  placeId: string;
+  decision: 'approve' | 'reject' | 'hold';
+  note?: string | null;
+};
+
+export type PetPolicyOverrideInput = {
+  placeId: string;
+  policy: PetPolicy;
+  note: string | null;
 };

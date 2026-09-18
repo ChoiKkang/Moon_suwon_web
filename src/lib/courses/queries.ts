@@ -15,14 +15,19 @@ type HomeCourseRow = {
   route_summary: string | null;
   display_priority: number | null;
   hero_image_url: string | null;
+  pet_ready_flag: boolean | null;
 };
 
-type CourseDetailRow = {
+export type CourseDetailRow = {
   course_id: string;
   order_index: number;
   place_id: string;
   place_slug: string;
   display_name: string;
+  lat?: number | string | null;
+  lng?: number | string | null;
+  category?: string | null;
+  recommended_stay_min?: number | null;
   hero_image_url: string | null;
   pet_policy?: PetPolicy | string | null;
   pet_note?: string | null;
@@ -43,7 +48,7 @@ export function courseHasPublishedPlaces(placeIds: string[], publishedPlaceIds: 
   return placeIds.length > 0 && placeIds.every((placeId) => publishedPlaceIds.has(placeId));
 }
 
-function mapCoursePlace(detail: CourseDetailRow): ImportedPlace {
+export function mapCoursePlace(detail: CourseDetailRow): ImportedPlace {
   const petPolicy: PetPolicy = detail.pet_policy === 'allowed' || detail.pet_policy === 'partial' || detail.pet_policy === 'not_allowed' || detail.pet_policy === 'unknown'
     ? detail.pet_policy
     : 'unknown';
@@ -63,8 +68,8 @@ function mapCoursePlace(detail: CourseDetailRow): ImportedPlace {
     heroImageUrl: toSecureImageUrl(detail.hero_image_url),
     heroThumbnailUrl: null,
     ktoContentId: null,
-    lat: null,
-    lng: null,
+    lat: detail.lat === null || detail.lat === undefined ? null : Number(detail.lat),
+    lng: detail.lng === null || detail.lng === undefined ? null : Number(detail.lng),
     contactPhone: null,
     sourceModifiedAt: null,
     petPolicy,
@@ -91,11 +96,11 @@ export async function getPublishedCourses(): Promise<{
   const [homeResult, detailResult, publishedPlacesResult] = await Promise.all([
     supabase
       .from('v_home_courses')
-      .select('id, slug, theme_tags, estimated_duration_min, walking_distance_km, hero_title, subtitle, route_summary, display_priority, hero_image_url')
+      .select('id, slug, theme_tags, estimated_duration_min, walking_distance_km, pet_ready_flag, hero_title, subtitle, route_summary, display_priority, hero_image_url')
       .order('display_priority', { ascending: true }),
     supabase
       .from('v_course_detail')
-      .select('course_id, order_index, place_id, place_slug, display_name, hero_image_url, pet_policy, pet_note, pet_data_status, pet_source_updated_at, crowd_forecast_date, crowd_forecast_rate, crowd_forecast_level, crowd_data_status')
+      .select('course_id, order_index, place_id, place_slug, display_name, lat, lng, category, recommended_stay_min, hero_image_url, pet_policy, pet_note, pet_data_status, pet_source_updated_at, crowd_forecast_date, crowd_forecast_rate, crowd_forecast_level, crowd_data_status')
       .order('order_index', { ascending: true }),
     supabase
       .from('v_published_places')
@@ -141,6 +146,7 @@ export async function getPublishedCourses(): Promise<{
         description: course.route_summary ?? '코스 설명을 준비 중입니다.',
         durationMinutes: course.estimated_duration_min,
         distanceKm: course.walking_distance_km === null ? null : Number(course.walking_distance_km),
+        petReadyFlag: course.pet_ready_flag === true,
         status: 'live' as const,
         theme: course.theme_tags?.join(' · ') || '달빛수원 코스',
         primaryCta: '코스 스팟 보기',

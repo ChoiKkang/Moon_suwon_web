@@ -23,6 +23,8 @@ const targets = [
   ['core', 'place_crowd_forecasts'],
   ['raw', 'sync_runs'],
   ['raw', 'sync_errors'],
+  ['raw', 'course_generation_runs'],
+  ['audit', 'admin_events'],
 ] as const;
 
 async function main() {

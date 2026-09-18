@@ -3,12 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { getAdminClient, requireAdmin } from '@/lib/admin/server';
 import { planCourseDrafts, type CoursePlannerPlace } from '@/lib/courses/draft-planner';
+import { isUuid, validatePetPolicy, validateReviewDecision, validateReviewNote } from '@/lib/admin/review';
 import type {
   AdminActionResult,
   CourseInput,
   EventInput,
+  PetPolicyOverrideInput,
   PlaceCopyInput,
   PlacePublishInput,
+  ReviewPlaceCandidateInput,
 } from '@/lib/admin/types';
 
 const MAX = {
@@ -47,10 +50,6 @@ function readNullableNumber(value: unknown, field: string, min: number, max: num
   return readNumber(value, field, min, max);
 }
 
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
 function isDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
 }
@@ -73,6 +72,121 @@ function revalidatePlace(slug: string) {
   revalidatePath('/admin');
   revalidatePath('/admin/places');
   revalidatePath(`/places/${slug}`);
+}
+
+async function recordAdminAudit(
+  adminClient: ReturnType<typeof getAdminClient>,
+  actorId: string,
+  entityType: string,
+  entityId: string,
+  action: string,
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  const { error } = await adminClient.rpc('admin_record_audit', {
+    p_actor_id: actorId,
+    p_entity_type: entityType,
+    p_entity_id: entityId,
+    p_action: action,
+    p_metadata: metadata,
+  });
+  if (error) throw new Error(`감사 로그를 기록하지 못했습니다. ${error.message}`);
+}
+
+export async function reviewPlaceCandidateAction(input: ReviewPlaceCandidateInput): Promise<AdminActionResult> {
+  try {
+    const { user, adminClient } = await requireAdmin();
+    if (!isUuid(input?.placeId)) throw new Error('장소 식별자가 올바르지 않습니다.');
+    if (!validateReviewDecision(input?.decision)) throw new Error('검수 결정이 올바르지 않습니다.');
+    if (!validateReviewNote(input?.note)) throw new Error('검수 메모는 240자 이내로 입력해 주세요.');
+
+    const status = input.decision === 'approve' ? 'approved' : input.decision === 'reject' ? 'rejected' : 'candidate';
+    const { data: source, error: sourceError } = await adminClient
+      .schema('core')
+      .from('place_sources')
+      .select('place_id, ingestion_status')
+      .eq('place_id', input.placeId)
+      .maybeSingle();
+    if (sourceError || !source) throw new Error('검수 대상 원본을 찾을 수 없습니다.');
+
+    const { error } = await adminClient
+      .schema('core')
+      .from('place_sources')
+      .update({ ingestion_status: status, last_seen_at: new Date().toISOString() })
+      .eq('place_id', input.placeId);
+    if (error) return fail('검수 상태를 저장하지 못했습니다.');
+
+    await recordAdminAudit(adminClient, user.id, 'place', input.placeId, `candidate_${input.decision}`, {
+      from: source.ingestion_status,
+      to: status,
+      note: input.note?.trim() || null,
+    });
+    const slug = await getPlaceSlug(input.placeId);
+    revalidatePlace(slug);
+    revalidatePath('/admin/operations');
+    return { success: true, message: input.decision === 'approve' ? '후보를 승인했습니다. 공개 상태는 별도로 검수해 주세요.' : input.decision === 'reject' ? '후보를 제외했습니다. 원본은 삭제하지 않았습니다.' : '후보를 보류했습니다.' };
+  } catch (error) {
+    return toActionError(error, '후보 검수 중 오류가 발생했습니다.');
+  }
+}
+
+export async function setPetPolicyOverrideAction(input: PetPolicyOverrideInput): Promise<AdminActionResult> {
+  try {
+    const { user, adminClient } = await requireAdmin();
+    if (!isUuid(input?.placeId)) throw new Error('장소 식별자가 올바르지 않습니다.');
+    if (!validatePetPolicy(input?.policy)) throw new Error('반려동물 정책 값이 올바르지 않습니다.');
+    if (!validateReviewNote(input?.note)) throw new Error('정책 메모는 240자 이내로 입력해 주세요.');
+
+    const existingResult = await adminClient
+      .schema('core')
+      .from('place_pet_policies')
+      .select('pet_note_raw, source_updated_at, data_status, details_json')
+      .eq('place_id', input.placeId)
+      .maybeSingle();
+    if (existingResult.error) return fail('기존 반려동물 정책을 읽지 못했습니다.');
+
+    const now = new Date().toISOString();
+    const note = input.note?.trim() || null;
+    const { error } = await adminClient.schema('core').from('place_pet_policies').upsert({
+      place_id: input.placeId,
+      pet_policy: input.policy,
+      pet_note_raw: note ?? existingResult.data?.pet_note_raw ?? null,
+      pet_note_short: note,
+      is_manual_override: true,
+      source_provider: 'MANUAL',
+      source_updated_at: existingResult.data?.source_updated_at ?? now,
+      data_status: existingResult.data?.data_status ?? 'fresh',
+      last_checked_at: now,
+      details_json: { ...(existingResult.data?.details_json && typeof existingResult.data.details_json === 'object' ? existingResult.data.details_json : {}), manual_override: true },
+      updated_at: now,
+    }, { onConflict: 'place_id' });
+    if (error) return fail('반려동물 정책을 저장하지 못했습니다.');
+
+    await recordAdminAudit(adminClient, user.id, 'place_pet_policy', input.placeId, 'pet_policy_override', { policy: input.policy, note });
+    const slug = await getPlaceSlug(input.placeId);
+    revalidatePlace(slug);
+    return { success: true, message: '반려동물 정책을 수동 적용했습니다.' };
+  } catch (error) {
+    return toActionError(error, '반려동물 정책 적용 중 오류가 발생했습니다.');
+  }
+}
+
+export async function resetPetPolicyOverrideAction(placeId: string): Promise<AdminActionResult> {
+  try {
+    const { user, adminClient } = await requireAdmin();
+    if (!isUuid(placeId)) throw new Error('장소 식별자가 올바르지 않습니다.');
+    const { error } = await adminClient
+      .schema('core')
+      .from('place_pet_policies')
+      .update({ is_manual_override: false, updated_at: new Date().toISOString() })
+      .eq('place_id', placeId);
+    if (error) return fail('반려동물 수동 정책을 해제하지 못했습니다.');
+    await recordAdminAudit(adminClient, user.id, 'place_pet_policy', placeId, 'pet_policy_override_reset');
+    const slug = await getPlaceSlug(placeId);
+    revalidatePlace(slug);
+    return { success: true, message: '수동 정책을 해제했습니다. 다음 자동 수집부터 원본값이 반영됩니다.' };
+  } catch (error) {
+    return toActionError(error, '반려동물 정책 해제 중 오류가 발생했습니다.');
+  }
 }
 
 export async function updatePlacePublishStateAction(input: PlacePublishInput): Promise<AdminActionResult> {
@@ -196,6 +310,19 @@ export async function saveCourseAction(input: CourseInput): Promise<AdminActionR
     let courseId = input.id;
     if (courseId !== undefined && !isUuid(courseId)) throw new Error('코스 식별자가 올바르지 않습니다.');
 
+    if (input.isPublished && courseId) {
+      const existingCourse = await adminClient.schema('core').from('courses').select('automation_source, automation_metadata').eq('id', courseId).maybeSingle();
+      if (existingCourse.error) throw new Error('코스 자동 생성 provenance를 확인하지 못했습니다.');
+      const metadata = existingCourse.data?.automation_metadata;
+      const violations = metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+        ? (metadata as { constraint_violations?: unknown }).constraint_violations
+        : null;
+      const hardViolations = Array.isArray(violations) ? violations.filter((value) => ['missing_coordinates', 'unpublished_place', 'duplicate_place', 'route_too_long', 'pet_policy_unknown', 'stale_source'].includes(String(value))) : [];
+      if (existingCourse.data?.automation_source && hardViolations.length > 0) {
+        throw new Error('자동 생성 코스에 해결되지 않은 품질 경고가 있어 바로 공개할 수 없습니다. 장소와 근거를 확인해 주세요.');
+      }
+    }
+
     const courseResult = await adminClient.rpc('admin_upsert_course', {
       p_payload: {
         ...(courseId ? { id: courseId } : {}),
@@ -239,7 +366,9 @@ type DraftPlaceRow = {
   lng: number | string;
   category: string | null;
   is_active: boolean | null;
+  source_modified_at: string | null;
 };
+type DraftSourceRow = { place_id: string; ingestion_status: string | null };
 type DraftStateRow = {
   place_id: string;
   is_published: boolean | null;
@@ -247,7 +376,7 @@ type DraftStateRow = {
   recommendation_boost: number | string | null;
 };
 type DraftCopyRow = { place_id: string; display_name: string | null };
-type DraftPetRow = { place_id: string; pet_policy: string | null };
+type DraftPetRow = { place_id: string; pet_policy: string | null; data_status: string | null; last_checked_at: string | null };
 
 function draftNumber(value: number | string | null | undefined): number {
   const numberValue = Number(value);
@@ -258,25 +387,47 @@ function isPetReady(policy: string | null | undefined): boolean {
   return ['allowed', '가능', '동반 가능', '동반가능'].includes(String(policy ?? '').trim().toLowerCase());
 }
 
+function courseAutomationMetadata(plan: ReturnType<typeof planCourseDrafts>[number]): Record<string, unknown> {
+  return {
+    schema_version: 1,
+    automation_source: plan.automationSource,
+    automation_key: plan.automationKey,
+    provider: 'deterministic',
+    model: null,
+    prompt_version: null,
+    input_checksum: null,
+    distance_kind: plan.distanceKind,
+    evidence: plan.evidence,
+    constraint_violations: plan.constraintViolations,
+  };
+}
+
 export async function generateCourseDraftsAction(): Promise<AdminActionResult & { generatedCount?: number }> {
   try {
     const { adminClient } = await requireAdmin();
-    const [placesResult, statesResult, copiesResult, petsResult] = await Promise.all([
-      adminClient.schema('core').from('places').select('id, slug, official_name, lat, lng, category, is_active').eq('is_active', true),
+    const [placesResult, sourcesResult, statesResult, copiesResult, imagesResult, petsResult] = await Promise.all([
+      adminClient.schema('core').from('places').select('id, slug, official_name, lat, lng, category, is_active, source_modified_at').eq('is_active', true),
+      adminClient.schema('core').from('place_sources').select('place_id, ingestion_status'),
       adminClient.schema('editorial').from('place_publish_state').select('place_id, is_published, night_suitability_score, recommendation_boost'),
       adminClient.schema('editorial').from('place_copy').select('place_id, display_name'),
-      adminClient.schema('core').from('place_pet_policies').select('place_id, pet_policy'),
+      adminClient.schema('core').from('place_images').select('place_id').eq('is_hero', true),
+      adminClient.schema('core').from('place_pet_policies').select('place_id, pet_policy, data_status, last_checked_at'),
     ]);
-    const sourceError = placesResult.error ?? statesResult.error ?? copiesResult.error ?? petsResult.error;
+    const sourceError = placesResult.error ?? sourcesResult.error ?? statesResult.error ?? copiesResult.error ?? imagesResult.error ?? petsResult.error;
     if (sourceError) return fail(`코스 초안 후보를 불러오지 못했습니다. ${sourceError.message}`);
 
     const placesById = new Map((placesResult.data as DraftPlaceRow[]).map((place) => [place.id, place]));
+    const sourcesById = new Map((sourcesResult.data as DraftSourceRow[]).map((source) => [source.place_id, source]));
     const copiesById = new Map((copiesResult.data as DraftCopyRow[]).map((copy) => [copy.place_id, copy]));
     const petsById = new Map((petsResult.data as DraftPetRow[]).map((pet) => [pet.place_id, pet]));
+    const heroIds = new Set((imagesResult.data ?? []).map((row) => row.place_id as string));
     const plannerPlaces: CoursePlannerPlace[] = (statesResult.data as DraftStateRow[]).flatMap((state) => {
       if (state.is_published !== true) return [];
       const place = placesById.get(state.place_id);
       if (!place) return [];
+      const source = sourcesById.get(place.id);
+      if (source?.ingestion_status === 'candidate' || source?.ingestion_status === 'rejected' || source?.ingestion_status === 'stale') return [];
+      const pet = petsById.get(place.id);
       return [{
         id: place.id,
         slug: place.slug,
@@ -286,7 +437,13 @@ export async function generateCourseDraftsAction(): Promise<AdminActionResult & 
         category: place.category,
         nightSuitabilityScore: draftNumber(state.night_suitability_score),
         recommendationBoost: draftNumber(state.recommendation_boost),
-        petReady: isPetReady(petsById.get(place.id)?.pet_policy),
+        petReady: isPetReady(pet?.pet_policy) && pet?.data_status === 'fresh',
+        petPolicy: pet?.pet_policy === 'allowed' || pet?.pet_policy === 'partial' || pet?.pet_policy === 'not_allowed' || pet?.pet_policy === 'unknown' ? pet.pet_policy : 'unknown',
+        petDataStatus: pet?.data_status === 'fresh' || pet?.data_status === 'stale' || pet?.data_status === 'unavailable' || pet?.data_status === 'unknown' ? pet.data_status : 'unknown',
+        sourceModifiedAt: place.source_modified_at,
+        hasHeroImage: heroIds.has(place.id),
+        hasContent: Boolean(copiesById.get(place.id)?.display_name?.trim()),
+        isPublished: true,
       }];
     });
 
@@ -316,6 +473,8 @@ export async function generateCourseDraftsAction(): Promise<AdminActionResult & 
         },
       });
       if (error || !data) return fail(`코스 초안 저장에 실패했습니다. ${error?.message ?? ''}`.trim());
+      const metadataResult = await adminClient.schema('core').from('courses').update({ automation_metadata: courseAutomationMetadata(plan) }).eq('id', data as string);
+      if (metadataResult.error) return fail(`코스 초안 provenance 저장에 실패했습니다. ${metadataResult.error.message}`);
       generatedCount += 1;
     }
 

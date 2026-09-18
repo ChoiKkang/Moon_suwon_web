@@ -6,6 +6,11 @@
   --moonlight: #ffd700;
   --surface: #171f33;
   --surface-border: rgba(62, 73, 93, 0.42);
+  --status-success-surface: rgba(110, 231, 183, 0.1);
+  --status-warning-surface: rgba(252, 211, 77, 0.1);
+  --status-danger-surface: rgba(253, 164, 175, 0.1);
+  --status-muted-surface: rgba(148, 163, 184, 0.1);
+  --status-info-surface: rgba(125, 211, 252, 0.1);
 }
 
 body {

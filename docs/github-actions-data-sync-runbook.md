@@ -34,13 +34,13 @@ workflow는 Node.js 22와 IPv4 우선 DNS 설정으로 실행한다.
 
 작업이 겹치면 `concurrency`가 이전 실행을 취소하지 않고 KTO 요청을 직렬화한다.
 
-`Course draft generation`은 매주 월요일 04:00 KST와 수동 실행을 지원한다. 공개·활성·좌표가 있는 장소를 기준으로 최대 세 개의 후보를 `core.courses`에 저장하지만 모두 비공개 초안이다. `/admin/courses`에서 실제 도보 동선과 운영 가능 여부를 검수한 뒤 공개 상태를 직접 켜야 한다. 같은 장소 조합은 automation key로 갱신되므로 반복 실행으로 중복 코스가 쌓이지 않는다.
+`Course draft generation`은 매주 월요일 04:00 KST와 수동 실행을 지원한다. 공개·활성·승인된·좌표가 있는 장소를 기준으로 최대 세 개의 후보를 `core.courses`에 저장하지만 모두 비공개 초안이다. `/admin/courses`에서 실제 도보 동선과 운영 가능 여부를 검수한 뒤 공개 상태를 직접 켜야 한다. 같은 장소 조합은 automation key로 갱신되므로 반복 실행으로 중복 코스가 쌓이지 않는다. 각 초안에는 `core.courses.automation_metadata`에 직선거리 추정 여부, 장소별 근거, 품질 위반 목록, 입력 checksum이 저장된다. AI는 기본 비활성이고, 도입하더라도 검증된 장소 ID·근거를 바꾸거나 자동 공개할 수 없다.
 
 각 작업은 일시적인 네트워크 실패에 대비해 최대 3회 실행을 시도하고, 성공 뒤 `npm run data:verify -- --job <job>`로 최근 실행 이력과 공개 serving view를 확인한다. 실패·검증 결과는 GitHub Actions Step Summary와 `/admin/operations`의 `raw.sync_runs`/`raw.sync_errors`에서 확인한다.
 
 ## 수동 실행
 
-GitHub Actions의 `KTO data sync` workflow에서 `Run workflow`를 선택하고 `content`, `crowd`, `pet` 중 하나를 고른다.
+GitHub Actions의 `KTO data sync` workflow에서 `Run workflow`를 선택하고 `content`, `crowd`, `pet`, `events` 중 하나를 고른다.
 
 CLI로 실행할 때는 다음과 같다.
 
@@ -58,6 +58,9 @@ gh run list --repo ChoiKkang/Moon_suwon_web --workflow kto-data-sync.yml --limit
 - `editorial.place_copy`, `editorial.place_publish_state`, 코스 테이블은 자동 sync가 변경하지 않는다.
 - 코스 초안 워크플로는 예외적으로 `core.courses`, `editorial.course_copy`, `editorial.course_publish_state`, `core.course_places`를 원자 RPC로 갱신하지만 `is_published=false`를 유지한다. 기존에 운영자가 공개한 자동 코스는 다음 자동 실행에서 덮어쓰지 않는다.
 - 새 장소는 게시 상태가 자동으로 공개되지 않는다.
+- 새 KTO 장소는 `core.place_sources.ingestion_status=candidate`로 들어오며 `/admin/places`의 후보 검수함에서 승인·보류·제외한다. 승인도 곧바로 공개를 의미하지 않으며, 공개 토글은 별도 editorial 검수다.
+- 후보 결정과 반려동물 정책 수동 override/해제는 비공개 `audit.admin_events`에 관리자·대상·시각·메모가 기록된다. 원본 KTO payload는 브라우저에 내보내지 않는다.
+- `/admin/operations`의 Source Health는 최근 실행·48시간 freshness·fetched/upserted/errors를 보여준다. 수동 실행은 GitHub Actions 링크를 사용하며 웹에 GitHub token을 저장하지 않는다.
 - KTO 이미지 URL은 정규화 단계에서 HTTPS로 저장하며, 공개 query adapter도 기존 값을 HTTPS로 보정한다.
 - 예정 행사는 `core.events`에서 `public.v_upcoming_events`로 제공되며 종료일이 지난 행사는 공개 웹에서 숨긴다.
 - 익명 브라우저는 curated serving view/RPC만 사용하며 unpublished core/editorial 행을 직접 읽을 수 없다.

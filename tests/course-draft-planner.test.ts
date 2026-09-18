@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { haversineKm, planCourseDrafts, type CoursePlannerPlace } from '../src/lib/courses/draft-planner';
+import { validateCourseCandidate } from '../src/lib/courses/course-contract';
 
 const places: CoursePlannerPlace[] = [
   { id: 'a', slug: 'a', displayName: 'A', lat: 37.2800, lng: 127.0100, nightSuitabilityScore: 80, recommendationBoost: 0 },
@@ -23,6 +24,9 @@ test('planner output is deterministic and contains unique place sets', () => {
   assert.equal(new Set(first.map((plan) => plan.automationKey)).size, first.length);
   assert.ok(first.every((plan) => plan.placeIds.length >= 3 && plan.placeIds.length <= 4));
   assert.ok(first.every((plan) => plan.walkingDistanceKm >= 0));
+  assert.ok(first.every((plan) => plan.distanceKind === 'straight_line_estimate'));
+  assert.ok(first.every((plan) => plan.evidence.length === plan.placeIds.length));
+  assert.ok(first.every((plan) => validateCourseCandidate(plan).valid));
 });
 
 test('planner respects the maximum route distance and coordinate validation', () => {
@@ -37,4 +41,19 @@ test('planner respects the maximum route distance and coordinate validation', ()
 test('pet-ready flag is true only when every stop is marked ready', () => {
   const result = planCourseDrafts(places.map((place) => ({ ...place, petReady: true })), { maxPlans: 1 });
   assert.equal(result[0]?.petReadyFlag, true);
+});
+
+test('pet-only planning excludes unknown or stale pet data', () => {
+  const petCandidates: CoursePlannerPlace[] = places.map((place, index) => ({
+    ...place,
+    petPolicy: index >= 2 ? 'unknown' : 'allowed',
+    petDataStatus: index === 3 ? 'stale' : 'fresh',
+    isPublished: true,
+  }));
+  assert.deepEqual(planCourseDrafts(petCandidates, { petOnly: true }), []);
+});
+
+test('unpublished candidates never enter generated courses', () => {
+  const unpublished = places.map((place) => ({ ...place, isPublished: false }));
+  assert.deepEqual(planCourseDrafts(unpublished), []);
 });

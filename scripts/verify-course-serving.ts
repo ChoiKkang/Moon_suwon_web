@@ -5,12 +5,16 @@ loadEnvConfig(process.cwd());
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required');
+if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
+  throw new Error('NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY are required');
 }
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false },
+});
+const serviceSupabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false },
 });
 
@@ -28,6 +32,26 @@ async function main() {
       .from('v_published_places')
       .select('id, slug'),
   ]);
+
+  const generatedResult = await serviceSupabase
+    .schema('core')
+    .from('courses')
+    .select('id, slug, automation_source, automation_key, automation_metadata')
+    .not('automation_source', 'is', null)
+    .limit(100);
+  if (generatedResult.error) throw new Error(`Failed to read generated course metadata: ${generatedResult.error.message}`);
+  for (const course of generatedResult.data ?? []) {
+    if (!course.automation_key || !course.automation_metadata || typeof course.automation_metadata !== 'object') {
+      throw new Error(`Generated course ${course.slug} is missing automation provenance.`);
+    }
+    const metadata = course.automation_metadata as { distance_kind?: unknown; evidence?: unknown; constraint_violations?: unknown };
+    if (metadata.distance_kind !== 'straight_line_estimate' && metadata.distance_kind !== 'routed') {
+      throw new Error(`Generated course ${course.slug} has an invalid distance kind.`);
+    }
+    if (!Array.isArray(metadata.evidence) || !Array.isArray(metadata.constraint_violations)) {
+      throw new Error(`Generated course ${course.slug} is missing evidence or constraint metadata.`);
+    }
+  }
 
   if (homeResult.error) {
     throw new Error(`Failed to read v_home_courses: ${homeResult.error.message}`);
@@ -56,6 +80,7 @@ async function main() {
   for (const course of homeResult.data ?? []) {
     console.log(`${course.hero_title} | ${course.slug} | ${detailCounts.get(course.id) ?? 0} places`);
   }
+  console.log(`Generated drafts with provenance: ${generatedResult.data?.length ?? 0}`);
 }
 
 main().catch((error) => {

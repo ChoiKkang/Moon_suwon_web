@@ -1,3 +1,6 @@
+import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
+import { validateCourseCandidate, type CourseConstraintViolation } from './course-contract';
+
 export type CoursePlannerPlace = {
   id: string;
   slug: string;
@@ -8,11 +11,17 @@ export type CoursePlannerPlace = {
   nightSuitabilityScore?: number | null;
   recommendationBoost?: number | null;
   petReady?: boolean;
+  petPolicy?: PetPolicy;
+  petDataStatus?: DataFreshness;
+  sourceModifiedAt?: string | null;
+  hasHeroImage?: boolean;
+  hasContent?: boolean;
+  isPublished?: boolean;
 };
 
 export type CourseDraftPlan = {
   automationKey: string;
-  automationSource: 'heuristic-v1';
+  automationSource: 'heuristic-v2';
   slug: string;
   themeTags: string[];
   estimatedDurationMin: number;
@@ -27,6 +36,9 @@ export type CourseDraftPlan = {
   ogTitle: string;
   ogDescription: string;
   placeIds: string[];
+  distanceKind: 'straight_line_estimate' | 'routed';
+  evidence: Array<{ placeId: string; reasons: string[] }>;
+  constraintViolations: CourseConstraintViolation[];
 };
 
 export type CoursePlannerOptions = {
@@ -34,6 +46,7 @@ export type CoursePlannerOptions = {
   minPlaces?: number;
   maxPlaces?: number;
   maxRouteKm?: number;
+  petOnly?: boolean;
 };
 
 const THEMES = [
@@ -51,6 +64,16 @@ function isValidCoordinate(place: CoursePlannerPlace): boolean {
     && place.lat <= 90
     && place.lng >= -180
     && place.lng <= 180;
+}
+
+function isEligible(place: CoursePlannerPlace, options: CoursePlannerOptions): boolean {
+  if (place.isPublished === false) return false;
+  if (!isValidCoordinate(place)) return false;
+  if (options.petOnly) {
+    if (place.petPolicy !== 'allowed' && place.petPolicy !== 'partial') return false;
+    if (place.petDataStatus !== 'fresh') return false;
+  }
+  return true;
 }
 
 export function haversineKm(from: Pick<CoursePlannerPlace, 'lat' | 'lng'>, to: Pick<CoursePlannerPlace, 'lat' | 'lng'>): number {
@@ -105,6 +128,18 @@ function compactNames(route: CoursePlannerPlace[]): string {
   return route.map((place) => place.displayName).join(' → ');
 }
 
+function evidenceFor(place: CoursePlannerPlace): string[] {
+  const reasons: string[] = [];
+  if ((place.nightSuitabilityScore ?? 0) > 0) reasons.push(`야간 적합도 ${Number(place.nightSuitabilityScore ?? 0).toFixed(0)}`);
+  if ((place.recommendationBoost ?? 0) > 0) reasons.push(`운영 추천 가중치 +${Number(place.recommendationBoost ?? 0).toFixed(0)}`);
+  if (place.category) reasons.push(`분류 ${place.category}`);
+  if (place.petPolicy === 'allowed' || place.petPolicy === 'partial') reasons.push(`반려동물 정책 ${place.petPolicy === 'allowed' ? '가능' : '조건부 가능'}`);
+  if (place.petPolicy === 'unknown') reasons.push('반려동물 정책 확인 필요');
+  if (place.hasHeroImage === false) reasons.push('대표 이미지 보강 필요');
+  if (place.hasContent === false) reasons.push('운영 문구 보강 필요');
+  return reasons.length > 0 ? reasons : ['공개·활성 장소 후보'];
+}
+
 function rounded(value: number, decimals = 2): number {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
@@ -119,7 +154,7 @@ export function planCourseDrafts(
   const maxPlaces = Math.max(minPlaces, Math.min(5, options.maxPlaces ?? 4));
   const maxRouteKm = Math.max(0.1, options.maxRouteKm ?? 8);
   const places = input
-    .filter(isValidCoordinate)
+    .filter((place) => isEligible(place, options))
     .filter((place, index, all) => all.findIndex((candidate) => candidate.id === place.id) === index)
     .sort((a, b) => score(b) - score(a) || a.id.localeCompare(b.id));
 
@@ -145,7 +180,7 @@ export function planCourseDrafts(
     }
 
     const sortedIds = [...route].map((place) => place.id).sort();
-    const automationKey = `heuristic-v1:${theme.key}:${sortedIds.join(',')}`;
+    const automationKey = `heuristic-v2:${theme.key}:${sortedIds.join(',')}`;
     if (usedKeys.has(automationKey)) continue;
     usedKeys.add(automationKey);
 
@@ -155,9 +190,10 @@ export function planCourseDrafts(
     const estimatedDurationMin = Math.max(45, Math.min(240, Math.round(route.length * 18 + finalDistanceKm * 15)));
     const slug = `auto-${theme.key}-${stableHash(automationKey)}`;
 
-    plans.push({
+    const evidence = route.map((place) => ({ placeId: place.id, reasons: evidenceFor(place) }));
+    const candidate = {
       automationKey,
-      automationSource: 'heuristic-v1',
+      automationSource: 'heuristic-v2' as const,
       slug,
       themeTags: [...theme.tags],
       estimatedDurationMin,
@@ -172,7 +208,13 @@ export function planCourseDrafts(
       ogTitle: `${theme.title} | 달빛수원`,
       ogDescription: `${names}을 잇는 달빛수원 추천 초안입니다.`,
       placeIds: route.map((place) => place.id),
-    });
+      distanceKind: 'straight_line_estimate' as const,
+      evidence,
+      constraintViolations: [] as CourseConstraintViolation[],
+    } satisfies CourseDraftPlan;
+    const validation = validateCourseCandidate(candidate);
+    if (!validation.valid) continue;
+    plans.push(candidate);
   }
 
   return plans;

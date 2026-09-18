@@ -50,9 +50,9 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 | 테이블 | 역할 | 주요 컬럼 |
 |---|---|---|
 | `core.places` | 관광지 정규화 마스터 | `id`, `slug`, `official_name`, `address_full`, `lat`, `lng`, `is_active`, `source_modified_at` |
-| `core.place_sources` | 장소와 KTO contentId 매핑 | `place_id`, `kto_content_id`, `kto_content_type_id`, `sync_enabled` |
+| `core.place_sources` | 장소와 KTO contentId 매핑·검수 lifecycle | `place_id`, `kto_content_id`, `kto_content_type_id`, `sync_enabled`, `ingestion_status`, `first_seen_at`, `last_seen_at` |
 | `core.place_images` | 장소 이미지 갤러리 | `place_id`, `image_url`, `thumbnail_url`, `is_hero`, `display_order` |
-| `core.place_pet_policies` | 반려동물 이용 정책 | `place_id`, `pet_policy`, `pet_note_short` |
+| `core.place_pet_policies` | 반려동물 이용 정책 | `place_id`, `pet_policy`, `pet_note_short`, `data_status`, `last_checked_at`, `is_manual_override` |
 
 `core.places.official_name`은 KTO 원본 이름이다. 웹 표시 이름과 운영 문구는 `editorial.place_copy`를 우선한다.
 
@@ -60,7 +60,7 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 
 | 테이블 | 역할 | 주요 컬럼 |
 |---|---|---|
-| `core.courses` | 코스 기본 정의 | `id`, `slug`, `theme_tags`, `estimated_duration_min`, `walking_distance_km`, `automation_source`, `automation_key` |
+| `core.courses` | 코스 기본 정의 | `id`, `slug`, `theme_tags`, `estimated_duration_min`, `walking_distance_km`, `automation_source`, `automation_key`, `automation_metadata` |
 | `core.course_places` | 코스와 장소의 N:M 연결 | `course_id`, `place_id`, `order_index` |
 | `editorial.course_copy` | 코스 제목·설명·SEO 문구 | `hero_title`, `subtitle`, `route_summary`, `og_*` |
 | `editorial.course_publish_state` | 코스 공개 여부·순서 | `is_published`, `display_priority`, `published_at` |
@@ -186,6 +186,8 @@ Next.js 공개 웹 / 운영 웹 / Flutter 앱
 - `/admin/courses`: 코스 생성/수정, 장소 순서 변경, 공개 상태와 홈 노출 순서 관리
 - `/admin/courses`의 `자동 초안 생성`: 공개·활성·좌표가 있는 장소로 최대 3개 후보를 원자적으로 생성하며, 항상 비공개로 저장
 - `/admin/operations`: 혼잡도 최신성·분포, sync run, sync error 이력 조회
+- `/admin/operations`: 원천별 freshness/실행 통계와 후보 검수 대기 수를 함께 확인
+- `/admin/places`: KTO 후보 승인·보류·제외, 반려동물 정책 수동 override/자동값 복귀, 후보 상태별 검색
 - `/admin/events`: 행사 생성·수정·삭제와 기간/장소/프로그램 편집
 - 모든 관리자 화면과 Server Action은 `public.profiles.role = ADMIN`을 확인
 - 로컬 스팟 CRUD는 현재 DB에 0행이고 이번 운영보드 범위 밖이다.
@@ -240,6 +242,8 @@ npm run build
 - [ ] `npm run data:verify -- --job all` 실행
 - [ ] `DEPLOYMENT_URL=https://서비스도메인 npm run deployment:verify` 실행
 - [ ] 공개 장소를 늘릴 때 editorial 설명·야간 포인트·포토 팁 보강
+- [ ] 후보 검수함에서 `candidate`/`stale` 장소를 먼저 승인하고 공개 토글을 별도로 켜기
+- [ ] 자동 코스는 `직선거리 추정` 경고와 장소별 근거를 확인한 뒤 공개하기
 - [ ] 반려동물 API 승인 또는 반려동물 수집 기능 비활성화 결정
 - [ ] 원격 migration 이력과 저장소 migration 동기화
 - [x] `normalize_profile_role_values` migration 원격 적용 및 `USER`/`ADMIN` check 확인

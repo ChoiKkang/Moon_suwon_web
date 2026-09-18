@@ -8,6 +8,7 @@ export type ServiceCourse = {
   description: string;
   durationMinutes: number;
   distanceKm: number | null;
+  petReadyFlag: boolean;
   status: 'live';
   theme: string;
   primaryCta: string;

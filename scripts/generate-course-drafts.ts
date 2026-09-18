@@ -1,5 +1,6 @@
 import { loadEnvConfig } from '@next/env';
 import { appendFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { planCourseDrafts, type CoursePlannerPlace } from '../src/lib/courses/draft-planner';
 
@@ -13,7 +14,9 @@ type PlaceRow = {
   lng: number | string;
   category: string | null;
   is_active: boolean | null;
+  source_modified_at: string | null;
 };
+type SourceRow = { place_id: string; ingestion_status: string | null };
 type StateRow = {
   place_id: string;
   is_published: boolean | null;
@@ -21,7 +24,7 @@ type StateRow = {
   recommendation_boost: number | string | null;
 };
 type CopyRow = { place_id: string; display_name: string | null };
-type PetRow = { place_id: string; pet_policy: string | null };
+type PetRow = { place_id: string; pet_policy: string | null; data_status: string | null; last_checked_at: string | null };
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -76,28 +79,50 @@ function writeGithubOutput(plans: ReturnType<typeof planCourseDrafts>, writtenCo
   appendFileSync(outputPath, `candidate_count=${plans.length}\nwritten_count=${writtenCount}\nmode=${dryRun ? 'dry-run' : 'write'}\n`);
 }
 
+function automationMetadata(plan: ReturnType<typeof planCourseDrafts>[number], inputChecksum: string): Record<string, unknown> {
+  return {
+    schema_version: 1,
+    automation_source: plan.automationSource,
+    automation_key: plan.automationKey,
+    provider: 'deterministic',
+    model: null,
+    prompt_version: null,
+    input_checksum: inputChecksum,
+    distance_kind: plan.distanceKind,
+    evidence: plan.evidence,
+    constraint_violations: plan.constraintViolations,
+  };
+}
+
 async function main() {
   const dryRun = hasFlag('--dry-run');
   const plansLimit = readLimit();
-  const [placesResult, statesResult, copiesResult, petsResult] = await Promise.all([
-    supabase.schema('core').from('places').select('id, slug, official_name, lat, lng, category, is_active').eq('is_active', true),
+  const [placesResult, sourcesResult, statesResult, copiesResult, imagesResult, petsResult] = await Promise.all([
+    supabase.schema('core').from('places').select('id, slug, official_name, lat, lng, category, is_active, source_modified_at').eq('is_active', true),
+    supabase.schema('core').from('place_sources').select('place_id, ingestion_status'),
     supabase.schema('editorial').from('place_publish_state').select('place_id, is_published, night_suitability_score, recommendation_boost'),
     supabase.schema('editorial').from('place_copy').select('place_id, display_name'),
-    supabase.schema('core').from('place_pet_policies').select('place_id, pet_policy'),
+    supabase.schema('core').from('place_images').select('place_id').eq('is_hero', true),
+    supabase.schema('core').from('place_pet_policies').select('place_id, pet_policy, data_status, last_checked_at'),
   ]);
 
-  const firstError = placesResult.error ?? statesResult.error ?? copiesResult.error ?? petsResult.error;
+  const firstError = placesResult.error ?? sourcesResult.error ?? statesResult.error ?? copiesResult.error ?? imagesResult.error ?? petsResult.error;
   if (firstError) throw new Error(`course draft source query failed: ${firstError.message}`);
 
   const placesById = new Map((placesResult.data as PlaceRow[]).map((place) => [place.id, place]));
+  const sourcesById = new Map((sourcesResult.data as SourceRow[]).map((source) => [source.place_id, source]));
   const copiesById = new Map((copiesResult.data as CopyRow[]).map((copy) => [copy.place_id, copy]));
   const petsById = new Map((petsResult.data as PetRow[]).map((pet) => [pet.place_id, pet]));
+  const heroIds = new Set((imagesResult.data ?? []).map((row) => row.place_id as string));
   const plannerPlaces: CoursePlannerPlace[] = [];
 
   for (const state of statesResult.data as StateRow[]) {
     if (state.is_published !== true) continue;
     const place = placesById.get(state.place_id);
     if (!place) continue;
+    const source = sourcesById.get(place.id);
+    if (source?.ingestion_status === 'candidate' || source?.ingestion_status === 'rejected' || source?.ingestion_status === 'stale') continue;
+    const pet = petsById.get(place.id);
     plannerPlaces.push({
       id: place.id,
       slug: place.slug,
@@ -107,7 +132,13 @@ async function main() {
       category: place.category,
       nightSuitabilityScore: asNumber(state.night_suitability_score),
       recommendationBoost: asNumber(state.recommendation_boost),
-      petReady: petReady(petsById.get(place.id)?.pet_policy),
+      petReady: petReady(pet?.pet_policy) && pet?.data_status === 'fresh',
+      petPolicy: pet?.pet_policy === 'allowed' || pet?.pet_policy === 'partial' || pet?.pet_policy === 'not_allowed' || pet?.pet_policy === 'unknown' ? pet.pet_policy : 'unknown',
+      petDataStatus: pet?.data_status === 'fresh' || pet?.data_status === 'stale' || pet?.data_status === 'unavailable' || pet?.data_status === 'unknown' ? pet.data_status : 'unknown',
+      sourceModifiedAt: place.source_modified_at,
+      hasHeroImage: heroIds.has(place.id),
+      hasContent: Boolean(copiesById.get(place.id)?.display_name?.trim()),
+      isPublished: true,
     });
   }
 
@@ -124,6 +155,21 @@ async function main() {
     writeSummary(plans, plans.length, true);
     return;
   }
+
+  const inputChecksum = createHash('sha256')
+    .update(JSON.stringify([...plannerPlaces].sort((a, b) => a.id.localeCompare(b.id))))
+    .digest('hex');
+  const startedAt = new Date().toISOString();
+  const generationRun = await supabase.schema('raw').from('course_generation_runs').insert({
+    source: 'heuristic-v2',
+    status: 'running',
+    model: null,
+    prompt_version: null,
+    input_checksum: inputChecksum,
+    metadata: { candidate_count: plannerPlaces.length, plan_count: plans.length },
+    started_at: startedAt,
+  }).select('id').single();
+  if (generationRun.error || !generationRun.data?.id) throw new Error(`course generation run could not start: ${generationRun.error?.message ?? 'no id returned'}`);
 
   let writtenCount = 0;
   for (const plan of plans) {
@@ -150,8 +196,16 @@ async function main() {
       },
     });
     if (error || !data) throw new Error(`course draft ${plan.slug} failed: ${error?.message ?? 'no course id returned'}`);
+    const metadataResult = await supabase.schema('core').from('courses').update({ automation_metadata: automationMetadata(plan, inputChecksum) }).eq('id', data as string);
+    if (metadataResult.error) throw new Error(`course metadata ${plan.slug} failed: ${metadataResult.error.message}`);
     writtenCount += 1;
   }
+
+  await supabase.schema('raw').from('course_generation_runs').update({
+    status: 'completed',
+    completed_at: new Date().toISOString(),
+    metadata: { candidate_count: plannerPlaces.length, plan_count: plans.length, written_count: writtenCount },
+  }).eq('id', generationRun.data.id);
 
   writeGithubOutput(plans, writtenCount, false);
   writeSummary(plans, writtenCount, false);

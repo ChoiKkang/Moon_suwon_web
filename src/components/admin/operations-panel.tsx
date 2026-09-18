@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Activity, AlertCircle, BarChart3, ChevronDown, Clock3, ExternalLink } from 'lucide-react';
+import { Activity, AlertCircle, BarChart3, ChevronDown, Clock3, ExternalLink, ShieldAlert } from 'lucide-react';
 import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
-import type { AdminCrowdSummary, AdminSyncError, AdminSyncRun } from '@/lib/admin/types';
+import type { AdminCandidate, AdminCrowdSummary, AdminSourceHealth, AdminSyncError, AdminSyncRun } from '@/lib/admin/types';
 
 const KTO_SYNC_WORKFLOW_URL = 'https://github.com/ChoiKkang/Moon_suwon_web/actions/workflows/kto-data-sync.yml';
 
@@ -18,13 +18,15 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-export function OperationsPanel({ crowd, syncRuns, syncErrors }: { crowd: AdminCrowdSummary; syncRuns: AdminSyncRun[]; syncErrors: AdminSyncError[] }) {
+export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourceHealth }: { crowd: AdminCrowdSummary; syncRuns: AdminSyncRun[]; syncErrors: AdminSyncError[]; candidates: AdminCandidate[]; sourceHealth: AdminSourceHealth[] }) {
   const [tab, setTab] = useState<'crowd' | 'runs' | 'errors'>('crowd');
   const maxLevelCount = Math.max(1, ...Object.values(crowd.byLevel));
+  const reviewCount = candidates.filter((candidate) => candidate.ingestionStatus === 'candidate' || candidate.ingestionStatus === 'stale').length;
 
   return (
     <div className="space-y-6">
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-4"><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><Activity className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">오늘 예측</p><p className="mt-1 text-3xl font-black text-white">{crowd.todayRows}</p></div><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><BarChart3 className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">전체 예측</p><p className="mt-1 text-3xl font-black text-white">{crowd.totalRows}</p></div><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><Clock3 className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">최신 예측 날짜</p><p className="mt-1 text-lg font-black text-white">{crowd.latestForecastDate ?? '없음'}</p></div><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><AlertCircle className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">상태</p><div className="mt-2"><AdminStatusBadge label={crowd.stale ? 'STALE' : 'HEALTHY'} tone={crowd.stale ? 'warning' : 'success'} /></div></div></section>
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-5"><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><Activity className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">오늘 예측</p><p className="mt-1 text-3xl font-black text-white">{crowd.todayRows}</p></div><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><BarChart3 className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">전체 예측</p><p className="mt-1 text-3xl font-black text-white">{crowd.totalRows}</p></div><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><Clock3 className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">최신 예측 날짜</p><p className="mt-1 text-lg font-black text-white">{crowd.latestForecastDate ?? '없음'}</p></div><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><AlertCircle className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">상태</p><div className="mt-2"><AdminStatusBadge label={crowd.stale ? 'STALE' : 'HEALTHY'} tone={crowd.stale ? 'warning' : 'success'} /></div></div><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><ShieldAlert className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">검수 대기</p><p className="mt-1 text-3xl font-black text-white">{reviewCount}</p></div></section>
+      <section className="rounded-3xl border border-white/10 bg-[#171f33]/80 p-5 md:p-6"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">Source Health</p><h2 className="mt-2 text-xl font-black text-white">원천별 최신 상태</h2></div><span className="text-xs text-[#8f9bb3]">48시간 SLA</span></div><div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{sourceHealth.map((source) => <div key={source.source} className="rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-4"><div className="flex items-center justify-between gap-2"><p className="text-sm font-black text-white">{source.source}</p><AdminStatusBadge label={source.freshness === 'fresh' ? '신선' : source.freshness === 'stale' ? '오래됨' : '미확인'} tone={source.freshness === 'fresh' ? 'success' : source.freshness === 'stale' ? 'warning' : 'muted'} /></div><p className="mt-2 text-xs text-[#8f9bb3]">{source.lastCompletedAt ? formatDate(source.lastCompletedAt) : '완료 이력 없음'}</p><p className="mt-2 text-[11px] text-[#d0c6ab]">{source.fetched} fetched · {source.upserted} upserted · {source.errors} errors</p></div>)}{sourceHealth.length === 0 ? <p className="col-span-full rounded-2xl bg-[#0b1326]/60 p-5 text-sm text-[#8f9bb3]">원천별 실행 이력이 없습니다.</p> : null}</div></section>
       <section className="rounded-3xl border border-[#ffd700]/20 bg-[#171f33]/80 p-5 md:p-6">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
           <div>
