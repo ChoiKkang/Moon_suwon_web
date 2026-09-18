@@ -36,3 +36,12 @@ export function publishBlockers(place: AdminPlace): ReadinessBlocker[] {
 export function isPublishReady(place: AdminPlace): boolean {
   return publishBlockers(place).length === 0;
 }
+
+/**
+ * Ready to publish and still hidden: the operator only has to flip the switch.
+ * The dashboard card and the place list filter both count this, so they share
+ * one definition instead of each re-deriving it.
+ */
+export function isAwaitingPublish(place: AdminPlace): boolean {
+  return !place.isPublished && isPublishReady(place);
+}
