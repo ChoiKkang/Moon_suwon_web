@@ -8,8 +8,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // 의미하지 않고, 공개 전환은 문구가 준비된 장소에만 허용한다. 모든 변경은
 // audit.admin_events에 관리자 계정과 함께 기록한다.
 //
-// Discord 사용자 ID는 그 자체로 권한이 아니다. DISCORD_OPERATOR_IDS에 등록된
-// 사용자만 액션을 실행할 수 있고, 실제 기록 주체는 매핑된 ADMIN 프로필이다.
+// Discord 사용자 ID는 그 자체로 권한이 아니다. 요청은 운영 서버(DISCORD_GUILD_ID)
+// 확인을 통과해야 하고, 실제 기록 주체는 DISCORD_ADMIN_ACTOR_ID로 지정한 ADMIN
+// 프로필이다. 사용자 ID는 감사 로그 메타데이터로만 남는다.
 
 export type ActionResult = { ok: boolean; message: string };
 

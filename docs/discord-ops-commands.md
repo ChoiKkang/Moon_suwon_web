@@ -30,11 +30,13 @@ Vercel Production에 다음을 등록한다.
 
 ```dotenv
 DISCORD_PUBLIC_KEY=<Application Public Key>
-DISCORD_OPERATOR_IDS=<운영자 Discord 사용자 ID>,<두 번째 운영자 ID>
+DISCORD_GUILD_ID=<운영 서버 ID>
 DISCORD_ADMIN_ACTOR_ID=<public.profiles의 ADMIN 계정 UUID>
 ```
 
-`DISCORD_OPERATOR_IDS`에 없는 사용자는 명령을 실행할 수 없다. Discord 사용자 ID는 개발자 모드를 켜고 사용자를 우클릭해 복사한다.
+운영 서버에는 운영자 두 명과 봇만 있으므로 개인 사용자 ID 목록을 관리하지 않는다. 대신 `DISCORD_GUILD_ID`와 일치하는 서버에서 온 요청만 처리한다. 슬래시 명령을 길드 전용으로 등록하므로 다른 서버에서는 명령 자체가 보이지 않고, 길드 확인이 남아 있으면 애플리케이션이 다른 서버에 추가되더라도 조작을 막는다. DM에서 실행한 요청도 서버 정보가 없어 거절된다.
+
+서버 ID는 Discord 개발자 모드를 켜고 서버 이름을 우클릭해 복사한다.
 
 `DISCORD_ADMIN_ACTOR_ID`는 감사 로그의 기록 주체다. `public.profiles.role = ADMIN`인 계정이어야 하며, Discord 사용자 ID는 메타데이터로 함께 남는다. 즉 "누가 Discord에서 눌렀는지"와 "어느 관리자 권한으로 기록되는지"를 모두 추적할 수 있다.
 
@@ -43,7 +45,7 @@ DISCORD_ADMIN_ACTOR_ID=<public.profiles의 ADMIN 계정 UUID>
 ```dotenv
 DISCORD_APPLICATION_ID=<Application ID>
 DISCORD_BOT_TOKEN=<Bot Token>
-DISCORD_GUILD_ID=<운영 서버 ID>
+DISCORD_GUILD_ID=<운영 서버 ID·Production과 같은 값>
 ```
 
 ## 3. 슬래시 명령 등록
@@ -85,7 +87,7 @@ npm run discord:register
 Discord에서 실행하더라도 웹 관리자 화면과 같은 데이터 경계를 지킨다.
 
 - 서명 검증에 실패한 요청은 401로 거절한다. 본문이 변조되거나 5분을 넘긴 요청도 거절한다.
-- `DISCORD_OPERATOR_IDS`에 없는 사용자는 어떤 명령도 실행할 수 없다.
+- `DISCORD_GUILD_ID`와 다른 서버, 그리고 DM에서 온 요청은 거절한다.
 - 승인은 공개가 아니다. 공개는 설명과 야간 포인트가 모두 있는 장소에만 허용한다.
 - 승인되지 않은 장소는 공개할 수 없다.
 - 모든 변경은 `audit.admin_events`에 `source=discord`와 Discord 사용자 ID를 남긴다.
@@ -111,6 +113,6 @@ Discord에서 실행하더라도 웹 관리자 화면과 같은 데이터 경계
 
 Interactions Endpoint URL 저장이 실패하면 `DISCORD_PUBLIC_KEY`가 Production에 등록되었는지, 값에 공백이 섞이지 않았는지 확인한다. 엔드포인트가 503을 반환하면 이 변수가 비어 있다는 뜻이다.
 
-명령이 "권한이 없습니다"로 응답하면 `DISCORD_OPERATOR_IDS`에 본인 사용자 ID가 있는지 확인한다. "감사 로그 계정이 설정되지 않았습니다"는 `DISCORD_ADMIN_ACTOR_ID`가 비어 있거나 ADMIN 프로필이 아닌 경우다.
+명령이 "이 서버에서는 사용할 수 없는 명령입니다"로 응답하면 `DISCORD_GUILD_ID`가 실제 서버 ID와 같은지 확인한다. "감사 로그 계정이 설정되지 않았습니다"는 `DISCORD_ADMIN_ACTOR_ID`가 비어 있거나 ADMIN 프로필이 아닌 경우다.
 
 봇 토큰이 노출되면 Developer Portal에서 즉시 재발급하고 `npm run discord:register`를 다시 실행한다.

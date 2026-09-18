@@ -20,7 +20,7 @@ import {
 //
 // 보안 경계:
 // 1. Ed25519 서명 검증에 실패하면 401로 거절한다.
-// 2. DISCORD_OPERATOR_IDS에 등록된 Discord 사용자만 실행할 수 있다.
+// 2. DISCORD_GUILD_ID와 일치하는 운영 서버에서 온 요청만 처리한다.
 // 3. 실제 변경은 service-role로 수행하고 DISCORD_ADMIN_ACTOR_ID(ADMIN 프로필)로
 //    감사 로그를 남긴다. Discord 사용자 ID는 메타데이터로만 기록한다.
 // 4. 응답은 ephemeral로 보내 채널에 운영 데이터가 남지 않게 한다.
@@ -38,6 +38,7 @@ type InteractionData = {
 type Interaction = {
   type?: number;
   data?: InteractionData;
+  guild_id?: string;
   member?: { user?: { id?: string; username?: string } };
   user?: { id?: string; username?: string };
 };
@@ -57,14 +58,14 @@ function serviceClient() {
   );
 }
 
-function operatorIds(): Set<string> {
-  const raw = process.env.DISCORD_OPERATOR_IDS ?? '';
-  return new Set(
-    raw
-      .split(',')
-      .map((value) => value.trim())
-      .filter((value) => value.length > 0),
-  );
+// 운영 서버에는 운영자 두 명과 봇만 있으므로 개인 사용자 ID 목록을 관리하지
+// 않는다. 대신 명령이 등록된 길드에서 온 요청만 처리한다. 슬래시 명령은 길드
+// 전용으로 등록하므로 다른 서버에서는 명령 자체가 보이지 않고, 길드 확인이
+// 남아 있으면 애플리케이션이 다른 서버에 추가되더라도 조작을 막을 수 있다.
+function isAllowedGuild(guildId: string | undefined): boolean {
+  const expected = process.env.DISCORD_GUILD_ID?.trim();
+  if (!expected) return false;
+  return guildId === expected;
 }
 
 function shortId(id: string): string {
@@ -108,14 +109,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ type: InteractionResponseType.Pong });
   }
 
-  const discordUserId = interaction.member?.user?.id ?? interaction.user?.id ?? '';
-  const allowed = operatorIds();
-  if (allowed.size === 0) {
-    return ephemeral('운영자 목록이 설정되지 않았습니다. DISCORD_OPERATOR_IDS를 확인해 주세요.');
+  if (!process.env.DISCORD_GUILD_ID?.trim()) {
+    return ephemeral('운영 서버가 설정되지 않았습니다. DISCORD_GUILD_ID를 확인해 주세요.');
   }
-  if (!discordUserId || !allowed.has(discordUserId)) {
-    return ephemeral('이 명령을 사용할 권한이 없습니다.');
+  if (!isAllowedGuild(interaction.guild_id)) {
+    return ephemeral('이 서버에서는 사용할 수 없는 명령입니다.');
   }
+
+  // 누가 실행했는지는 감사 로그에만 남긴다. 권한 판단에는 쓰지 않는다.
+  const discordUserId = interaction.member?.user?.id ?? interaction.user?.id ?? 'unknown';
 
   const actorId = process.env.DISCORD_ADMIN_ACTOR_ID?.trim();
   if (!actorId) {
