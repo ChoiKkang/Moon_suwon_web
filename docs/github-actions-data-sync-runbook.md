@@ -56,6 +56,8 @@ gh run list --repo ChoiKkang/Moon_suwon_web --workflow kto-data-sync.yml --limit
 - 혼잡도 sync는 `raw.kto_crowd_forecast`, `core.place_crowd_forecasts`를 갱신한다.
 - 반려동물 sync는 `raw.kto_pet_tour`, `core.place_pet_policies`를 갱신한다.
 - 혼잡도 sync의 원천값은 실시간 현장 인원이 아니라 한국관광공사의 일 단위 방문 집중도 예측이다. 공개 화면에서는 `오늘 방문 집중도 예측`으로 표시하고, 데이터 갱신 시각을 함께 확인한다.
+- 혼잡도 수집은 약 두 달치 일별 예보를 저장한다. 공개 장소 view와 RPC는 `core.current_place_forecast`를 통해 서울 기준 오늘 예보를 우선 선택하고, 오늘 값이 없으면 가장 가까운 미래 예보로 대체한다. 이 함수를 우회해 `forecast_date desc`로 직접 최신 행을 고르면 한 달 뒤 예보가 오늘 값처럼 노출된다.
+- 행사 수집은 `searchFestival2`를 전국 기준으로 호출한 뒤 주소·행사장·행사명에서 수원을 걸러낸다. 이 API에 `areaCode`/`sigunguCode`를 넣으면 응답이 0건이 되고, 응답 항목의 `areacode` 필드도 비어 있다.
 - `editorial.place_copy`, `editorial.place_publish_state`, 코스 테이블은 자동 sync가 변경하지 않는다.
 - 코스 초안 워크플로는 예외적으로 `core.courses`, `editorial.course_copy`, `editorial.course_publish_state`, `core.course_places`를 원자 RPC로 갱신하지만 `is_published=false`를 유지한다. 기존에 운영자가 공개한 자동 코스는 다음 자동 실행에서 덮어쓰지 않는다.
 - 새 장소는 게시 상태가 자동으로 공개되지 않는다.

@@ -241,7 +241,7 @@ npm run build
 - [ ] Apple/Kakao의 Supabase callback과 production redirect URL 등록
 - [x] 관리자 role 표준 통일 및 개발 프로필 2개 ADMIN 지정
 - [ ] `/admin/places`, `/admin/courses`, `/admin/operations`, `/admin/events` production smoke test
-- [ ] `npm run data:verify -- --job all` 실행
+- [x] `npm run data:verify -- --job all` 실행 (content/events/crowd/pet 4종 모두 completed)
 - [ ] `DEPLOYMENT_URL=https://서비스도메인 npm run deployment:verify` 실행
 - [ ] 공개 장소를 늘릴 때 editorial 설명·야간 포인트·포토 팁 보강
 - [ ] 후보 검수함에서 `candidate`/`stale` 장소를 먼저 승인하고 공개 토글을 별도로 켜기
