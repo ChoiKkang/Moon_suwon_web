@@ -34,7 +34,7 @@ workflow는 Node.js 22와 IPv4 우선 DNS 설정으로 실행한다.
 
 작업이 겹치면 `concurrency`가 이전 실행을 취소하지 않고 KTO 요청을 직렬화한다.
 
-`Course draft generation`은 매주 월요일 04:00 KST와 수동 실행을 지원한다. 공개·활성·승인된·좌표가 있는 장소를 기준으로 최대 세 개의 후보를 `core.courses`에 저장하지만 모두 비공개 초안이다. `/admin/courses`에서 실제 도보 동선과 운영 가능 여부를 검수한 뒤 공개 상태를 직접 켜야 한다. 같은 장소 조합은 automation key로 갱신되므로 반복 실행으로 중복 코스가 쌓이지 않는다. 각 초안에는 `core.courses.automation_metadata`에 직선거리 추정 여부, 장소별 근거, 품질 위반 목록, 입력 checksum이 저장된다. AI는 기본 비활성이고, 도입하더라도 검증된 장소 ID·근거를 바꾸거나 자동 공개할 수 없다.
+`Course draft generation`은 매주 월요일 04:00 KST와 수동 실행을 지원한다. 수동 실행에서는 `dry_run`과 `limit(1~3)`을 선택할 수 있다. 공개·활성·승인된·좌표가 있는 장소를 기준으로 최대 세 개의 후보를 `core.courses`에 저장하지만 모두 비공개 초안이다. `/admin/courses`에서 실제 도보 동선과 운영 가능 여부를 검수한 뒤 공개 상태를 직접 켜야 한다. 같은 장소 조합은 automation key로 갱신되므로 반복 실행으로 중복 코스가 쌓이지 않는다. 각 초안에는 `core.courses.automation_metadata`에 직선거리 추정 여부, 장소별 근거, 품질 위반 목록, 입력 checksum이 저장된다. AI는 기본 비활성이고, 도입하더라도 검증된 장소 ID·근거를 바꾸거나 자동 공개할 수 없다.
 
 각 작업은 일시적인 네트워크 실패에 대비해 최대 3회 실행을 시도하고, 성공 뒤 `npm run data:verify -- --job <job>`로 최근 실행 이력과 공개 serving view를 확인한다. 실패·검증 결과는 GitHub Actions Step Summary와 `/admin/operations`의 `raw.sync_runs`/`raw.sync_errors`에서 확인한다.
 
