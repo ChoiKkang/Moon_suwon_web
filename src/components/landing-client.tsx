@@ -50,6 +50,14 @@ export function LandingClient({
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const placesWithImages = importedPlaces.filter((place) => Boolean(place.heroImageUrl)).length;
+  // 예측이 전부 혼잡한 날에도 "여유로운 스팟"이라고 단정하면 화면과 데이터가
+  // 어긋난다. 오늘 실제 분포에 맞춰 제목과 설명을 고른다.
+  const relaxedSpotCount = nowGoodSpots.filter((spot) => spot.crowdLevel === '여유' || spot.crowdLevel === '보통').length;
+  const hasRelaxedSpots = relaxedSpotCount > 0;
+  const crowdHeadline = hasRelaxedSpots ? '오늘 더 여유로운 달빛 스팟' : '오늘은 어디나 붐빕니다';
+  const crowdDescription = hasRelaxedSpots
+    ? '관광 데이터 기반 방문 집중도 예측을 바탕으로 오늘 더 여유로운 공개 스팟을 보여드립니다. 실시간 현장 인원이 아닌 일 단위 예측입니다.'
+    : '오늘은 예측된 모든 공개 스팟이 혼잡 구간입니다. 그래도 상대적으로 방문 집중도가 낮은 순서로 보여드립니다. 실시간 현장 인원이 아닌 일 단위 예측입니다.';
 
   const formatEventDate = (startDate: string, endDate: string) => {
     const format = (value: string) => value.replace(/-/g, '.');
@@ -323,13 +331,17 @@ export function LandingClient({
             <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div className="max-w-2xl">
                 <span className="text-xs font-bold uppercase tracking-widest text-[#ffd700]">오늘의 방문 집중도</span>
-                <h2 className="mt-2 text-3xl font-extrabold text-[#fff6df] md:text-5xl">오늘 더 여유로운 달빛 스팟</h2>
+                <h2 className="mt-2 text-3xl font-extrabold text-[#fff6df] md:text-5xl">{crowdHeadline}</h2>
                 <p className="mt-4 text-sm leading-relaxed text-[#d0c6ab] md:text-base">
-                  관광 데이터 기반 방문 집중도 예측을 바탕으로 오늘 더 여유로운 공개 스팟을 보여드립니다. 실시간 현장 인원이 아닌 일 단위 예측입니다.
+                  {crowdDescription}
                 </p>
               </div>
               <span className="rounded-full border border-[#ffd700]/20 bg-[#0b1326]/70 px-5 py-2 text-xs font-bold text-[#ffd700]">
-                {nowGoodSpots.length > 0 ? `${nowGoodSpots.length}개 예측 연동` : '예측 준비 중'}
+                {nowGoodSpots.length === 0
+                  ? '예측 준비 중'
+                  : hasRelaxedSpots
+                    ? `여유·보통 ${relaxedSpotCount}곳`
+                    : `${nowGoodSpots.length}개 예측 연동`}
               </span>
             </div>
 
