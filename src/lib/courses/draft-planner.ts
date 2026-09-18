@@ -187,6 +187,9 @@ export function planCourseDrafts(
     const finalDistanceKm = rounded(routeDistanceKm(route));
     const names = compactNames(route);
     const petReadyFlag = route.every((place) => place.petReady === true);
+    const constraintViolations = route.some((place) => place.hasHeroImage === false || place.hasContent === false)
+      ? ['missing_content' as const]
+      : [];
     const estimatedDurationMin = Math.max(45, Math.min(240, Math.round(route.length * 18 + finalDistanceKm * 15)));
     const slug = `auto-${theme.key}-${stableHash(automationKey)}`;
 
@@ -210,7 +213,7 @@ export function planCourseDrafts(
       placeIds: route.map((place) => place.id),
       distanceKind: 'straight_line_estimate' as const,
       evidence,
-      constraintViolations: [] as CourseConstraintViolation[],
+      constraintViolations,
     } satisfies CourseDraftPlan;
     const validation = validateCourseCandidate(candidate);
     if (!validation.valid) continue;
