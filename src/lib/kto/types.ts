@@ -42,6 +42,18 @@ export type KtoIntroItem = {
   firstmenu?: string;
   treatmenu?: string;
   infocenterfood?: string;
+  // 문화시설(14) likewise reports the same facts under its own suffix.
+  usetimeculture?: string;
+  restdateculture?: string;
+  infocenterculture?: string;
+  // 숙박(32) has no daily opening hours; it publishes check-in/out instead.
+  checkintime?: string;
+  checkouttime?: string;
+  infocenterlodging?: string;
+  // 레포츠(28) mirrors the 관광지 wording with its own suffix.
+  usetimeleports?: string;
+  restdateleports?: string;
+  infocenterleports?: string;
 };
 
 export type KtoPetTourItem = {
