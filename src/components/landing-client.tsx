@@ -49,15 +49,14 @@ export function LandingClient({
 }: LandingClientProps) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const placesWithImages = importedPlaces.filter((place) => Boolean(place.heroImageUrl)).length;
   // 예측이 전부 혼잡한 날에도 "여유로운 스팟"이라고 단정하면 화면과 데이터가
   // 어긋난다. 오늘 실제 분포에 맞춰 제목과 설명을 고른다.
   const relaxedSpotCount = nowGoodSpots.filter((spot) => spot.crowdLevel === '여유' || spot.crowdLevel === '보통').length;
   const hasRelaxedSpots = relaxedSpotCount > 0;
   const crowdHeadline = hasRelaxedSpots ? '오늘 더 여유로운 달빛 스팟' : '오늘은 어디나 붐빕니다';
   const crowdDescription = hasRelaxedSpots
-    ? '관광 데이터 기반 방문 집중도 예측을 바탕으로 오늘 더 여유로운 공개 스팟을 보여드립니다. 실시간 현장 인원이 아닌 일 단위 예측입니다.'
-    : '오늘은 예측된 모든 공개 스팟이 혼잡 구간입니다. 그래도 상대적으로 방문 집중도가 낮은 순서로 보여드립니다. 실시간 현장 인원이 아닌 일 단위 예측입니다.';
+    ? '오늘 사람이 덜 몰릴 곳부터 보여드립니다. 한국관광공사가 제공하는 하루 단위 예상치라 지금 현장 인원은 아닙니다.'
+    : '오늘은 어느 곳이든 사람이 많을 전망입니다. 그래도 상대적으로 덜 붐빌 순서로 보여드립니다. 하루 단위 예상치라 지금 현장 인원은 아닙니다.';
 
   const formatEventDate = (startDate: string, endDate: string) => {
     const format = (value: string) => value.replace(/-/g, '.');
@@ -113,8 +112,8 @@ export function LandingClient({
           
           <div className="hidden md:flex items-center gap-8">
             <Link className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="/courses">문화유산 코스</Link>
-            <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#now-good">오늘의 방문 집중도</a>
-            <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#kto-spots">달빛 스팟</a>
+            <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#now-good">오늘 붐빔 정도</a>
+            <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#moon-spots">달빛 스팟</a>
             <Link className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="/events">행사 소식</Link>
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#heritage-story">수원 소개</a>
             {initialIsAdmin && (
@@ -172,8 +171,8 @@ export function LandingClient({
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-[#4d4732]/20 bg-[#0b1326] px-6 py-4 flex flex-col gap-4">
             <Link onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="/courses">문화유산 코스</Link>
-            <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#now-good">오늘의 방문 집중도</a>
-            <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#kto-spots">달빛 스팟</a>
+            <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#now-good">오늘 붐빔 정도</a>
+            <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#moon-spots">달빛 스팟</a>
             <Link onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="/events">행사 소식</Link>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#heritage-story">수원 소개</a>
             {initialIsAdmin && (
@@ -261,7 +260,7 @@ export function LandingClient({
               <Link href="/courses" className="flex items-center justify-center gap-3 px-8 py-4 bg-[#ffd700] text-[#3a3000] rounded-xl font-bold hover:bg-[#ffe16d] transition-colors w-full sm:w-auto shadow-lg shadow-yellow-500/10">
                 <span>코스 둘러보기</span>
               </Link>
-              <a href="#kto-spots" className="flex items-center justify-center gap-3 px-8 py-4 bg-slate-900/40 border border-[#ffd700] text-[#ffd700] rounded-xl font-bold hover:bg-slate-900/60 transition-colors w-full sm:w-auto backdrop-blur-md">
+              <a href="#moon-spots" className="flex items-center justify-center gap-3 px-8 py-4 bg-slate-900/40 border border-[#ffd700] text-[#ffd700] rounded-xl font-bold hover:bg-slate-900/60 transition-colors w-full sm:w-auto backdrop-blur-md">
                 <span>달빛 스팟 보기</span>
               </a>
             </div>
@@ -271,18 +270,18 @@ export function LandingClient({
         {/* Published Courses Section */}
         <section className="ambient-glow relative bg-[#0b1326] py-24">
           <div className="container mx-auto max-w-[1440px] px-6 md:px-20">
-            <SectionHeading eyebrow="운영자 공개 코스" title="DB에 공개된 달빛 코스" description="운영자가 공개한 코스만 표시합니다. 코스 데이터가 추가되면 별도 배포 없이 이 영역에 반영됩니다." action={{ href: '/courses', label: '전체 코스 보기', icon: <ArrowRight className="h-4 w-4" /> }} />
+            <SectionHeading eyebrow="추천 코스" title="오늘 걷기 좋은 달빛 코스" description="수원화성의 밤을 걷는 순서대로 엮었습니다. 소요 시간과 걷는 거리를 미리 확인하고 출발하세요." action={{ href: '/courses', label: '전체 코스 보기', icon: <ArrowRight className="h-4 w-4" /> }} />
 
             {coursesError ? (
               <div className="rounded-3xl border border-amber-400/30 bg-amber-400/10 p-8 text-sm text-amber-100">
-                공개 코스 데이터를 불러오지 못했습니다. 운영자에게 데이터 연결 상태를 확인해 주세요.
+                코스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
               </div>
             ) : courses.length === 0 ? (
               <div className="rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/70 p-8 text-sm text-[#d0c6ab]">
-                아직 공개된 코스가 없습니다. 현재는 아래 달빛 스팟에서 장소 정보를 확인할 수 있습니다.
+                준비된 코스를 곧 소개할 예정입니다. 먼저 아래 달빛 스팟을 둘러보세요.
               </div>
             ) : (
-              <ScrollRail label="공개 코스 목록" className="xl:grid-cols-3">
+              <ScrollRail label="추천 코스 목록" className="xl:grid-cols-3">
                 {courses.slice(0, 3).map((course) => (
                   <article key={course.id} className="group min-w-[86%] snap-start overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33] shadow-xl motion-reveal md:min-w-0">
                     {course.heroImageUrl ? (
@@ -295,7 +294,7 @@ export function LandingClient({
                     ) : <div className="flex aspect-[16/9] items-center justify-center bg-[#0b1326] text-xs text-[#8f9bb3]">이미지 준비 중</div>}
                     <div className="p-6">
                       <div className="mb-4 flex items-center justify-between gap-3">
-                        <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[10px] font-black text-[#ffd700]">운영 공개</span>
+                        <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[10px] font-black text-[#ffd700]">추천 코스</span>
                         <span className="text-xs font-bold text-[#d0c6ab]">{course.theme}</span>
                       </div>
                       <h3 className="text-xl font-black text-white">{course.title}</h3>
@@ -308,7 +307,7 @@ export function LandingClient({
                         </span>
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0b1326]/70 px-3 py-2">
                           <MapPin className="h-3.5 w-3.5 text-[#ffd700]" />
-                          {course.distanceKm === null ? '거리 정보 없음' : `${course.distanceKm}km`}
+                          {course.distanceKm === null ? '준비 중' : `${course.distanceKm}km`}
                         </span>
                       </div>
                       <div className="mt-5 space-y-2">
@@ -332,7 +331,7 @@ export function LandingClient({
           <div className="relative container mx-auto max-w-[1440px] px-6 md:px-20">
             <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div className="max-w-2xl">
-                <span className="text-xs font-bold uppercase tracking-widest text-[#ffd700]">오늘의 방문 집중도</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-[#ffd700]">오늘 붐빔 정도</span>
                 <h2 className="mt-2 text-3xl font-extrabold text-[#fff6df] md:text-5xl">{crowdHeadline}</h2>
                 <p className="mt-4 text-sm leading-relaxed text-[#d0c6ab] md:text-base">
                   {crowdDescription}
@@ -340,23 +339,23 @@ export function LandingClient({
               </div>
               <span className="rounded-full border border-[#ffd700]/20 bg-[#0b1326]/70 px-5 py-2 text-xs font-bold text-[#ffd700]">
                 {nowGoodSpots.length === 0
-                  ? '예측 준비 중'
+                  ? '예상치 준비 중'
                   : hasRelaxedSpots
-                    ? `여유·보통 ${relaxedSpotCount}곳`
-                    : `${nowGoodSpots.length}개 예측 연동`}
+                    ? `한적한 곳 ${relaxedSpotCount}곳`
+                    : `${nowGoodSpots.length}곳 비교`}
               </span>
             </div>
 
             {crowdError ? (
               <div className="rounded-3xl border border-amber-400/30 bg-amber-400/10 p-8 text-sm text-amber-100">
-                오늘 방문 집중도 예측을 불러오지 못했습니다. 장소 정보는 아래에서 계속 확인할 수 있습니다.
+                오늘 붐빔 정도를 불러오지 못했습니다. 장소 정보는 아래에서 계속 확인할 수 있습니다.
               </div>
             ) : nowGoodSpots.length === 0 ? (
               <div className="rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/70 p-8 text-sm text-[#d0c6ab]">
-                오늘 방문 집중도 예측이 아직 준비되지 않았습니다.
+                오늘 붐빔 정도는 아직 준비되지 않았습니다.
               </div>
             ) : (
-              <ScrollRail label="오늘 방문 집중도 예측 스팟" className="xl:grid-cols-4">
+              <ScrollRail label="오늘 한적한 달빛 스팟" className="xl:grid-cols-4">
                 {nowGoodSpots.map((spot) => (
                   <Link
                     key={spot.placeId}
@@ -380,7 +379,7 @@ export function LandingClient({
                     <div className="p-5">
                       <h3 className="text-lg font-extrabold text-white">{spot.displayName}</h3>
                       <p className="mt-2 text-xs text-[#d0c6ab]">
-                        {spot.forecastScore === null ? '방문 집중도 예측 점수 준비 중' : `방문 집중도 예측 점수 ${spot.forecastScore.toFixed(1)}`}
+                        {spot.crowdLevel ? `오늘 ${spot.crowdLevel}할 것으로 보입니다` : '오늘 예상치 준비 중'}
                       </p>
                     </div>
                   </Link>
@@ -390,27 +389,29 @@ export function LandingClient({
           </div>
         </section>
 
-        <section id="kto-spots" className="relative overflow-hidden bg-[#10182b] py-24">
+        <section id="moon-spots" className="relative overflow-hidden bg-[#10182b] py-24">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,215,0,0.12),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(103,140,255,0.14),transparent_36%)]" />
           <div className="relative container mx-auto px-6 md:px-20 max-w-[1440px]">
-            <SectionHeading eyebrow="관광콘텐츠랩 연동" title="공공데이터로 검증한 달빛 스팟" description="TourAPI에서 받은 장소명, 좌표, 이미지와 달빛수원 운영 문구를 결합해 실제 코스 데이터로 확장합니다." />
-            <div className="mb-10 rounded-full border border-[#ffd700]/20 bg-[#0b1326]/70 px-5 py-2 text-xs font-bold text-[#ffd700] md:ml-auto md:w-fit">
-              {importedPlaces.length > 0 ? `${importedPlaces.length}개 스팟 연동됨` : '연동 확인 필요'}
-            </div>
+            <SectionHeading eyebrow="달빛 스팟" title="밤에 더 좋은 수원의 장소" description="한국관광공사 공공데이터로 위치를 확인하고, 야간에 무엇을 볼 수 있는지 직접 정리했습니다." />
+            {importedPlaces.length > 0 ? (
+              <div className="mb-10 rounded-full border border-[#ffd700]/20 bg-[#0b1326]/70 px-5 py-2 text-xs font-bold text-[#ffd700] md:ml-auto md:w-fit">
+                {importedPlaces.length}곳 소개
+              </div>
+            ) : null}
 
             {placesError ? (
               <div className="rounded-3xl border border-amber-400/30 bg-amber-400/10 p-8 text-sm text-amber-100">
-                Supabase 공개 스팟 데이터를 불러오지 못했습니다. 운영 콘솔에서 연동 상태를 확인하세요.
+                장소 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
               </div>
             ) : importedPlaces.length > 0 ? (
-              <ScrollRail label="공공데이터 달빛 스팟" className="xl:grid-cols-5">
+              <ScrollRail label="달빛 스팟 목록" className="xl:grid-cols-5">
                 {importedPlaces.map((place) => (
-                  <div key={place.slug} className="min-w-[82%] snap-start md:min-w-0"><MediaCard href={`/places/${place.slug}`} title={place.displayName} description={place.shortDescription ?? place.addressFull ?? '운영 문구 준비 중'} imageUrl={place.heroImageUrl} eyebrow={place.ktoContentId ? `KTO ${place.ktoContentId}` : undefined} /></div>
+                  <div key={place.slug} className="min-w-[82%] snap-start md:min-w-0"><MediaCard href={`/places/${place.slug}`} title={place.displayName} description={place.shortDescription ?? place.addressFull ?? '소개 문구 준비 중'} imageUrl={place.heroImageUrl} eyebrow={place.nightHighlight ? '야경 추천' : undefined} /></div>
                 ))}
               </ScrollRail>
             ) : (
               <div className="rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/70 p-8 text-sm text-[#d0c6ab]">
-                아직 공개 가능한 KTO 스팟이 없습니다. 수집 스크립트와 적재 상태를 확인하세요.
+                소개할 장소를 준비 중입니다. 조금만 기다려 주세요.
               </div>
             )}
           </div>
@@ -459,12 +460,12 @@ export function LandingClient({
                 <div className="mt-12 flex items-center gap-6">
                   <div>
                     <p className="text-2xl md:text-3xl font-extrabold text-[#ffd700] mb-1">{importedPlaces.length}</p>
-                    <p className="text-xs text-[#d0c6ab]">공개 스팟</p>
+                    <p className="text-xs text-[#d0c6ab]">달빛 스팟</p>
                   </div>
                   <div className="w-px h-12 bg-[#3e495d]/30" />
                   <div>
-                    <p className="text-2xl md:text-3xl font-extrabold text-[#ffd700] mb-1">{placesWithImages}</p>
-                    <p className="text-xs text-[#d0c6ab]">대표 이미지 보유</p>
+                    <p className="text-2xl md:text-3xl font-extrabold text-[#ffd700] mb-1">{courses.length}</p>
+                    <p className="text-xs text-[#d0c6ab]">추천 코스</p>
                   </div>
                 </div>
               </div>
@@ -475,14 +476,14 @@ export function LandingClient({
         <section id="events" className="relative overflow-hidden bg-[#0b1326] py-24">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,215,0,0.1),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(103,140,255,0.1),transparent_36%)]" />
           <div className="relative container mx-auto max-w-[1440px] px-6 md:px-20">
-            <SectionHeading eyebrow="수원 행사 소식" title="달빛 산책과 함께 볼 행사" description="관광공사 원천 데이터와 운영자가 확인한 행사 중 오늘 이후 일정만 표시합니다." action={{ href: '/events', label: '전체 행사 보기', icon: <ArrowRight className="h-4 w-4" /> }} />
+            <SectionHeading eyebrow="수원 행사 소식" title="달빛 산책과 함께 볼 행사" description="오늘 이후 열리는 행사만 모았습니다. 산책 일정에 맞춰 함께 둘러보세요." action={{ href: '/events', label: '전체 행사 보기', icon: <ArrowRight className="h-4 w-4" /> }} />
             {eventsError ? (
               <div className="rounded-3xl border border-amber-400/30 bg-amber-400/10 p-8 text-sm text-amber-100">
                 행사 데이터를 불러오지 못했습니다. 장소와 코스 정보는 계속 확인할 수 있습니다.
               </div>
             ) : events.length === 0 ? (
               <div className="rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/70 p-8 text-sm text-[#d0c6ab]">
-                현재 공개할 예정 행사가 없습니다. 운영 콘솔에서 행사 일정을 확인하세요.
+                지금은 예정된 행사가 없습니다. 새 일정이 잡히면 이곳에서 알려드립니다.
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
@@ -521,8 +522,8 @@ export function LandingClient({
           <div className="text-lg font-extrabold text-[#ffd700]">달빛수원</div>
           <div className="flex flex-wrap justify-center gap-6 md:gap-8 text-xs">
             <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/courses">코스 보기</Link>
-            <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#now-good">오늘의 방문 집중도</a>
-            <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#kto-spots">달빛 스팟</a>
+            <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#now-good">오늘 붐빔 정도</a>
+            <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#moon-spots">달빛 스팟</a>
             <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/events">행사 소식</Link>
             <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/support">고객 지원</Link>
             <Link className="text-[#fff6df] hover:text-[#ffd700] font-semibold transition-colors" href="/privacy">개인정보처리방침</Link>
