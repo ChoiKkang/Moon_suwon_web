@@ -1,13 +1,47 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Compass, ExternalLink, MapPin, Moon, Phone, Route } from 'lucide-react';
+import type { Metadata } from 'next';
+import { ArrowLeft, Camera, Compass, Dog, ExternalLink, MapPin, Moon, Phone, Route, Sparkles } from 'lucide-react';
 import { getPublishedPlaceBySlug } from '@/lib/places/queries';
+import { StatusPill } from '@/components/public/status-pill';
 
 type PlaceDetailPageProps = {
   params: Promise<{
     slug: string;
   }>;
 };
+
+const petPolicyLabels: Record<string, string> = {
+  allowed: '반려동물 동반 가능',
+  partial: '반려동물 조건부 가능',
+  not_allowed: '반려동물 동반 불가',
+  unknown: '반려동물 정보 확인 필요',
+};
+
+// Per-place metadata so each published spot has its own share title instead of
+// falling back to the site-wide default.
+export async function generateMetadata({ params }: PlaceDetailPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const { place } = await getPublishedPlaceBySlug(decodeURIComponent(slug));
+
+  if (!place) {
+    return { title: '장소 정보' };
+  }
+
+  const description = place.shortDescription ?? place.nightHighlight ?? `${place.displayName}의 야경 방문 정보`;
+  return {
+    title: place.displayName,
+    description,
+    alternates: { canonical: `/places/${encodeURIComponent(place.slug)}` },
+    openGraph: {
+      title: `${place.displayName} | 달빛수원`,
+      description,
+      url: `/places/${encodeURIComponent(place.slug)}`,
+      type: 'article',
+      ...(place.heroImageUrl ? { images: [{ url: place.heroImageUrl }] } : {}),
+    },
+  };
+}
 
 export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) {
   const { slug } = await params;
@@ -52,6 +86,15 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
               <p className="motion-reveal mt-6 max-w-2xl text-base leading-relaxed text-[#d0c6ab] [animation-delay:160ms] md:text-lg">
                 {place.shortDescription ?? '달빛수원 운영 문구를 준비 중입니다. KTO 기준 위치와 이미지는 정상 연동되어 있습니다.'}
               </p>
+              {place.crowdForecast?.level ? (
+                <div className="motion-reveal mt-6 flex flex-wrap items-center gap-3 [animation-delay:220ms]">
+                  <StatusPill level={place.crowdForecast.level} />
+                  <span className="text-xs text-[#8f9bb3]">
+                    오늘 방문 집중도 예측
+                    {place.crowdForecast.rate === null ? '' : ` · 예측 점수 ${place.crowdForecast.rate.toFixed(1)}`}
+                  </span>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -61,6 +104,33 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
         <section className="px-6 pb-20 md:px-20">
           <div className="mx-auto grid max-w-[1440px] grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
             <div className="rounded-[2rem] border border-[#3e495d]/35 bg-[#141d32] p-6 md:p-8">
+              {place.nightHighlight || place.photoTip || place.shortStory ? (
+                <div className="mb-8 space-y-4">
+                  <h2 className="text-2xl font-black text-white">밤에 보는 이곳</h2>
+                  {place.nightHighlight ? (
+                    <div className="rounded-3xl border border-[#ffd700]/20 bg-[#ffd700]/5 p-5">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#ffd700]">
+                        <Sparkles className="h-4 w-4" />
+                        야간 포인트
+                      </div>
+                      <p className="mt-3 text-sm leading-relaxed text-[#fff6df]">{place.nightHighlight}</p>
+                    </div>
+                  ) : null}
+                  {place.photoTip ? (
+                    <div className="rounded-3xl bg-[#0b1326]/70 p-5">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#8f9bb3]">
+                        <Camera className="h-4 w-4 text-[#ffd700]" />
+                        포토 팁
+                      </div>
+                      <p className="mt-3 text-sm leading-relaxed text-[#d0c6ab]">{place.photoTip}</p>
+                    </div>
+                  ) : null}
+                  {place.shortStory ? (
+                    <p className="text-sm leading-relaxed text-[#d0c6ab]">{place.shortStory}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
               <h2 className="text-2xl font-black text-white">방문 정보</h2>
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="rounded-3xl bg-[#0b1326]/70 p-5">
@@ -93,6 +163,22 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
                   <p className="mt-2 text-sm font-bold text-white">관광콘텐츠랩 contentId {place.ktoContentId}</p>
                 </div>
               </div>
+
+              {place.petPolicy !== 'unknown' || place.petNote ? (
+                <div className="mt-6 rounded-3xl border border-[#3e495d]/40 bg-[#0b1326]/70 p-5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Dog className="h-5 w-5 text-[#ffd700]" />
+                    <p className="text-sm font-black text-white">{petPolicyLabels[place.petPolicy] ?? petPolicyLabels.unknown}</p>
+                    {place.petDataStatus === 'stale' ? (
+                      <span className="rounded-full bg-amber-300/15 px-2.5 py-1 text-[10px] font-black text-amber-100">최신 확인 필요</span>
+                    ) : null}
+                  </div>
+                  {place.petNote ? (
+                    <p className="mt-3 whitespace-pre-line text-xs leading-relaxed text-[#d0c6ab]">{place.petNote}</p>
+                  ) : null}
+                  <p className="mt-3 text-[11px] text-[#8f9bb3]">한국관광공사 반려동물 동반여행 정보 기준입니다. 방문 전 현장 정책을 다시 확인해 주세요.</p>
+                </div>
+              ) : null}
             </div>
 
             <aside className="rounded-[2rem] border border-[#ffd700]/25 bg-[#171f33] p-6">

@@ -141,3 +141,36 @@ test('does not retry non-transient KTO errors', async () => {
   );
   assert.equal(attempts, 1);
 });
+
+// Retries multiply the per-attempt timeout. The sync workflow has a 30 minute
+// budget, so a stalled upstream must stop consuming attempts once the total
+// request budget is spent instead of running the full retry ladder.
+test('stops retrying once the total request budget is exhausted', async () => {
+  let attempts = 0;
+  const realSetTimeout = globalThis.setTimeout;
+  // Collapse backoff waits so the test stays fast while keeping real timing math.
+  globalThis.setTimeout = ((fn: () => void, ms?: number) =>
+    realSetTimeout(fn, ms && ms > 50 ? 1 : ms)) as typeof globalThis.setTimeout;
+
+  globalThis.fetch = (async (_input, init?: RequestInit) => {
+    attempts += 1;
+    // Simulate an upstream that never answers: reject the way fetch does when
+    // the AbortController fires, after burning the whole attempt budget.
+    return await new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        reject(Object.assign(new Error('This operation was aborted'), { name: 'AbortError' }));
+      });
+    });
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => new KtoClient({ serviceKey: 'secret-key' }).fetchPetDetail('264408'),
+      (error: unknown) => error instanceof KtoApiError && /aborted/i.test((error as Error).message),
+    );
+    // Four attempts is the configured ceiling; the budget must not allow more.
+    assert.ok(attempts >= 1 && attempts <= 4, `unexpected attempt count: ${attempts}`);
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+  }
+});

@@ -35,6 +35,9 @@ export type SyncStats = {
 };
 
 const PET_CONCURRENCY = 3;
+// 수원시 4개 구. 혼잡도 예측은 구 단위로만 조회할 수 있어 전 구를 순회해야
+// 팔달구 밖 공개 장소(장안공원 등)까지 예측이 붙는다.
+const SUWON_SIGUNGU_CODES = ['41111', '41113', '41115', '41117'] as const;
 const PET_DISCOVERY: PetDiscoveryConfig = {
   areaCode: '41',
   sigunguCodes: ['111', '113', '115', '117'],
@@ -268,7 +271,24 @@ function toCrowdRows(items: KtoCrowdForecastItem[]) {
 }
 
 async function syncCrowd(runId: string, stats: SyncStats, options: RunnerOptions): Promise<'completed' | 'partial'> {
-  const items = await kto.fetchCrowdForecasts({ areaCode: '41', sigunguCode: '41115' });
+  // 구 하나만 조회하면 그 구 밖의 공개 장소는 영구히 예측이 비어 있다. 한 구가
+  // 실패해도 나머지 구의 예측은 살리고 오류만 기록한다.
+  const items: Awaited<ReturnType<typeof kto.fetchCrowdForecasts>> = [];
+  let failedDistricts = 0;
+  for (const sigunguCode of SUWON_SIGUNGU_CODES) {
+    try {
+      items.push(...(await kto.fetchCrowdForecasts({ areaCode: '41', sigunguCode })));
+    } catch (error: unknown) {
+      failedDistricts += 1;
+      await recordSyncError(runId, stats, error, sigunguCode, !options.dryRun);
+    }
+  }
+
+  if (failedDistricts === SUWON_SIGUNGU_CODES.length) {
+    writeLine('crowd: every district request failed');
+    return 'partial';
+  }
+
   if (items.length === 0) {
     writeLine('crowd: valid zero-result response');
     return 'completed';

@@ -50,6 +50,14 @@ export function LandingClient({
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const placesWithImages = importedPlaces.filter((place) => Boolean(place.heroImageUrl)).length;
+  // 예측이 전부 혼잡한 날에도 "여유로운 스팟"이라고 단정하면 화면과 데이터가
+  // 어긋난다. 오늘 실제 분포에 맞춰 제목과 설명을 고른다.
+  const relaxedSpotCount = nowGoodSpots.filter((spot) => spot.crowdLevel === '여유' || spot.crowdLevel === '보통').length;
+  const hasRelaxedSpots = relaxedSpotCount > 0;
+  const crowdHeadline = hasRelaxedSpots ? '오늘 더 여유로운 달빛 스팟' : '오늘은 어디나 붐빕니다';
+  const crowdDescription = hasRelaxedSpots
+    ? '관광 데이터 기반 방문 집중도 예측을 바탕으로 오늘 더 여유로운 공개 스팟을 보여드립니다. 실시간 현장 인원이 아닌 일 단위 예측입니다.'
+    : '오늘은 예측된 모든 공개 스팟이 혼잡 구간입니다. 그래도 상대적으로 방문 집중도가 낮은 순서로 보여드립니다. 실시간 현장 인원이 아닌 일 단위 예측입니다.';
 
   const formatEventDate = (startDate: string, endDate: string) => {
     const format = (value: string) => value.replace(/-/g, '.');
@@ -107,6 +115,7 @@ export function LandingClient({
             <Link className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="/courses">문화유산 코스</Link>
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#now-good">오늘의 방문 집중도</a>
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#kto-spots">달빛 스팟</a>
+            <Link className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="/events">행사 소식</Link>
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#heritage-story">수원 소개</a>
             {initialIsAdmin && (
               <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors duration-300 text-sm font-semibold tracking-wider" href="/admin">운영 콘솔</Link>
@@ -165,6 +174,7 @@ export function LandingClient({
             <Link onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="/courses">문화유산 코스</Link>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#now-good">오늘의 방문 집중도</a>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#kto-spots">달빛 스팟</a>
+            <Link onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="/events">행사 소식</Link>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#heritage-story">수원 소개</a>
             {initialIsAdmin && (
               <Link onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#ffd700] py-1 text-sm font-semibold" href="/admin">운영 콘솔</Link>
@@ -323,13 +333,17 @@ export function LandingClient({
             <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div className="max-w-2xl">
                 <span className="text-xs font-bold uppercase tracking-widest text-[#ffd700]">오늘의 방문 집중도</span>
-                <h2 className="mt-2 text-3xl font-extrabold text-[#fff6df] md:text-5xl">오늘 더 여유로운 달빛 스팟</h2>
+                <h2 className="mt-2 text-3xl font-extrabold text-[#fff6df] md:text-5xl">{crowdHeadline}</h2>
                 <p className="mt-4 text-sm leading-relaxed text-[#d0c6ab] md:text-base">
-                  관광 데이터 기반 방문 집중도 예측을 바탕으로 오늘 더 여유로운 공개 스팟을 보여드립니다. 실시간 현장 인원이 아닌 일 단위 예측입니다.
+                  {crowdDescription}
                 </p>
               </div>
               <span className="rounded-full border border-[#ffd700]/20 bg-[#0b1326]/70 px-5 py-2 text-xs font-bold text-[#ffd700]">
-                {nowGoodSpots.length > 0 ? `${nowGoodSpots.length}개 예측 연동` : '예측 준비 중'}
+                {nowGoodSpots.length === 0
+                  ? '예측 준비 중'
+                  : hasRelaxedSpots
+                    ? `여유·보통 ${relaxedSpotCount}곳`
+                    : `${nowGoodSpots.length}개 예측 연동`}
               </span>
             </div>
 
@@ -461,7 +475,7 @@ export function LandingClient({
         <section id="events" className="relative overflow-hidden bg-[#0b1326] py-24">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,215,0,0.1),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(103,140,255,0.1),transparent_36%)]" />
           <div className="relative container mx-auto max-w-[1440px] px-6 md:px-20">
-            <SectionHeading eyebrow="수원 행사 소식" title="달빛 산책과 함께 볼 행사" description="관광공사 원천 데이터와 운영자가 확인한 행사 중 오늘 이후 일정만 표시합니다." />
+            <SectionHeading eyebrow="수원 행사 소식" title="달빛 산책과 함께 볼 행사" description="관광공사 원천 데이터와 운영자가 확인한 행사 중 오늘 이후 일정만 표시합니다." action={{ href: '/events', label: '전체 행사 보기', icon: <ArrowRight className="h-4 w-4" /> }} />
             {eventsError ? (
               <div className="rounded-3xl border border-amber-400/30 bg-amber-400/10 p-8 text-sm text-amber-100">
                 행사 데이터를 불러오지 못했습니다. 장소와 코스 정보는 계속 확인할 수 있습니다.
@@ -473,7 +487,11 @@ export function LandingClient({
             ) : (
               <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
                 {events.slice(0, 3).map((event) => (
-                  <article key={event.id} className="overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl">
+                  <Link
+                    key={event.id}
+                    href={`/events/${encodeURIComponent(event.eventContentId)}`}
+                    className="group overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl transition hover:-translate-y-1 hover:border-[#ffd700]/40"
+                  >
                     {event.heroImageUrl ? (
                       <div role="img" aria-label={event.eventName} className="aspect-[16/9] bg-cover bg-center" style={{ backgroundImage: `url(${event.heroImageUrl})` }} />
                     ) : (
@@ -484,8 +502,12 @@ export function LandingClient({
                       <h3 className="mt-2 text-lg font-black text-white">{event.eventName}</h3>
                       <p className="mt-2 text-xs text-[#d0c6ab]">{event.eventPlace ?? event.venueAddress ?? '수원 지역 행사'}</p>
                       {event.playTime ? <p className="mt-3 text-xs text-[#8f9bb3]">운영 시간 {event.playTime}</p> : null}
+                      <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-[#ffd700]">
+                        자세히 보기
+                        <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
+                      </span>
                     </div>
-                  </article>
+                  </Link>
                 ))}
               </div>
             )}
@@ -501,7 +523,7 @@ export function LandingClient({
             <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/courses">코스 보기</Link>
             <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#now-good">오늘의 방문 집중도</a>
             <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#kto-spots">달빛 스팟</a>
-            <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#events">행사 소식</a>
+            <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/events">행사 소식</Link>
             <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/support">고객 지원</Link>
             <Link className="text-[#fff6df] hover:text-[#ffd700] font-semibold transition-colors" href="/privacy">개인정보처리방침</Link>
             <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/terms">이용약관</Link>

@@ -17,6 +17,9 @@ export type ImportedPlace = {
   petNote: string | null;
   petDataStatus: DataFreshness;
   petSourceUpdatedAt: string | null;
+  nightHighlight: string | null;
+  photoTip: string | null;
+  shortStory: string | null;
   crowdForecast: {
     forecastDate: string | null;
     rate: number | null;

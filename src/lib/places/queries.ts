@@ -22,13 +22,16 @@ export type ImportedPlaceRow = {
   pet_note?: string | null;
   pet_data_status?: string | null;
   pet_source_updated_at?: string | null;
+  night_highlight?: string | null;
+  photo_tip?: string | null;
+  short_story?: string | null;
   crowd_forecast_date?: string | null;
   crowd_forecast_rate?: number | string | null;
   crowd_forecast_level?: string | null;
   crowd_data_status?: string | null;
 };
 
-const PLACE_SELECT = 'id, slug, display_name, address_full, short_description, hero_image_url, hero_thumbnail_url, kto_content_id, lat, lng, contact_phone, source_modified_at, pet_policy, pet_note, pet_data_status, pet_source_updated_at, crowd_forecast_date, crowd_forecast_rate, crowd_forecast_level, crowd_data_status';
+const PLACE_SELECT = 'id, slug, display_name, address_full, short_description, hero_image_url, hero_thumbnail_url, kto_content_id, lat, lng, contact_phone, source_modified_at, pet_policy, pet_note, pet_data_status, pet_source_updated_at, night_highlight, photo_tip, short_story, crowd_forecast_date, crowd_forecast_rate, crowd_forecast_level, crowd_data_status';
 
 function asPetPolicy(value: string | null | undefined): PetPolicy {
   return value === 'allowed' || value === 'partial' || value === 'not_allowed' || value === 'unknown' ? value : 'unknown';
@@ -56,6 +59,9 @@ export function mapPlace(place: ImportedPlaceRow): ImportedPlace {
     petNote: place.pet_note ?? null,
     petDataStatus: asFreshness(place.pet_data_status),
     petSourceUpdatedAt: place.pet_source_updated_at ?? null,
+    nightHighlight: place.night_highlight ?? null,
+    photoTip: place.photo_tip ?? null,
+    shortStory: place.short_story ?? null,
     crowdForecast: place.crowd_forecast_date || place.crowd_forecast_rate !== null && place.crowd_forecast_rate !== undefined || place.crowd_forecast_level
       ? {
           forecastDate: place.crowd_forecast_date ?? null,
