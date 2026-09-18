@@ -7,11 +7,11 @@ on:
         description: 동기화할 데이터 영역
         required: true
         type: choice
-      options:
-        - content
-        - events
-        - crowd
-        - pet
+        options:
+          - content
+          - events
+          - crowd
+          - pet
       dry_run:
         description: API 조회만 하고 DB에는 저장하지 않기
         required: false
