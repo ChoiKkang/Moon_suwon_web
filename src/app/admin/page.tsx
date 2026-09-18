@@ -3,7 +3,7 @@ import { Activity, AlertCircle, CalendarDays, Castle, CheckCircle, Clock3, FileT
 import { getAdminDashboardData } from '@/lib/admin/queries';
 import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
 import { KTOImportPanel } from '@/components/admin/kto-import-panel';
-import { publishBlockers, readinessLabels } from '@/lib/admin/readiness';
+import { isAwaitingPublish, publishBlockers, readinessLabels } from '@/lib/admin/readiness';
 
 function formatDate(value: string | null) {
   if (!value) return '정보 없음';
@@ -20,8 +20,9 @@ export default async function AdminDashboardPage() {
   const missingCopy = data.places.filter((place) => !place.copy.shortDescription || !place.copy.nightHighlight);
   const reviewQueue = data.candidates.filter((candidate) => candidate.ingestionStatus === 'candidate' || candidate.ingestionStatus === 'stale');
   // Places that satisfy every publish condition but are still unpublished are
-  // the fastest win available to an operator, so surface them explicitly.
-  const readyToPublish = data.places.filter((place) => !place.isPublished && publishBlockers(place).length === 0);
+  // the fastest win available to an operator, so surface them explicitly. The
+  // place list uses the same helper for its filter=ready tab.
+  const readyToPublish = data.places.filter(isAwaitingPublish);
 
   const kpis = [
     { label: '전체 활성 장소', value: `${data.places.length}개`, helper: 'core.places', href: '/admin/places', icon: Castle, tone: 'info' as const },

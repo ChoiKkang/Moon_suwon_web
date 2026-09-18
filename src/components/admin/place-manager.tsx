@@ -6,7 +6,7 @@ import { AlertTriangle, CheckCircle, FileText, ImageIcon, MapPin, Search, X } fr
 import { useRouter } from 'next/navigation';
 import { updatePlaceCopyAction, updatePlacePublishStateAction } from '@/app/actions/admin';
 import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
-import { publishBlockers, readinessLabels } from '@/lib/admin/readiness';
+import { isAwaitingPublish, publishBlockers, readinessLabels } from '@/lib/admin/readiness';
 import type { AdminPlace, AdminPlaceCopy } from '@/lib/admin/types';
 
 type Filter = 'all' | 'published' | 'unpublished' | 'missing-copy' | 'ready';
@@ -61,7 +61,10 @@ export function PlaceManager({
 
   const selected = places.find((place) => place.id === selectedId) ?? null;
   const blockers = selected ? publishBlockers(selected) : [];
-  const readyCount = places.filter((place) => publishBlockers(place).length === 0).length;
+  // "공개 준비 완료" means the only thing left to do is flip the switch, so an
+  // already published place does not belong here. The dashboard card links in
+  // with filter=ready and counts with the same helper, so both surfaces agree.
+  const readyCount = places.filter(isAwaitingPublish).length;
 
   function selectPlace(place: AdminPlace) {
     setSelectedId(place.id);
@@ -86,7 +89,7 @@ export function PlaceManager({
         || (filter === 'published' && place.isPublished)
         || (filter === 'unpublished' && !place.isPublished)
         || (filter === 'missing-copy' && (!place.copy.shortDescription || !place.copy.nightHighlight))
-        || (filter === 'ready' && publishBlockers(place).length === 0);
+        || (filter === 'ready' && isAwaitingPublish(place));
       const matchesSearch = !normalizedSearch || [place.displayName, place.officialName, place.slug, place.ktoContentId ?? ''].join(' ').toLowerCase().includes(normalizedSearch);
       return matchesFilter && matchesSearch;
     });
