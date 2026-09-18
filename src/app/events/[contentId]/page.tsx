@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { ArrowLeft, CalendarDays, Clock, Compass, MapPin, Phone, Sparkles, Ticket } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clock, Compass, ExternalLink, MapPin, Phone, Sparkles, Ticket } from 'lucide-react';
 import { getUpcomingEventByContentId } from '@/lib/events/queries';
 
 type EventDetailPageProps = {
@@ -56,6 +56,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const mapQuery = event
     ? encodeURIComponent(event.venueAddress ?? event.eventPlace ?? event.eventName)
     : '';
+  const venueText = event ? event.venueAddress ?? event.eventPlace : null;
 
   return (
     <main className="min-h-screen bg-[#0b1326] text-[#dae2fd]">
@@ -122,26 +123,47 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
               <h2 className="text-2xl font-black text-white">관람 정보</h2>
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="rounded-3xl bg-[#0b1326]/70 p-5">
-                  <Clock className="mb-4 h-5 w-5 text-[#ffd700]" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">운영 시간</p>
-                  <p className="mt-2 whitespace-pre-line text-sm font-bold text-white">{event.playTime ?? '정보 없음'}</p>
-                </div>
-                <div className="rounded-3xl bg-[#0b1326]/70 p-5">
-                  <Ticket className="mb-4 h-5 w-5 text-[#ffd700]" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">이용 요금</p>
-                  <p className="mt-2 whitespace-pre-line text-sm font-bold text-white">{event.usageFee ?? '정보 없음'}</p>
-                </div>
-                <div className="rounded-3xl bg-[#0b1326]/70 p-5">
-                  <MapPin className="mb-4 h-5 w-5 text-[#ffd700]" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">장소</p>
-                  <p className="mt-2 text-sm font-bold text-white">{event.venueAddress ?? event.eventPlace ?? '정보 없음'}</p>
-                </div>
-                <div className="rounded-3xl bg-[#0b1326]/70 p-5">
-                  <Phone className="mb-4 h-5 w-5 text-[#ffd700]" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">문의</p>
-                  <p className="mt-2 whitespace-pre-line text-sm font-bold text-white">{event.contactPhone ?? '정보 없음'}</p>
-                </div>
+                {event.playTime ? (
+                  <div className="rounded-3xl bg-[#0b1326]/70 p-5">
+                    <Clock className="mb-4 h-5 w-5 text-[#ffd700]" />
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">운영 시간</p>
+                    <p className="mt-2 whitespace-pre-line text-sm font-bold text-white">{event.playTime}</p>
+                  </div>
+                ) : null}
+                {event.usageFee ? (
+                  <div className="rounded-3xl bg-[#0b1326]/70 p-5">
+                    <Ticket className="mb-4 h-5 w-5 text-[#ffd700]" />
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">이용 요금</p>
+                    <p className="mt-2 whitespace-pre-line text-sm font-bold text-white">{event.usageFee}</p>
+                  </div>
+                ) : null}
+                {venueText ? (
+                  <a
+                    href={`https://map.kakao.com/link/search/${mapQuery}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group rounded-3xl bg-[#0b1326]/70 p-5 transition hover:bg-[#0b1326]"
+                  >
+                    <div className="mb-4 flex items-center justify-between">
+                      <MapPin className="h-5 w-5 text-[#ffd700]" />
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#ffd700]">
+                        길찾기
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">장소</p>
+                    <p className="mt-2 text-sm font-bold text-white underline decoration-[#ffd700]/40 decoration-2 underline-offset-4 group-hover:decoration-[#ffd700]">
+                      {venueText}
+                    </p>
+                  </a>
+                ) : null}
+                {event.contactPhone ? (
+                  <div className="rounded-3xl bg-[#0b1326]/70 p-5">
+                    <Phone className="mb-4 h-5 w-5 text-[#ffd700]" />
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">문의</p>
+                    <p className="mt-2 whitespace-pre-line text-sm font-bold text-white">{event.contactPhone}</p>
+                  </div>
+                ) : null}
               </div>
 
               <p className="mt-6 text-[11px] leading-relaxed text-[#8f9bb3]">

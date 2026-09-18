@@ -51,6 +51,14 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
     notFound();
   }
 
+  // Kakao Map resolves a Korean address or place name reliably, and the
+  // coordinate link drops the visitor on the exact spot when we have one.
+  const mapHref = place
+    ? place.lat !== null && place.lng !== null
+      ? `https://map.kakao.com/link/map/${encodeURIComponent(place.displayName)},${place.lat},${place.lng}`
+      : `https://map.kakao.com/link/search/${encodeURIComponent(place.addressFull ?? place.displayName)}`
+    : null;
+
   return (
     <main className="min-h-screen bg-[#0b1326] text-[#dae2fd]">
       <section className="ambient-glow relative min-h-[72vh] overflow-hidden px-6 py-10 md:px-20">
@@ -80,18 +88,17 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
             <div className="max-w-4xl">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#ffd700]/25 bg-[#171f33]/75 px-4 py-2 text-xs font-black text-[#ffd700]">
                 <Moon className="h-4 w-4" />
-                KTO {place.ktoContentId}
+                달빛 스팟
               </div>
               <h1 className="motion-reveal text-5xl font-black leading-tight text-[#fff6df] md:text-8xl">{place.displayName}</h1>
               <p className="motion-reveal mt-6 max-w-2xl text-base leading-relaxed text-[#d0c6ab] [animation-delay:160ms] md:text-lg">
-                {place.shortDescription ?? '달빛수원 운영 문구를 준비 중입니다. KTO 기준 위치와 이미지는 정상 연동되어 있습니다.'}
+                {place.shortDescription ?? '소개 문구를 준비 중입니다. 위치와 방문 정보는 아래에서 확인할 수 있습니다.'}
               </p>
               {place.crowdForecast?.level ? (
                 <div className="motion-reveal mt-6 flex flex-wrap items-center gap-3 [animation-delay:220ms]">
                   <StatusPill level={place.crowdForecast.level} />
                   <span className="text-xs text-[#8f9bb3]">
-                    오늘 방문 집중도 예측
-                    {place.crowdForecast.rate === null ? '' : ` · 예측 점수 ${place.crowdForecast.rate.toFixed(1)}`}
+                    오늘 하루 예상 붐빔 정도
                   </span>
                 </div>
               ) : null}
@@ -133,34 +140,49 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
 
               <h2 className="text-2xl font-black text-white">방문 정보</h2>
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="rounded-3xl bg-[#0b1326]/70 p-5">
-                  <MapPin className="mb-4 h-5 w-5 text-[#ffd700]" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">주소</p>
-                  <p className="mt-2 text-sm font-bold text-white">{place.addressFull ?? '주소 정보 없음'}</p>
-                </div>
+                {place.addressFull && mapHref ? (
+                  <a
+                    href={mapHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group rounded-3xl bg-[#0b1326]/70 p-5 transition hover:bg-[#0b1326] md:col-span-2"
+                  >
+                    <div className="mb-4 flex items-center justify-between">
+                      <MapPin className="h-5 w-5 text-[#ffd700]" />
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#ffd700]">
+                        길찾기
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">주소</p>
+                    <p className="mt-2 text-sm font-bold text-white underline decoration-[#ffd700]/40 decoration-2 underline-offset-4 group-hover:decoration-[#ffd700]">
+                      {place.addressFull}
+                    </p>
+                    <p className="mt-2 text-[11px] text-[#8f9bb3]">주소를 누르면 카카오맵에서 위치와 길찾기를 볼 수 있습니다.</p>
+                  </a>
+                ) : (
+                  <div className="rounded-3xl bg-[#0b1326]/70 p-5 md:col-span-2">
+                    <MapPin className="mb-4 h-5 w-5 text-[#ffd700]" />
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">주소</p>
+                    <p className="mt-2 text-sm font-bold text-white">{place.addressFull ?? '주소 정보를 준비 중입니다'}</p>
+                  </div>
+                )}
+                {place.contactPhone ? (
+                  <div className="rounded-3xl bg-[#0b1326]/70 p-5">
+                    <Phone className="mb-4 h-5 w-5 text-[#ffd700]" />
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">문의</p>
+                    <p className="mt-2 text-sm font-bold text-white">{place.contactPhone}</p>
+                  </div>
+                ) : null}
                 <div className="rounded-3xl bg-[#0b1326]/70 p-5">
                   <Compass className="mb-4 h-5 w-5 text-[#ffd700]" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">좌표</p>
-                  <p className="mt-2 text-sm font-bold text-white">
-                    {place.lat !== null && place.lng !== null ? `${place.lat.toFixed(6)}, ${place.lng.toFixed(6)}` : '좌표 정보 없음'}
-                  </p>
-                </div>
-                <div className="rounded-3xl bg-[#0b1326]/70 p-5">
-                  <Phone className="mb-4 h-5 w-5 text-[#ffd700]" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">연락처</p>
-                  <p className="mt-2 text-sm font-bold text-white">{place.contactPhone ?? '연락처 정보 없음'}</p>
-                </div>
-                <div className="rounded-3xl bg-[#0b1326]/70 p-5">
-                  <Moon className="mb-4 h-5 w-5 text-[#ffd700]" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">최종 확인</p>
-                  <p className="mt-2 text-sm font-bold text-white">
-                    {place.sourceModifiedAt ? new Date(place.sourceModifiedAt).toLocaleDateString('ko-KR') : '정보 없음'}
-                  </p>
-                </div>
-                <div className="rounded-3xl bg-[#0b1326]/70 p-5">
-                  <ExternalLink className="mb-4 h-5 w-5 text-[#ffd700]" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">공공데이터 기준</p>
-                  <p className="mt-2 text-sm font-bold text-white">관광콘텐츠랩 contentId {place.ktoContentId}</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">정보 출처</p>
+                  <p className="mt-2 text-sm font-bold text-white">한국관광공사 공공데이터</p>
+                  {place.sourceModifiedAt ? (
+                    <p className="mt-2 text-[11px] text-[#8f9bb3]">
+                      {new Date(place.sourceModifiedAt).toLocaleDateString('ko-KR')} 기준
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -185,7 +207,7 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
               <Route className="h-8 w-8 text-[#ffd700]" />
               <h2 className="mt-5 text-2xl font-black text-white">이 스팟이 포함된 코스</h2>
               <p className="mt-3 text-sm leading-relaxed text-[#d0c6ab]">
-                이 장소가 포함된 공개 코스가 있다면 코스 목록에서 실제 동선을 확인할 수 있습니다.
+                이 장소를 지나는 산책 코스가 있는지 코스 목록에서 확인해 보세요.
               </p>
               <Link
                 href="/courses"

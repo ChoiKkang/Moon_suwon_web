@@ -24,11 +24,11 @@ export default async function CoursesPage() {
             <h1 className="motion-reveal text-4xl font-black leading-tight text-[#fff6df] md:text-7xl">
               밤의 수원을 걷는
               <span className="block bg-gradient-to-r from-[#ffd700] to-[#fff6df] bg-clip-text text-transparent">
-                공개 코스
+                달빛 코스
               </span>
             </h1>
             <p className="motion-reveal mt-6 text-base leading-relaxed text-[#d0c6ab] [animation-delay:160ms] md:text-lg">
-              운영자가 공개한 코스와 관광콘텐츠랩에서 검증한 스팟을 연결해 실제 방문 동선을 제공합니다.
+              걷는 순서, 소요 시간, 거리를 미리 정리했습니다. 수원화성의 밤을 헤매지 않고 둘러볼 수 있습니다.
             </p>
           </div>
         </div>
@@ -38,16 +38,16 @@ export default async function CoursesPage() {
         <div className="mx-auto max-w-[1440px]">
           {error ? (
             <div className="rounded-3xl border border-amber-400/30 bg-amber-400/10 p-8 text-sm text-amber-100">
-              공개 코스 데이터를 불러오지 못했습니다. 운영자에게 데이터 연결 상태를 확인해 주세요.
+              코스를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
             </div>
           ) : courses.length === 0 ? (
             <div className="rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/70 p-10 text-center">
-              <h2 className="text-2xl font-black text-white">공개된 코스를 준비 중입니다</h2>
+              <h2 className="text-2xl font-black text-white">코스를 준비 중입니다</h2>
               <p className="mt-3 text-sm leading-relaxed text-[#d0c6ab]">
-                코스 데이터가 공개되면 이 화면에 자동으로 표시됩니다. 먼저 달빛 스팟에서 장소 정보를 확인해 보세요.
+                새 코스가 준비되면 이 화면에서 바로 확인할 수 있습니다. 먼저 달빛 스팟을 둘러보세요.
               </p>
               <Link
-                href="/#kto-spots"
+                href="/#moon-spots"
                 className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-[#ffd700] px-5 py-3 text-sm font-black text-[#3a3000]"
               >
                 달빛 스팟 보기
@@ -55,7 +55,7 @@ export default async function CoursesPage() {
               </Link>
             </div>
           ) : (
-            <ScrollRail label="공개 코스 목록" className="xl:grid-cols-3">
+            <ScrollRail label="달빛 코스 목록" className="xl:grid-cols-3">
               {courses.map((course) => (
                 <article
                   key={course.id}
@@ -72,7 +72,7 @@ export default async function CoursesPage() {
                   <div className="relative">
                     <div className="mb-5 flex items-center justify-between gap-4">
                       <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[11px] font-black text-[#ffd700]">
-                        운영 공개
+                        추천 코스
                       </span>
                       <div className="flex items-center gap-2">
                         {course.petReadyFlag ? (
@@ -103,7 +103,7 @@ export default async function CoursesPage() {
                           거리
                         </div>
                         <p className="mt-1 text-lg font-black text-white">
-                          {course.distanceKm === null ? '정보 없음' : `${course.distanceKm}km`}
+                          {course.distanceKm === null ? '준비 중' : `${course.distanceKm}km`}
                         </p>
                       </div>
                     </div>
