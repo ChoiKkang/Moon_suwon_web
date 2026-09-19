@@ -63,42 +63,44 @@ export default async function EventsPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
               {events.map((event) => (
                 <Link
                   key={event.id}
                   href={`/events/${encodeURIComponent(event.eventContentId)}`}
-                  className="group overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl transition hover:-translate-y-1 hover:border-[#ffd700]/40"
+                  className="group flex h-full flex-col overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl transition hover:-translate-y-1 hover:border-[#ffd700]/40"
                 >
                   {event.heroImageUrl ? (
                     <div
                       role="img"
                       aria-label={event.eventName}
-                      className="image-reveal aspect-[16/9] bg-cover bg-center"
+                      className="image-reveal aspect-[16/9] shrink-0 bg-cover bg-center"
                       style={{ backgroundImage: `url(${event.heroImageUrl})` }}
                     />
                   ) : (
-                    <div className="flex aspect-[16/9] items-center justify-center bg-[#10182b] text-xs text-[#8f9bb3]">
+                    <div className="flex aspect-[16/9] shrink-0 items-center justify-center bg-[#10182b] text-xs text-[#8f9bb3]">
                       이미지 준비 중
                     </div>
                   )}
-                  <div className="p-5">
+                  <div className="flex flex-1 flex-col p-5">
                     <p className="inline-flex items-center gap-1.5 text-xs font-black tracking-wide text-[#ffd700]">
                       <CalendarDays className="h-3.5 w-3.5" />
                       {formatRange(event.startDate, event.endDate)}
                     </p>
-                    <h2 className="mt-2 text-lg font-black text-white">{event.eventName}</h2>
-                    <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-[#d0c6ab]">
-                      <MapPin className="h-3.5 w-3.5 text-[#ffd700]" />
-                      {event.eventPlace ?? event.venueAddress ?? '수원 지역'}
+                    <h2 className="mt-2 line-clamp-2 text-lg font-black text-white">{event.eventName}</h2>
+                    <p className="mt-2 flex items-start gap-1.5 text-xs text-[#d0c6ab]">
+                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#ffd700]" />
+                      <span className="line-clamp-2">{event.eventPlace ?? event.venueAddress ?? '수원 지역'}</span>
                     </p>
                     {event.playTime ? (
-                      <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-[#8f9bb3]">
-                        <Clock className="h-3.5 w-3.5" />
-                        {event.playTime}
+                      <p className="mt-2 flex items-start gap-1.5 text-xs text-[#8f9bb3]">
+                        <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span className="line-clamp-1">{event.playTime}</span>
                       </p>
                     ) : null}
-                    <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-[#ffd700]">
+                    {/* 운영시간이 없는 행사도 있어 카드마다 줄 수가 다르다. 링크를
+                        아래로 밀어 카드 바닥에 고정하면 줄이 고르게 보인다. */}
+                    <span className="mt-auto inline-flex items-center gap-1.5 pt-4 text-xs font-black text-[#ffd700]">
                       자세히 보기
                       <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
                     </span>

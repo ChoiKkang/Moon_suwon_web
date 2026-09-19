@@ -283,16 +283,16 @@ export function LandingClient({
             ) : (
               <ScrollRail label="추천 코스 목록" className="xl:grid-cols-3">
                 {courses.slice(0, 3).map((course) => (
-                  <article key={course.id} className="group min-w-[86%] snap-start overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33] shadow-xl motion-reveal md:min-w-0">
+                  <article key={course.id} className="group flex h-full min-w-[86%] snap-start flex-col overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33] shadow-xl motion-reveal md:min-w-0">
                     {course.heroImageUrl ? (
                       <div
                         role="img"
                         aria-label={course.title}
-                        className="image-reveal aspect-[16/9] bg-cover bg-center"
+                        className="image-reveal aspect-[16/9] shrink-0 bg-cover bg-center"
                         style={{ backgroundImage: `url(${course.heroImageUrl})` }}
                       />
-                    ) : <div className="flex aspect-[16/9] items-center justify-center bg-[#0b1326] text-xs text-[#8f9bb3]">이미지 준비 중</div>}
-                    <div className="p-6">
+                    ) : <div className="flex aspect-[16/9] shrink-0 items-center justify-center bg-[#0b1326] text-xs text-[#8f9bb3]">이미지 준비 중</div>}
+                    <div className="flex flex-1 flex-col p-6">
                       <div className="mb-4 flex items-center justify-between gap-3">
                         <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[10px] font-black text-[#ffd700]">추천 코스</span>
                         <span className="text-xs font-bold text-[#d0c6ab]">{course.theme}</span>
@@ -300,7 +300,7 @@ export function LandingClient({
                       <h3 className="text-xl font-black text-white">{course.title}</h3>
                       <p className="mt-2 text-sm font-bold text-[#ffd700]">{course.subtitle}</p>
                       <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-[#d0c6ab]">{course.description}</p>
-                      <div className="mt-5 flex gap-3 text-xs text-[#d0c6ab]">
+                      <div className="mt-5 flex shrink-0 gap-3 text-xs text-[#d0c6ab]">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0b1326]/70 px-3 py-2">
                           <Clock className="h-3.5 w-3.5 text-[#ffd700]" />
                           {course.durationMinutes}분
@@ -310,7 +310,7 @@ export function LandingClient({
                           {course.distanceKm === null ? '준비 중' : `${course.distanceKm}km`}
                         </span>
                       </div>
-                      <div className="mt-5 space-y-2">
+                      <div className="mt-auto space-y-2 pt-5">
                         {course.places.slice(0, 3).map((place) => (
                           <Link key={place.id} href={`/places/${place.slug}`} className="flex items-center justify-between rounded-xl bg-[#0b1326]/60 px-3 py-2 text-xs font-bold text-white hover:text-[#ffd700]">
                             {place.displayName}
@@ -360,9 +360,9 @@ export function LandingClient({
                   <Link
                     key={spot.placeId}
                     href={`/places/${spot.slug}`}
-                    className="group min-w-[82%] snap-start overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl transition hover:-translate-y-1 hover:border-[#ffd700]/40 md:min-w-0"
+                    className="group flex h-full min-w-[82%] snap-start flex-col overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl transition hover:-translate-y-1 hover:border-[#ffd700]/40 md:min-w-0"
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-[#0b1326]">
+                    <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-[#0b1326]">
                       {spot.heroImageUrl ? (
                         <div
                           role="img"
@@ -376,9 +376,9 @@ export function LandingClient({
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0b1326]/85 via-transparent to-transparent" />
                       <div className="absolute left-4 top-4"><StatusPill level={spot.crowdLevel} /></div>
                     </div>
-                    <div className="p-5">
-                      <h3 className="text-lg font-extrabold text-white">{spot.displayName}</h3>
-                      <p className="mt-2 text-xs text-[#d0c6ab]">
+                    <div className="flex flex-1 flex-col p-5">
+                      <h3 className="line-clamp-2 text-lg font-extrabold text-white">{spot.displayName}</h3>
+                      <p className="mt-2 flex-1 text-xs text-[#d0c6ab]">
                         {spot.crowdLevel ? `오늘 ${spot.crowdLevel}할 것으로 보입니다` : '오늘 예상치 준비 중'}
                       </p>
                     </div>
@@ -486,24 +486,24 @@ export function LandingClient({
                 지금은 예정된 행사가 없습니다. 새 일정이 잡히면 이곳에서 알려드립니다.
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+              <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-3">
                 {events.slice(0, 3).map((event) => (
                   <Link
                     key={event.id}
                     href={`/events/${encodeURIComponent(event.eventContentId)}`}
-                    className="group overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl transition hover:-translate-y-1 hover:border-[#ffd700]/40"
+                    className="group flex h-full flex-col overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl transition hover:-translate-y-1 hover:border-[#ffd700]/40"
                   >
                     {event.heroImageUrl ? (
-                      <div role="img" aria-label={event.eventName} className="aspect-[16/9] bg-cover bg-center" style={{ backgroundImage: `url(${event.heroImageUrl})` }} />
+                      <div role="img" aria-label={event.eventName} className="aspect-[16/9] shrink-0 bg-cover bg-center" style={{ backgroundImage: `url(${event.heroImageUrl})` }} />
                     ) : (
-                      <div className="flex aspect-[16/9] items-center justify-center bg-[#10182b] text-xs text-[#8f9bb3]">이미지 준비 중</div>
+                      <div className="flex aspect-[16/9] shrink-0 items-center justify-center bg-[#10182b] text-xs text-[#8f9bb3]">이미지 준비 중</div>
                     )}
-                    <div className="p-5">
+                    <div className="flex flex-1 flex-col p-5">
                       <p className="text-xs font-black tracking-wide text-[#ffd700]">{formatEventDate(event.startDate, event.endDate)}</p>
-                      <h3 className="mt-2 text-lg font-black text-white">{event.eventName}</h3>
-                      <p className="mt-2 text-xs text-[#d0c6ab]">{event.eventPlace ?? event.venueAddress ?? '수원 지역 행사'}</p>
-                      {event.playTime ? <p className="mt-3 text-xs text-[#8f9bb3]">운영 시간 {event.playTime}</p> : null}
-                      <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-[#ffd700]">
+                      <h3 className="mt-2 line-clamp-2 text-lg font-black text-white">{event.eventName}</h3>
+                      <p className="mt-2 line-clamp-2 text-xs text-[#d0c6ab]">{event.eventPlace ?? event.venueAddress ?? '수원 지역 행사'}</p>
+                      {event.playTime ? <p className="mt-3 line-clamp-1 text-xs text-[#8f9bb3]">운영 시간 {event.playTime}</p> : null}
+                      <span className="mt-auto inline-flex items-center gap-1.5 pt-4 text-xs font-black text-[#ffd700]">
                         자세히 보기
                         <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
                       </span>

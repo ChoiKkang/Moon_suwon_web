@@ -71,7 +71,13 @@ export function normalizeImages(
 ) {
   const rows = [];
 
-  if (listItem.firstimage) {
+  // 목록 응답의 firstimage를 대표 이미지로 쓴다. KTO가 이 필드를 비워 보내는
+  // 경우가 있어 그때는 상세 이미지 첫 장을 대표로 올린다. 비워 보낸 장소가
+  // 수원화성 장안문·팔달문·화홍문·방화수류정과 화성행궁이었는데, 상세로는
+  // 19~22장이 오는데도 대표가 없어 목록과 상세에서 "이미지 준비 중"이 떴다.
+  const hasFirstImage = Boolean(listItem.firstimage);
+
+  if (hasFirstImage) {
     rows.push({
       place_id: placeId,
       image_url: toSecureImageUrl(listItem.firstimage)!,
@@ -85,10 +91,15 @@ export function normalizeImages(
     });
   }
 
+  let heroAssigned = hasFirstImage;
+
   for (const [index, item] of imageItems.entries()) {
     if (!item.originimgurl) {
       continue;
     }
+
+    const isHero = !heroAssigned;
+    if (isHero) heroAssigned = true;
 
     rows.push({
       place_id: placeId,
@@ -98,7 +109,7 @@ export function normalizeImages(
       copyright_type: item.cpyrhtDivCd || null,
       source_provider: 'KTO',
       source_image_id: item.serialnum || `${item.contentid}:image:${index}`,
-      is_hero: false,
+      is_hero: isHero,
       display_order: index + 1,
     });
   }

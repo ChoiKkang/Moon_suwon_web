@@ -49,8 +49,10 @@ export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourc
 
   return (
     <div className="space-y-6">
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-5"><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><Activity className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">오늘 예측</p><p className="mt-1 text-3xl font-black text-white">{crowd.todayRows}</p></div><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><BarChart3 className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">전체 예측</p><p className="mt-1 text-3xl font-black text-white">{crowd.totalRows}</p></div><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><Clock3 className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">최신 예측 날짜</p><p className="mt-1 text-lg font-black text-white">{crowd.latestForecastDate ?? '없음'}</p></div><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><AlertCircle className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">상태</p><div className="mt-2"><AdminStatusBadge label={crowd.stale ? 'STALE' : 'HEALTHY'} tone={crowd.stale ? 'warning' : 'success'} /></div></div><div className="rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><ShieldAlert className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">검수 대기</p><p className="mt-1 text-3xl font-black text-white">{reviewCount}</p></div></section>
-      <section className="rounded-3xl border border-white/10 bg-[#171f33]/80 p-5 md:p-6"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">Source Health</p><h2 className="mt-2 text-xl font-black text-white">원천별 최신 상태</h2></div><span className="text-xs text-[#8f9bb3]">48시간 SLA</span></div><div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{sourceHealth.map((source) => <div key={source.source} className="rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-4"><div className="flex items-center justify-between gap-2"><p className="text-sm font-black text-white">{source.source}</p><AdminStatusBadge label={source.freshness === 'fresh' ? '신선' : source.freshness === 'stale' ? '오래됨' : '미확인'} tone={source.freshness === 'fresh' ? 'success' : source.freshness === 'stale' ? 'warning' : 'muted'} /></div><p className="mt-2 text-xs text-[#8f9bb3]">{source.lastCompletedAt ? formatDate(source.lastCompletedAt) : '완료 이력 없음'}</p><p className="mt-2 text-[11px] text-[#d0c6ab]">{source.fetched} fetched · {source.upserted} upserted · {source.errors} errors</p></div>)}{sourceHealth.length === 0 ? <p className="col-span-full rounded-2xl bg-[#0b1326]/60 p-5 text-sm text-[#8f9bb3]">원천별 실행 이력이 없습니다.</p> : null}</div></section>
+      {/* 지표 카드는 값 길이가 달라도 같은 높이를 유지한다. 숫자 카드와 배지
+          카드가 섞여 있어 items-stretch와 h-full 없이는 줄이 어긋난다. */}
+      <section className="grid grid-cols-2 items-stretch gap-4 md:grid-cols-5"><div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><Activity className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">오늘 예측</p><p className="mt-auto pt-1 text-3xl font-black text-white">{crowd.todayRows}</p></div><div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><BarChart3 className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">전체 예측</p><p className="mt-auto pt-1 text-3xl font-black text-white">{crowd.totalRows}</p></div><div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><Clock3 className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">최신 예측 날짜</p><p className="mt-auto pt-1 text-lg font-black text-white">{crowd.latestForecastDate ?? '없음'}</p></div><div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><AlertCircle className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">상태</p><div className="mt-auto pt-2"><AdminStatusBadge label={crowd.stale ? 'STALE' : 'HEALTHY'} tone={crowd.stale ? 'warning' : 'success'} /></div></div><div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><ShieldAlert className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">검수 대기</p><p className="mt-auto pt-1 text-3xl font-black text-white">{reviewCount}</p></div></section>
+      <section className="rounded-3xl border border-white/10 bg-[#171f33]/80 p-5 md:p-6"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">Source Health</p><h2 className="mt-2 text-xl font-black text-white">원천별 최신 상태</h2></div><span className="text-xs text-[#8f9bb3]">48시간 SLA</span></div><div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4">{sourceHealth.map((source) => <div key={source.source} className="flex h-full flex-col rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-4"><div className="flex items-start justify-between gap-2"><p className="text-sm font-black text-white">{source.source}</p><AdminStatusBadge label={source.freshness === 'fresh' ? '신선' : source.freshness === 'stale' ? '오래됨' : '미확인'} tone={source.freshness === 'fresh' ? 'success' : source.freshness === 'stale' ? 'warning' : 'muted'} /></div><p className="mt-2 flex-1 text-xs text-[#8f9bb3]">{source.lastCompletedAt ? formatDate(source.lastCompletedAt) : '완료 이력 없음'}</p><p className="mt-2 text-[11px] text-[#d0c6ab]">{source.fetched} fetched · {source.upserted} upserted · {source.errors} errors</p></div>)}{sourceHealth.length === 0 ? <p className="col-span-full rounded-2xl bg-[#0b1326]/60 p-5 text-sm text-[#8f9bb3]">원천별 실행 이력이 없습니다.</p> : null}</div></section>
       <section className="rounded-3xl border border-[#ffd700]/20 bg-[#171f33]/80 p-5 md:p-6">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
           <div>
@@ -65,14 +67,14 @@ export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourc
             <ExternalLink className="h-4 w-4" />
           </a>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {manualSyncJobs.map((job) => (
-            <a key={job.id} href={KTO_SYNC_WORKFLOW_URL} target="_blank" rel="noreferrer" className="group rounded-2xl border border-[#3e495d]/40 bg-[#0b1326]/60 p-4 transition hover:border-[#ffd700]/40">
+            <a key={job.id} href={KTO_SYNC_WORKFLOW_URL} target="_blank" rel="noreferrer" className="group flex h-full flex-col rounded-2xl border border-[#3e495d]/40 bg-[#0b1326]/60 p-4 transition hover:border-[#ffd700]/40">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-black text-white">{job.label}</p>
                 <ExternalLink className="h-4 w-4 text-[#8f9bb3] transition group-hover:text-[#ffd700]" />
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-[#8f9bb3]">{job.description}</p>
+              <p className="mt-2 flex-1 text-xs leading-relaxed text-[#8f9bb3]">{job.description}</p>
               <p className="mt-3 text-[11px] font-bold text-[#ffd700]">Run workflow에서 `{job.id}` 선택</p>
             </a>
           ))}
@@ -89,13 +91,13 @@ export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourc
           </div>
           <Layers className="h-5 w-5 shrink-0 text-[#ffd700]" />
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {enrichmentCoverage.map((coverage) => {
             const percent = coverage.publishedPlaces > 0
               ? Math.round((coverage.places / coverage.publishedPlaces) * 100)
               : 0;
             return (
-              <div key={coverage.key} className="rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-4">
+              <div key={coverage.key} className="flex h-full flex-col rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-4">
                 <div className="flex items-baseline justify-between gap-2">
                   <p className="text-sm font-black text-white">{coverage.label}</p>
                   <p className="text-xs font-bold text-[#ffd700]">{`${percent}%`}</p>
@@ -117,7 +119,7 @@ export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourc
                 {coverage.items !== null ? (
                   <p className="mt-3 text-[11px] font-bold text-[#d0c6ab]">{`연결 ${coverage.items}건`}</p>
                 ) : null}
-                <p className="mt-1 text-[11px] leading-relaxed text-[#8f9bb3]">{coverage.note}</p>
+                <p className="mt-auto pt-2 text-[11px] leading-relaxed text-[#8f9bb3]">{coverage.note}</p>
               </div>
             );
           })}
