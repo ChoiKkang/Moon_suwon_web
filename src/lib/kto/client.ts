@@ -88,9 +88,10 @@ export class KtoClient {
    * Among the rows it never saw were 수원화성 성곽길, 수원 화령전 and the 삼남길
    * walking course, all of which belong in a night walking service.
    */
-  async fetchSuwonContentByType(contentTypeId: string, pageSize = 100): Promise<KtoListItem[]> {
+  async fetchSuwonContentByType(contentTypeId: string, pageSize = 100, limit: number | null = null): Promise<KtoListItem[]> {
     const collected: KtoListItem[] = [];
     const seen = new Set<string>();
+    if (limit !== null && limit <= 0) return collected;
 
     for (const districtCode of SUWON_LDONG_DISTRICT_CODES) {
       let districtCount = 0;
@@ -112,6 +113,7 @@ export class KtoClient {
           if (item.contentid && !seen.has(item.contentid)) {
             seen.add(item.contentid);
             collected.push(item);
+            if (limit !== null && collected.length >= Math.max(0, limit)) return collected;
           }
         }
 

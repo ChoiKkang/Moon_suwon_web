@@ -24,6 +24,7 @@ export type PetEnrichmentRow = {
   source_updated_at?: string | null;
   last_pet_checked_at: string | null;
   data_status: string | null;
+  is_published?: boolean;
 };
 
 export async function paginatePetCandidates(
@@ -95,6 +96,13 @@ export function selectPetEnrichment(
     const checkedAt = Date.parse(row.last_pet_checked_at);
     return Number.isNaN(checkedAt)
       || now.getTime() - checkedAt > maxAgeHours * 60 * 60 * 1000;
+  }).sort((left, right) => {
+    const publishedDifference = Number(Boolean(right.is_published)) - Number(Boolean(left.is_published));
+    if (publishedDifference !== 0) return publishedDifference;
+    const leftUnchecked = left.last_pet_checked_at ? 1 : 0;
+    const rightUnchecked = right.last_pet_checked_at ? 1 : 0;
+    if (leftUnchecked !== rightUnchecked) return leftUnchecked - rightUnchecked;
+    return 0;
   });
 }
 

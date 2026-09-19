@@ -13,6 +13,8 @@ import { isSuwonFestival, normalizeFestival, normalizeImages, normalizePlace } f
 import { assessNightDining, isWithinFortressWalk } from '../src/lib/kto/night-dining';
 import { AUDIO_MATCH_RADIUS_M, matchAudioStories } from '../src/lib/kto/audio-guide';
 import { readIntroFacts } from '../src/lib/kto/intro-facts';
+import { applyProcessingLimit, matchCrowdCoverage } from '../src/lib/kto/coverage';
+import { normalizePetPolicy } from '../src/lib/pet/policy';
 import type {
   KtoAudioStoryItem,
   KtoCrowdForecastItem,
@@ -37,6 +39,18 @@ export type SyncStats = {
   staleMarked: number;
   detailsAttempted: number;
   skippedDaytimeFood: number;
+  detailSuccessCount: number;
+  sourceEmptyCount: number;
+  policyValidCount: number;
+  unchangedCount: number;
+  changedCount: number;
+  publishedCoveredCount: number;
+  matchedPlaceCount: number;
+  unmatchedAttractionCount: number;
+  forecastDateCount: number;
+  scopeCounts: Record<string, number>;
+  limited: boolean;
+  undispatchedCount: number;
 };
 
 const PET_CONCURRENCY = 3;
@@ -131,6 +145,18 @@ function createStats(): SyncStats {
     staleMarked: 0,
     detailsAttempted: 0,
     skippedDaytimeFood: 0,
+    detailSuccessCount: 0,
+    sourceEmptyCount: 0,
+    policyValidCount: 0,
+    unchangedCount: 0,
+    changedCount: 0,
+    publishedCoveredCount: 0,
+    matchedPlaceCount: 0,
+    unmatchedAttractionCount: 0,
+    forecastDateCount: 0,
+    scopeCounts: {},
+    limited: false,
+    undispatchedCount: 0,
   };
 }
 
@@ -232,8 +258,14 @@ async function collectContentCandidates(
 }
 
 async function syncContent(runId: string, stats: SyncStats, options: RunnerOptions): Promise<'completed' | 'partial'> {
-  const attractions = await collectContentCandidates(runId, stats, options);
-  if (attractions.length === 0) throw new Error('KTO areaBasedList2에서 수원 콘텐츠 목록을 받지 못했습니다.');
+  const discovered = await collectContentCandidates(runId, stats, options);
+  if (discovered.length === 0) throw new Error('KTO areaBasedList2에서 수원 콘텐츠 목록을 받지 못했습니다.');
+
+  const limited = applyProcessingLimit(discovered, options.limit);
+  const attractions = limited.selected;
+  stats.candidatesDiscovered = discovered.length;
+  stats.limited = limited.limited;
+  stats.undispatchedCount = limited.undispatchedCount;
 
   stats.itemsFetched = attractions.length;
   writeLine(`content: fetched ${attractions.length}`);
@@ -375,14 +407,33 @@ function toCrowdRows(items: KtoCrowdForecastItem[]) {
   });
 }
 
+async function loadCrowdPlaces() {
+  const [{ data: places, error: placesError }, { data: states, error: statesError }] = await Promise.all([
+    supabase.schema('core').from('places').select('id, official_name').eq('is_active', true),
+    supabase.schema('editorial').from('place_publish_state').select('place_id, is_published'),
+  ]);
+  if (placesError) throw new Error(`혼잡도 장소 목록을 불러오지 못했습니다: ${placesError.message}`);
+  if (statesError) throw new Error(`혼잡도 게시 상태를 불러오지 못했습니다: ${statesError.message}`);
+
+  const publishedIds = new Set((states ?? []).filter((row) => row.is_published === true).map((row) => String(row.place_id)));
+  return (places ?? []).map((place) => ({
+    place_id: String(place.id),
+    official_name: String(place.official_name),
+    is_published: publishedIds.has(String(place.id)),
+  }));
+}
+
 async function syncCrowd(runId: string, stats: SyncStats, options: RunnerOptions): Promise<'completed' | 'partial'> {
   // 구 하나만 조회하면 그 구 밖의 공개 장소는 영구히 예측이 비어 있다. 한 구가
   // 실패해도 나머지 구의 예측은 살리고 오류만 기록한다.
   const items: Awaited<ReturnType<typeof kto.fetchCrowdForecasts>> = [];
   let failedDistricts = 0;
   for (const sigunguCode of SUWON_SIGUNGU_CODES) {
+    stats.scopeCounts[sigunguCode] = 0;
     try {
-      items.push(...(await kto.fetchCrowdForecasts({ areaCode: '41', sigunguCode })));
+      const districtItems = await kto.fetchCrowdForecasts({ areaCode: '41', sigunguCode });
+      stats.scopeCounts[sigunguCode] = districtItems.length;
+      items.push(...districtItems);
     } catch (error: unknown) {
       failedDistricts += 1;
       await recordSyncError(runId, stats, error, sigunguCode, !options.dryRun);
@@ -399,12 +450,25 @@ async function syncCrowd(runId: string, stats: SyncStats, options: RunnerOptions
     return 'completed';
   }
 
-  const rows = toCrowdRows(items);
-  stats.itemsFetched = rows.length;
-  if (rows.length === 0) {
+  const allRows = toCrowdRows(items);
+  if (allRows.length === 0) {
     writeLine('crowd: response contained no valid rows');
     return 'partial';
   }
+
+  const limited = applyProcessingLimit(allRows, options.limit);
+  const rows = limited.selected;
+  stats.itemsFetched = rows.length;
+  stats.candidatesDiscovered = allRows.length;
+  stats.limited = limited.limited;
+  stats.undispatchedCount = limited.undispatchedCount;
+
+  const places = await loadCrowdPlaces();
+  const processedCoverage = matchCrowdCoverage(rows, places);
+  stats.matchedPlaceCount = processedCoverage.matchedPlaceCount;
+  stats.unmatchedAttractionCount = processedCoverage.unmatchedAttractionCount;
+  stats.publishedCoveredCount = processedCoverage.matchedPlaceCount;
+  stats.forecastDateCount = processedCoverage.forecastDateCount;
 
   if (!options.dryRun) {
     const matchedCount = await callRpc<number>(supabase, 'sync_kto_crowd_batch', { p_run_id: runId, p_rows: rows });
@@ -413,7 +477,7 @@ async function syncCrowd(runId: string, stats: SyncStats, options: RunnerOptions
     stats.itemsUpserted = rows.length;
   }
 
-  writeLine(`crowd: fetched ${stats.itemsFetched}, matched/upserted ${stats.itemsUpserted}`);
+  writeLine(`crowd: fetched ${stats.itemsFetched}, matched places ${stats.matchedPlaceCount}, unmatched attractions ${stats.unmatchedAttractionCount}, upserted rows ${stats.itemsUpserted}`);
   return stats.errorCount > 0 ? 'partial' : 'completed';
 }
 
@@ -498,10 +562,14 @@ async function syncEvents(runId: string, stats: SyncStats, options: RunnerOption
 }
 
 async function syncPet(runId: string, stats: SyncStats, options: RunnerOptions): Promise<'completed' | 'partial' | 'failed'> {
-  const discovery = await paginatePetCandidates(kto, { ...PET_DISCOVERY, limit: options.limit ?? undefined });
+  const allDiscovery = await paginatePetCandidates(kto, PET_DISCOVERY);
+  stats.candidatesDiscovered = allDiscovery.length;
+  const discoveryLimit = applyProcessingLimit(allDiscovery, options.limit);
+  const discovery = discoveryLimit.selected;
   stats.itemsFetched = discovery.length;
-  stats.candidatesDiscovered = discovery.length;
-  if (discovery.length === 0) {
+  stats.limited = discoveryLimit.limited;
+  stats.undispatchedCount = discoveryLimit.undispatchedCount;
+  if (allDiscovery.length === 0) {
     writeLine('pet: valid zero-result discovery response');
     return 'completed';
   }
@@ -549,11 +617,23 @@ async function syncPet(runId: string, stats: SyncStats, options: RunnerOptions):
         pet = await kto.fetchPetDetail(place.kto_content_id);
       } catch (error: unknown) {
         await recordSyncError(runId, stats, error, place.kto_content_id, !options.dryRun);
+        if (!options.dryRun && place.place_id) {
+          const { error: staleError } = await supabase
+            .schema('core')
+            .from('place_pet_policies')
+            .update({ data_status: 'stale', last_checked_at: new Date().toISOString() })
+            .eq('place_id', place.place_id)
+            .eq('is_manual_override', false);
+          if (staleError) await recordSyncError(runId, stats, new Error(staleError.message), place.kto_content_id, true);
+        }
         return;
       }
 
+      stats.detailSuccessCount += 1;
+
       if (!pet) {
         stats.zeroResultContentIds.push(place.kto_content_id);
+        stats.sourceEmptyCount += 1;
         if (!options.dryRun) {
           try {
             await callRpc<boolean>(supabase, 'sync_mark_pet_check', {
@@ -569,19 +649,26 @@ async function syncPet(runId: string, stats: SyncStats, options: RunnerOptions):
         return;
       }
 
+      if (normalizePetPolicy(pet.acmpyTypeCd, pet.acmpyPsblCpam) !== 'unknown') {
+        stats.policyValidCount += 1;
+      }
+
       if (!options.dryRun) {
         try {
-          const upserted = await callRpc<boolean>(supabase, 'sync_kto_pet_item', {
+          const changed = await callRpc<boolean>(supabase, 'sync_kto_pet_item', {
             p_run_id: runId,
             p_content_id: place.kto_content_id,
             p_payload: pet,
           });
-          if (upserted) stats.itemsUpserted += 1;
+          stats.itemsUpserted += 1;
+          if (changed) stats.changedCount += 1;
+          else stats.unchangedCount += 1;
         } catch (error: unknown) {
           await recordSyncError(runId, stats, error, place.kto_content_id, true);
         }
       } else {
         stats.itemsUpserted += 1;
+        stats.changedCount += 1;
       }
     }));
   }
@@ -594,7 +681,18 @@ async function syncPet(runId: string, stats: SyncStats, options: RunnerOptions):
     }
   }
 
-  writeLine(`pet: discovered ${stats.candidatesDiscovered}, attempted ${stats.detailsAttempted}, upserted ${stats.itemsUpserted}, zero-result ${stats.zeroResultContentIds.length}, stale ${stats.staleMarked}`);
+  const [{ data: published, error: publishedError }, { data: covered, error: coveredError }] = await Promise.all([
+    supabase.schema('editorial').from('place_publish_state').select('place_id').eq('is_published', true),
+    supabase.schema('core').from('place_pet_policies').select('place_id').neq('pet_policy', 'unknown').eq('data_status', 'fresh'),
+  ]);
+  if (publishedError) await recordSyncError(runId, stats, new Error(publishedError.message), undefined, !options.dryRun);
+  if (coveredError) await recordSyncError(runId, stats, new Error(coveredError.message), undefined, !options.dryRun);
+  const publishedIds = new Set((published ?? []).map((row) => String(row.place_id)));
+  stats.publishedCoveredCount = new Set(
+    (covered ?? []).map((row) => String(row.place_id)).filter((placeId) => publishedIds.has(placeId)),
+  ).size;
+
+  writeLine(`pet: discovered ${stats.candidatesDiscovered}, attempted ${stats.detailsAttempted}, detail success ${stats.detailSuccessCount}, valid policy ${stats.policyValidCount}, changed ${stats.changedCount}, unchanged ${stats.unchangedCount}, source-empty ${stats.sourceEmptyCount}, published covered ${stats.publishedCoveredCount}`);
   return classifySyncStatus({ listRequestFailed: false, itemErrors: stats.errorCount, itemsAttempted: stats.detailsAttempted, validEmpty: stats.zeroResultContentIds.length });
 }
 
@@ -808,8 +906,21 @@ async function main() {
             job: options.job,
             runner: 'scripts/sync-kto-data.ts',
             zero_result_content_ids: stats.zeroResultContentIds,
-            candidates_discovered: stats.candidatesDiscovered,
-            details_attempted: stats.detailsAttempted,
+            discovered_count: stats.candidatesDiscovered,
+            detail_attempted_count: stats.detailsAttempted,
+            detail_success_count: stats.detailSuccessCount,
+            source_empty_count: stats.sourceEmptyCount,
+            policy_valid_count: stats.policyValidCount,
+            unchanged_count: stats.unchangedCount,
+            changed_count: stats.changedCount,
+            upserted_count: stats.itemsUpserted,
+            published_covered_count: stats.publishedCoveredCount,
+            matched_place_count: stats.matchedPlaceCount,
+            unmatched_attraction_count: stats.unmatchedAttractionCount,
+            forecast_date_count: stats.forecastDateCount,
+            scope_counts: stats.scopeCounts,
+            limited: stats.limited,
+            undispatched_candidate_count: stats.undispatchedCount,
             stale_marked: stats.staleMarked,
           },
         });
