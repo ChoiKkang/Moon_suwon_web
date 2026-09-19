@@ -23,6 +23,7 @@
     "deployment:verify": "tsx scripts/verify-deployment.ts",
     "admin:verify": "tsx scripts/verify-admin-serving.ts",
     "sync:data": "tsx scripts/sync-kto-data.ts",
+    "sync:public-data": "tsx scripts/sync-public-data.ts",
     "sync:rpc:verify": "tsx scripts/verify-sync-rpc.ts",
     "apple:secret": "tsx scripts/generate-apple-client-secret.ts"
   },

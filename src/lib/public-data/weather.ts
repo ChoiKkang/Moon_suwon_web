@@ -29,6 +29,24 @@ export type NormalizedMidForecast = {
   issuedAt: string;
 };
 
+export function latestMidForecastBase(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', hourCycle: 'h23',
+  }).formatToParts(now);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
+  const localDate = `${get('year')}-${get('month')}-${get('day')}`;
+  const hour = Number(get('hour'));
+  if (hour >= 18) return `${localDate.replaceAll('-', '')}1800`;
+  if (hour >= 6) return `${localDate.replaceAll('-', '')}0600`;
+  const previous = new Date(`${localDate}T00:00:00+09:00`);
+  previous.setUTCDate(previous.getUTCDate() - 1);
+  const previousDate = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(previous).replaceAll('-', '');
+  return `${previousDate}1800`;
+}
+
 function finiteNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);

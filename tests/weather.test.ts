@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { normalizeMidForecast, normalizeVillageForecast } from '../src/lib/public-data/weather';
+import { latestMidForecastBase, normalizeMidForecast, normalizeVillageForecast } from '../src/lib/public-data/weather';
 
 const fixture = [
   { baseDate: '20260920', baseTime: '0200', fcstDate: '20260920', fcstTime: '1800', category: 'TMP', fcstValue: '19' },
@@ -44,4 +44,10 @@ test('mid forecast joins weather and temperature for days 4 through 11', () => {
     issuedAt: '2026-09-20T06:00:00+09:00',
   });
   assert.equal(rows[7].weatherPm, '비');
+});
+
+test('mid forecast issue time never points into the future', () => {
+  assert.equal(latestMidForecastBase(new Date('2026-09-19T16:00:00.000Z')), '202609191800');
+  assert.equal(latestMidForecastBase(new Date('2026-09-19T22:00:00.000Z')), '202609200600');
+  assert.equal(latestMidForecastBase(new Date('2026-09-20T10:00:00.000Z')), '202609201800');
 });
