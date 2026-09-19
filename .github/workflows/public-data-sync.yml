@@ -67,6 +67,7 @@ jobs:
     timeout-minutes: 30
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       KTO_SERVICE_KEY: ${{ secrets.KTO_SERVICE_KEY }}
       KMA_SERVICE_KEY: ${{ secrets.KMA_SERVICE_KEY }}
@@ -84,6 +85,7 @@ jobs:
         run: |
           set -euo pipefail
           : "${NEXT_PUBLIC_SUPABASE_URL:?required}"
+          : "${NEXT_PUBLIC_SUPABASE_ANON_KEY:?required}"
           : "${SUPABASE_SERVICE_ROLE_KEY:?required}"
           : "${KTO_SERVICE_KEY:?required compatibility key}"
       - name: Run approved source sync
@@ -95,5 +97,5 @@ jobs:
           if [[ -n "${{ inputs.limit || '' }}" ]]; then args+=(--limit "${{ inputs.limit }}"); fi
           npm run sync:public-data -- "${args[@]}"
       - name: Verify source health
-        if: always() && github.event_name == 'workflow_dispatch' && inputs.dry_run != true
+        if: always() && inputs.dry_run != true
         run: npm run data:verify -- --job "${{ matrix.job }}"

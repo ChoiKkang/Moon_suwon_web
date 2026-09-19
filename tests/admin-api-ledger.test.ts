@@ -64,6 +64,19 @@ test('labels healthy Durunubi zero result and review counts', () => {
   assert.deepEqual(durunubi?.reviewCounts, { pending: 0, approved: 0, hold: 1, excluded: 1 });
 });
 
+test('labels a completed bus run with no reviewed station mapping as hold', () => {
+  const ledger = buildAdminApiLedger(registry, [
+    run('GitHubActions:bus_arrival', '2026-09-19T18:00:00Z', {
+      items_fetched: 0,
+      items_upserted: 0,
+      metadata: { operational_status: 'hold', zero_result: true, scope_counts: { mapped_stations: 0 } },
+    }),
+  ], [], new Date('2026-09-20T12:00:00Z'));
+  const bus = ledger.find((item) => item.apiKey === 'gg_bus_arrival');
+  assert.equal(bus?.latestStatus, 'hold');
+  assert.equal(bus?.zeroResult, true);
+});
+
 test('marks past approval expiration', () => {
   const expired = registry.map((row) => row.api_key === 'kto_photo' ? { ...row, expires_at: '2026-09-19' } : row);
   const ledger = buildAdminApiLedger(expired, [], [], new Date('2026-09-20T00:00:00Z'));

@@ -63,14 +63,22 @@ export function buildAdminApiLedger(
       }
     }
 
+    const metadata = metadataRecord(run?.metadata);
+    const intentionalBusHold = row.api_key === 'gg_bus_arrival'
+      && run?.status === 'completed'
+      && run.error_count === 0
+      && run.items_fetched === 0
+      && metadata.operational_status === 'hold'
+      && metadata.zero_result === true;
+
     let latestStatus: AdminApiLedgerItem['latestStatus'];
     if (row.implementation_status === 'hold') latestStatus = 'hold';
+    else if (intentionalBusHold) latestStatus = 'hold';
     else if (!run) latestStatus = 'never_run';
     else if (run.status === 'failed') latestStatus = 'failed';
     else if (run.status !== 'completed' || run.error_count > 0 || freshness === 'stale') latestStatus = 'warning';
     else latestStatus = 'healthy';
 
-    const metadata = metadataRecord(run?.metadata);
     return {
       apiKey: row.api_key,
       provider: row.provider,
