@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { ArrowLeft, Camera, Compass, Dog, ExternalLink, MapPin, Moon, Phone, Route, Sparkles } from 'lucide-react';
+import { Accessibility, ArrowLeft, Camera, Compass, Dog, ExternalLink, MapPin, Moon, Phone, Route, Sparkles } from 'lucide-react';
 import { getPublishedPlaceBySlug } from '@/lib/places/queries';
+import { groupAccessibility } from '@/lib/places/accessibility';
 import { StatusPill } from '@/components/public/status-pill';
 
 type PlaceDetailPageProps = {
@@ -58,6 +59,10 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
       ? `https://map.kakao.com/link/map/${encodeURIComponent(place.displayName)},${place.lat},${place.lng}`
       : `https://map.kakao.com/link/search/${encodeURIComponent(place.addressFull ?? place.displayName)}`
     : null;
+
+  // 무장애 정보는 값이 있는 항목만 보여준다. KTO가 서술형으로 주는 원문을 그대로
+  // 쓰고 등급으로 환산하지 않는다.
+  const accessibilityGroups = place ? groupAccessibility(place.accessibility) : [];
 
   return (
     <main className="min-h-screen bg-[#0b1326] text-[#dae2fd]">
@@ -199,6 +204,34 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
                     <p className="mt-3 whitespace-pre-line text-xs leading-relaxed text-[#d0c6ab]">{place.petNote}</p>
                   ) : null}
                   <p className="mt-3 text-[11px] text-[#8f9bb3]">한국관광공사 반려동물 동반여행 정보 기준입니다. 방문 전 현장 정책을 다시 확인해 주세요.</p>
+                </div>
+              ) : null}
+
+              {accessibilityGroups.length > 0 ? (
+                <div className="mt-6 rounded-3xl border border-[#3e495d]/40 bg-[#0b1326]/70 p-5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Accessibility className="h-5 w-5 text-[#ffd700]" />
+                    <p className="text-sm font-black text-white">편의시설과 접근성</p>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-[#8f9bb3]">
+                    밤에는 낮보다 길이 어둡고 경사가 더 부담스럽습니다. 확인된 항목만 표시합니다.
+                  </p>
+                  <div className="mt-4 space-y-4">
+                    {accessibilityGroups.map((group) => (
+                      <div key={group.title}>
+                        <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ffd700]">{group.title}</p>
+                        <dl className="mt-2 space-y-2">
+                          {group.items.map((item) => (
+                            <div key={item.label} className="flex flex-col gap-1 sm:flex-row sm:gap-3">
+                              <dt className="shrink-0 text-xs font-bold text-[#8f9bb3] sm:w-20">{item.label}</dt>
+                              <dd className="whitespace-pre-line text-xs leading-relaxed text-[#d0c6ab]">{item.value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-4 text-[11px] text-[#8f9bb3]">한국관광공사 무장애 여행 정보 기준입니다. 방문 전 현장에 다시 확인해 주세요.</p>
                 </div>
               ) : null}
             </div>

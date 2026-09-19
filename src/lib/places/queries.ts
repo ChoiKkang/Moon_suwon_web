@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { ImportedPlace } from './types';
 import { toSecureImageUrl } from '@/lib/media/urls';
 import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
+import type { AccessibilityFacts } from './accessibility';
 
 type PlaceViewName = 'v_imported_places' | 'v_published_places';
 
@@ -29,9 +30,48 @@ export type ImportedPlaceRow = {
   crowd_forecast_rate?: number | string | null;
   crowd_forecast_level?: string | null;
   crowd_data_status?: string | null;
+  access_route?: string | null;
+  access_exit?: string | null;
+  access_elevator?: string | null;
+  access_parking?: string | null;
+  access_public_transport?: string | null;
+  access_wheelchair?: string | null;
+  access_braille_block?: string | null;
+  access_braille_promotion?: string | null;
+  access_audio_guide?: string | null;
+  access_big_print?: string | null;
+  access_help_dog?: string | null;
+  access_restroom?: string | null;
+  access_lactation_room?: string | null;
+  access_stroller?: string | null;
+  access_infants_family?: string | null;
+  access_etc?: string | null;
+  access_source_updated_at?: string | null;
 };
 
-const PLACE_SELECT = 'id, slug, display_name, address_full, short_description, hero_image_url, hero_thumbnail_url, kto_content_id, lat, lng, contact_phone, source_modified_at, pet_policy, pet_note, pet_data_status, pet_source_updated_at, night_highlight, photo_tip, short_story, crowd_forecast_date, crowd_forecast_rate, crowd_forecast_level, crowd_data_status';
+const PLACE_SELECT = 'id, slug, display_name, address_full, short_description, hero_image_url, hero_thumbnail_url, kto_content_id, lat, lng, contact_phone, source_modified_at, pet_policy, pet_note, pet_data_status, pet_source_updated_at, night_highlight, photo_tip, short_story, crowd_forecast_date, crowd_forecast_rate, crowd_forecast_level, crowd_data_status, access_route, access_exit, access_elevator, access_parking, access_public_transport, access_wheelchair, access_braille_block, access_braille_promotion, access_audio_guide, access_big_print, access_help_dog, access_restroom, access_lactation_room, access_stroller, access_infants_family, access_etc, access_source_updated_at';
+
+function asAccessibility(place: ImportedPlaceRow): AccessibilityFacts {
+  return {
+    route: place.access_route ?? null,
+    exit: place.access_exit ?? null,
+    elevator: place.access_elevator ?? null,
+    parking: place.access_parking ?? null,
+    publicTransport: place.access_public_transport ?? null,
+    wheelchair: place.access_wheelchair ?? null,
+    brailleBlock: place.access_braille_block ?? null,
+    braillePromotion: place.access_braille_promotion ?? null,
+    audioGuide: place.access_audio_guide ?? null,
+    bigPrint: place.access_big_print ?? null,
+    helpDog: place.access_help_dog ?? null,
+    restroom: place.access_restroom ?? null,
+    lactationRoom: place.access_lactation_room ?? null,
+    stroller: place.access_stroller ?? null,
+    infantsFamily: place.access_infants_family ?? null,
+    etc: place.access_etc ?? null,
+    sourceUpdatedAt: place.access_source_updated_at ?? null,
+  };
+}
 
 function asPetPolicy(value: string | null | undefined): PetPolicy {
   return value === 'allowed' || value === 'partial' || value === 'not_allowed' || value === 'unknown' ? value : 'unknown';
@@ -70,6 +110,7 @@ export function mapPlace(place: ImportedPlaceRow): ImportedPlace {
         }
       : null,
     crowdDataStatus: asFreshness(place.crowd_data_status),
+    accessibility: asAccessibility(place),
   };
 }
 

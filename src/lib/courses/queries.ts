@@ -3,6 +3,7 @@ import type { ImportedPlace } from '@/lib/places/types';
 import type { ServiceCourse } from './types';
 import { toSecureImageUrl } from '@/lib/media/urls';
 import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
+import { EMPTY_ACCESSIBILITY } from '@/lib/places/accessibility';
 
 type HomeCourseRow = {
   id: string;
@@ -90,6 +91,7 @@ export function mapCoursePlace(detail: CourseDetailRow): ImportedPlace {
         }
       : null,
     crowdDataStatus,
+    accessibility: EMPTY_ACCESSIBILITY,
   };
 }
 

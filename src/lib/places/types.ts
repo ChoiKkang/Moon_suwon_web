@@ -1,4 +1,5 @@
 import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
+import type { AccessibilityFacts } from './accessibility';
 
 export type ImportedPlace = {
   id: string;
@@ -26,4 +27,5 @@ export type ImportedPlace = {
     level: string | null;
   } | null;
   crowdDataStatus: DataFreshness;
+  accessibility: AccessibilityFacts;
 };

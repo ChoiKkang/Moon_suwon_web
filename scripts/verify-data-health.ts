@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 loadEnvConfig(process.cwd());
 
-type SyncJob = 'content' | 'events' | 'crowd' | 'pet';
+type SyncJob = 'content' | 'events' | 'crowd' | 'pet' | 'access';
 type RunRow = {
   source: string;
   status: string;
@@ -19,12 +19,15 @@ type ForecastHealthRow = {
   source_updated_at: string | null;
 };
 
-const JOBS: SyncJob[] = ['content', 'events', 'crowd', 'pet'];
+const JOBS: SyncJob[] = ['content', 'events', 'crowd', 'pet', 'access'];
 const MAX_AGE_HOURS: Record<SyncJob, number> = {
   crowd: 36,
   events: 36,
   pet: 24 * 8,
   content: 24 * 40,
+  // 주간 실행이라 콘텐츠 수집과 같은 여유를 준다. 접근성 정보는 시설 공사가
+  // 아니면 잘 바뀌지 않아 하루 단위 신선도가 필요하지 않다.
+  access: 24 * 40,
 };
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

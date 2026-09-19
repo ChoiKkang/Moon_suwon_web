@@ -56,6 +56,31 @@ export type KtoIntroItem = {
   infocenterleports?: string;
 };
 
+/**
+ * 무장애 여행 정보. KorWithService2/detailWithTour2가 장소별 접근성을 자유 문장으로
+ * 보낸다. "출입구까지 완만한 경사로가 설치되어 있음"처럼 서술형이라 등급으로
+ * 환산하지 않고 원문을 보존한다.
+ */
+export type KtoWithTourItem = {
+  contentid: string;
+  route?: string;
+  exit?: string;
+  elevator?: string;
+  parking?: string;
+  publictransport?: string;
+  wheelchair?: string;
+  braileblock?: string;
+  brailepromotion?: string;
+  audioguide?: string;
+  bigprint?: string;
+  helpdog?: string;
+  restroom?: string;
+  lactationroom?: string;
+  stroller?: string;
+  infantsfamilyetc?: string;
+  handicapetc?: string;
+};
+
 export type KtoPetTourItem = {
   contentid: string;
   acmpyPsblCpam?: string;
