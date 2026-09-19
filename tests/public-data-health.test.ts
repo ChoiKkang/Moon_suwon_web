@@ -37,6 +37,26 @@ test('Durunubi completed zero is healthy for Suwon', () => {
   assert.equal(result.status, 'healthy');
 });
 
+test('bus arrival with no reviewed stations remains an explicit hold', () => {
+  const result = evaluateApiHealth(
+    getPublicApiDefinition('gg_bus_arrival'),
+    run({
+      itemsFetched: 0,
+      itemsUpserted: 0,
+      metadata: {
+        operational_status: 'hold',
+        zero_result: true,
+        scope_counts: { mapped_stations: 0 },
+      },
+    }),
+    null,
+    { rawCount: 0, publicCount: 0 },
+    new Date('2026-09-21T12:00:00Z'),
+  );
+  assert.equal(result.status, 'hold');
+  assert.deepEqual(result.findings, []);
+});
+
 test('photo count dropping by ninety percent is a warning', () => {
   const result = evaluateApiHealth(
     getPublicApiDefinition('kto_photo'),

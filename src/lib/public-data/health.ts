@@ -62,6 +62,14 @@ export function evaluateApiHealth(
     return { status: 'failed', findings };
   }
 
+  const intentionalBusHold = definition.key === 'gg_bus_arrival'
+    && latestRun.status === 'completed'
+    && latestRun.errorCount === 0
+    && latestRun.itemsFetched === 0
+    && latestRun.metadata.operational_status === 'hold'
+    && latestRun.metadata.zero_result === true;
+  if (intentionalBusHold) return { status: 'hold', findings: [] };
+
   if (latestRun.status === 'failed') fail('run_failed', '최근 동기화가 실패했습니다.');
   else if (latestRun.status !== 'completed') warn('run_partial', `최근 동기화 상태가 ${latestRun.status}입니다.`);
   if (latestRun.errorCount > 0) warn('run_errors', `최근 실행에 오류 ${latestRun.errorCount}건이 있습니다.`);
