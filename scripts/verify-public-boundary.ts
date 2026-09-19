@@ -105,6 +105,29 @@ async function main() {
     throw new Error('candidate place leaked into public.v_imported_places');
   }
 
+  const [registryTable, rawItems, photoCandidates, wellness, localHub, relations, durunubi, visitors, weather, busStops, busArrivals, registryRpc] = await Promise.all([
+    publicClient.schema('ops').from('api_registry').select('api_key').limit(1),
+    publicClient.schema('raw').from('public_api_items').select('id').limit(1),
+    publicClient.schema('core').from('place_photo_candidates').select('id').limit(1),
+    publicClient.schema('core').from('place_wellness').select('source_item_key').limit(1),
+    publicClient.schema('core').from('local_hub_candidates').select('source_item_key').limit(1),
+    publicClient.schema('core').from('place_relations').select('origin_source_key').limit(1),
+    publicClient.schema('core').from('durunubi_courses').select('source_item_key').limit(1),
+    publicClient.schema('core').from('regional_visitor_stats').select('stat_date').limit(1),
+    publicClient.schema('core').from('weather_forecasts').select('forecast_at').limit(1),
+    publicClient.schema('core').from('place_bus_stops').select('place_id').limit(1),
+    publicClient.schema('core').from('bus_arrival_snapshots').select('station_id').limit(1),
+    publicClient.rpc('sync_list_api_registry'),
+  ]);
+
+  const privateProbes = [registryTable, rawItems, photoCandidates, wellness, localHub, relations, durunubi, visitors, weather, busStops, busArrivals];
+  if (privateProbes.some((probe) => !probe.error && (probe.data ?? []).length > 0)) {
+    throw new Error('an approved-API private table returned rows to the anonymous role');
+  }
+  if (!registryRpc.error) {
+    throw new Error('sync_list_api_registry should not be executable by the anonymous role');
+  }
+
   console.log(`Public boundary passed: ${publishedPlaceIds.size} places, ${publishedCourseIds.size} courses, additive pet fields exposed, unpublished getters blocked.`);
 }
 
