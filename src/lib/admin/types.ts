@@ -219,6 +219,30 @@ export type AdminSyncError = {
   createdAt: string;
 };
 
+export type AdminApiLedgerItem = {
+  apiKey: string;
+  provider: string;
+  displayName: string;
+  approvalStatus: string;
+  accountStage: string;
+  approvedAt: string;
+  expiresAt: string;
+  expirationStatus: 'active' | 'expiring' | 'expired';
+  implementationStatus: string;
+  syncJob: string;
+  scheduleLabel: string;
+  freshnessSlaHours: number;
+  reviewPolicy: string;
+  latestStatus: 'never_run' | 'healthy' | 'warning' | 'failed' | 'hold';
+  latestCompletedAt: string | null;
+  fetched: number;
+  upserted: number;
+  errors: number;
+  zeroResult: boolean;
+  freshness: 'fresh' | 'stale' | 'unknown';
+  reviewCounts: { pending: number; approved: number; hold: number; excluded: number };
+};
+
 export type AdminDashboardData = {
   places: AdminPlace[];
   courses: AdminCourse[];
