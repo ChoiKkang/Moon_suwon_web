@@ -63,12 +63,12 @@ jobs:
     timeout-minutes: 5
     env:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      DISCORD_NOTIFICATION_TITLE: Moon Suwon web quality
+      DISCORD_NOTIFICATION_TITLE: 달빛수원 웹 품질 검사
       DISCORD_NOTIFICATION_STATUS: ${{ needs.verify.result }}
       DISCORD_NOTIFICATION_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
       DISCORD_NOTIFICATION_DETAILS: >-
-        ref=${{ github.ref_name }} · commit=${{ github.sha }} ·
-        trigger=${{ github.event_name }}
+        웹 품질 검사가 ${{ needs.verify.result == 'success' && '완료되었습니다' || '실패했습니다' }}.
+        실행 로그에서 검사 결과를 확인해 주세요. (브랜치: ${{ github.ref_name }})
     steps:
       - name: Checkout
         uses: actions/checkout@v5

@@ -83,12 +83,12 @@ jobs:
     timeout-minutes: 5
     env:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      DISCORD_NOTIFICATION_TITLE: Moon Suwon course drafts
+      DISCORD_NOTIFICATION_TITLE: 달빛수원 코스 초안 생성
       DISCORD_NOTIFICATION_STATUS: ${{ needs.drafts.result }}
       DISCORD_NOTIFICATION_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      DISCORD_NOTIFICATION_DETAILS: >-
-        weekly unpublished draft generation · candidates=${{ needs.drafts.outputs.candidate_count || '0' }} ·
-        written=${{ needs.drafts.outputs.written_count || '0' }} · mode=${{ needs.drafts.outputs.mode || 'unknown' }} · commit=${{ github.sha }}
+      DISCORD_DRAFT_CANDIDATES: ${{ needs.drafts.outputs.candidate_count || '0' }}
+      DISCORD_DRAFT_WRITTEN: ${{ needs.drafts.outputs.written_count || '0' }}
+      DISCORD_DRAFT_MODE: ${{ needs.drafts.outputs.mode || 'unknown' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5

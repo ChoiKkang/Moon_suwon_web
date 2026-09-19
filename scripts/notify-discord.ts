@@ -1,5 +1,7 @@
 import { loadEnvConfig } from '@next/env';
 
+import { buildDraftSummary, buildSyncSummary, statusLabel } from '../src/lib/ops/notification-copy';
+
 loadEnvConfig(process.cwd());
 
 function required(name: string): string {
@@ -34,11 +36,11 @@ function statusColor(status: string): number {
 
 function buildPayload() {
   const status = required('DISCORD_NOTIFICATION_STATUS') || 'unknown';
-  const title = required('DISCORD_NOTIFICATION_TITLE') || 'Moon Suwon GitHub Actions';
-  const details = required('DISCORD_NOTIFICATION_DETAILS') || '상세 실행 로그를 확인해 주세요.';
+  const title = required('DISCORD_NOTIFICATION_TITLE') || '달빛수원 자동화 알림';
+  const details = resolveDetails();
   const workflowUrl = required('DISCORD_NOTIFICATION_URL');
   const fields = [
-    { name: '상태', value: status, inline: true },
+    { name: '상태', value: statusLabel(status), inline: true },
     { name: '저장소', value: `${required('GITHUB_REPOSITORY') || 'unknown'}\n${required('GITHUB_REF_NAME') || 'unknown'}`, inline: true },
   ];
   if (workflowUrl) fields.push({ name: '실행 로그', value: `[GitHub Actions 열기](${workflowUrl})`, inline: false });
@@ -50,10 +52,42 @@ function buildPayload() {
       description: details.slice(0, 3500),
       color: statusColor(status),
       fields,
-      footer: { text: 'Moon Suwon automation' },
+      footer: { text: '달빛수원 자동화' },
       timestamp: new Date().toISOString(),
     }],
   };
+}
+
+/**
+ * 알림 본문을 고른다.
+ *
+ * 운영 브리핑은 이미 한글 본문을 만들어 넘기므로 그대로 쓴다. 수집과 코스 초안
+ * 워크플로는 기계값만 넘기던 것을 한글 요약으로 바꿨다. 둘 중 어느 쪽도 아니면
+ * 넘어온 값을 그대로 보여준다.
+ */
+function resolveDetails(): string {
+  const syncJob = required('DISCORD_SYNC_JOB');
+  if (syncJob) {
+    return buildSyncSummary({
+      job: syncJob,
+      status: required('DISCORD_SYNC_STATUS') || required('DISCORD_NOTIFICATION_STATUS') || 'unknown',
+      itemsFetched: required('DISCORD_SYNC_FETCHED'),
+      itemsUpserted: required('DISCORD_SYNC_UPSERTED'),
+      errorCount: required('DISCORD_SYNC_ERRORS'),
+      shouldRun: required('DISCORD_SYNC_SHOULD_RUN') || 'true',
+    });
+  }
+
+  if (required('DISCORD_DRAFT_MODE')) {
+    return buildDraftSummary({
+      candidateCount: required('DISCORD_DRAFT_CANDIDATES'),
+      writtenCount: required('DISCORD_DRAFT_WRITTEN'),
+      mode: required('DISCORD_DRAFT_MODE'),
+      status: required('DISCORD_NOTIFICATION_STATUS'),
+    });
+  }
+
+  return required('DISCORD_NOTIFICATION_DETAILS') || '상세 실행 로그를 확인해 주세요.';
 }
 
 async function main() {

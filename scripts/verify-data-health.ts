@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 loadEnvConfig(process.cwd());
 
-type SyncJob = 'content' | 'events' | 'crowd' | 'pet' | 'access';
+type SyncJob = 'content' | 'events' | 'crowd' | 'pet' | 'access' | 'audio';
 type RunRow = {
   source: string;
   status: string;
@@ -19,7 +19,7 @@ type ForecastHealthRow = {
   source_updated_at: string | null;
 };
 
-const JOBS: SyncJob[] = ['content', 'events', 'crowd', 'pet', 'access'];
+const JOBS: SyncJob[] = ['content', 'events', 'crowd', 'pet', 'access', 'audio'];
 const MAX_AGE_HOURS: Record<SyncJob, number> = {
   crowd: 36,
   events: 36,
@@ -28,6 +28,9 @@ const MAX_AGE_HOURS: Record<SyncJob, number> = {
   // 주간 실행이라 콘텐츠 수집과 같은 여유를 준다. 접근성 정보는 시설 공사가
   // 아니면 잘 바뀌지 않아 하루 단위 신선도가 필요하지 않다.
   access: 24 * 40,
+  // 오디오 해설은 주간 콘텐츠 수집 뒤에 갱신한다. 장소 좌표가 바뀌지 않는
+  // 한 매일 새로 받을 필요가 없어 콘텐츠 수집과 같은 주기를 사용한다.
+  audio: 24 * 40,
 };
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -45,7 +48,7 @@ function parseJob(): SyncJob | 'all' {
   const index = process.argv.indexOf('--job');
   const value = index >= 0 ? process.argv[index + 1] : 'all';
   if (value === 'all' || JOBS.includes(value as SyncJob)) return value as SyncJob | 'all';
-  throw new Error('--job all|content|crowd|pet 중 하나를 사용하세요.');
+  throw new Error('--job all|content|events|crowd|pet|access|audio 중 하나를 사용하세요.');
 }
 
 function hoursSince(value: string): number {

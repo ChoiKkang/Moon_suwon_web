@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isOpenAtStart } from '@/lib/courses/opening-hours';
 import { findNightAccess, type NightEvent } from '@/lib/courses/night-events';
+import { jobLabel, statusLabel } from '@/lib/ops/notification-copy';
 
 // 운영 브리핑 판정을 한 곳에 모아 자동 알림과 Discord 명령이 같은 결론을 쓰게 한다.
 // 서버 전용 service-role client를 받아 실행하며, 브라우저에서 호출하지 않는다.
@@ -61,6 +62,8 @@ const SYNC_JOBS: Array<{ job: string; maxAgeHours: number }> = [
   { job: 'events', maxAgeHours: 36 },
   { job: 'crowd', maxAgeHours: 36 },
   { job: 'pet', maxAgeHours: 36 },
+  { job: 'access', maxAgeHours: 24 * 8 },
+  { job: 'audio', maxAgeHours: 24 * 8 },
 ];
 
 export async function buildBriefing(service: SupabaseClient, now: Date = new Date()): Promise<Briefing> {
@@ -105,18 +108,19 @@ export async function buildBriefing(service: SupabaseClient, now: Date = new Dat
 
   for (const { job, maxAgeHours } of SYNC_JOBS) {
     const run = (runs.data ?? []).find((row) => row.source === `GitHubActions:${job}`);
+    const label = jobLabel(job);
     if (!run) {
-      findings.push({ severity: 'action', text: `${job} 수집 이력이 없습니다.` });
+      findings.push({ severity: 'action', text: `${label} 수집 이력이 없습니다.` });
       continue;
     }
     const age = hoursSince((run.completed_at as string | null) ?? (run.started_at as string));
     if (run.status !== 'completed') {
-      findings.push({ severity: 'action', text: `${job} 최근 실행 상태가 ${run.status}입니다.` });
+      findings.push({ severity: 'action', text: `${label} 최근 실행 상태가 ${statusLabel(String(run.status))}입니다.` });
     } else if (age > maxAgeHours) {
-      findings.push({ severity: 'action', text: `${job} 데이터가 ${Math.round(age)}시간 전으로 허용 주기(${maxAgeHours}시간)를 넘었습니다.` });
+      findings.push({ severity: 'action', text: `${label} 데이터가 ${Math.round(age)}시간 전으로 허용 주기(${maxAgeHours}시간)를 넘었습니다.` });
     }
     if ((run.error_count as number) > 0) {
-      findings.push({ severity: 'watch', text: `${job} 최근 실행에 부분 오류 ${run.error_count}건이 있습니다.` });
+      findings.push({ severity: 'watch', text: `${label} 최근 실행에 부분 오류 ${run.error_count}건이 있습니다.` });
     }
   }
 

@@ -182,13 +182,16 @@ jobs:
     timeout-minutes: 5
     env:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      DISCORD_NOTIFICATION_TITLE: Moon Suwon KTO data sync
+      DISCORD_NOTIFICATION_TITLE: 달빛수원 관광데이터 수집
       DISCORD_NOTIFICATION_STATUS: ${{ needs.sync.result }}
       DISCORD_NOTIFICATION_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      DISCORD_NOTIFICATION_DETAILS: >-
-        job=${{ needs.sync.outputs.job || 'unknown' }} · should_run=${{ needs.sync.outputs.should_run || 'unknown' }} ·
-        status=${{ needs.sync.outputs.status || needs.sync.result }} · fetched=${{ needs.sync.outputs.items_fetched || '0' }} ·
-        upserted=${{ needs.sync.outputs.items_upserted || '0' }} · errors=${{ needs.sync.outputs.error_count || '0' }} · commit=${{ github.sha }}
+      # 본문은 scripts/notify-discord.ts가 한글로 조립한다. 여기서는 값만 넘긴다.
+      DISCORD_SYNC_JOB: ${{ needs.sync.outputs.job || 'unknown' }}
+      DISCORD_SYNC_SHOULD_RUN: ${{ needs.sync.outputs.should_run || 'true' }}
+      DISCORD_SYNC_STATUS: ${{ needs.sync.outputs.status || needs.sync.result }}
+      DISCORD_SYNC_FETCHED: ${{ needs.sync.outputs.items_fetched || '0' }}
+      DISCORD_SYNC_UPSERTED: ${{ needs.sync.outputs.items_upserted || '0' }}
+      DISCORD_SYNC_ERRORS: ${{ needs.sync.outputs.error_count || '0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
