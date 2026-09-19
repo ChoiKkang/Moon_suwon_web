@@ -78,3 +78,17 @@ test('classifies valid empty details as completed and item failures as partial',
   assert.equal(classifySyncStatus({ listRequestFailed: false, itemErrors: 44, itemsAttempted: 44, validEmpty: 0 }), 'partial');
   assert.equal(classifySyncStatus({ listRequestFailed: true, itemErrors: 0, itemsAttempted: 0, validEmpty: 0 }), 'failed');
 });
+
+test('prioritizes published unchecked rows before stale and failed rows', () => {
+  const selected = selectPetEnrichment([
+    { kto_content_id: 'draft-never', source_modified_at: null, last_pet_checked_at: null, data_status: 'unknown', is_published: false },
+    { kto_content_id: 'published-stale', source_modified_at: null, last_pet_checked_at: '2026-01-01T00:00:00Z', data_status: 'stale', is_published: true },
+    { kto_content_id: 'published-never', source_modified_at: null, last_pet_checked_at: null, data_status: 'unknown', is_published: true },
+  ], new Date('2026-09-20T00:00:00Z'));
+
+  assert.deepEqual(selected.map((row) => row.kto_content_id), [
+    'published-never',
+    'published-stale',
+    'draft-never',
+  ]);
+});

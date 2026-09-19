@@ -3,6 +3,7 @@ import 'server-only';
 import { getAdminClient, requireAdmin, asNumber, asRecord } from './server';
 import type {
   AdminAuditEvent,
+  AdminApiLedgerItem,
   AdminCandidate,
   AdminCandidateDetail,
   AdminCourse,
@@ -20,6 +21,7 @@ import type {
   CandidateFilter,
   CandidateIngestionStatus,
 } from './types';
+import { buildAdminApiLedger, type ApiRegistryRow, type ApiReviewRow } from './api-ledger';
 import { candidateMatchesFilter, normalizeCandidateFilter } from './review';
 import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
 
@@ -527,10 +529,11 @@ type AdminOperationsData = Pick<AdminDashboardData, 'crowd' | 'syncRuns' | 'sync
   auditEvents: AdminAuditEvent[];
   auditAvailable: boolean;
   enrichmentCoverage: AdminEnrichmentCoverage[];
+  apiLedger: AdminApiLedgerItem[];
 };
 
 function emptyOperations(): AdminOperationsData {
-  return { crowd: emptyCrowd(), syncRuns: [], syncErrors: [], candidates: [], sourceHealth: [], auditEvents: [], auditAvailable: false, enrichmentCoverage: [] };
+  return { crowd: emptyCrowd(), syncRuns: [], syncErrors: [], candidates: [], sourceHealth: [], auditEvents: [], auditAvailable: false, enrichmentCoverage: [], apiLedger: [] };
 }
 
 /**
@@ -591,13 +594,15 @@ async function buildEnrichmentCoverage(
 
 async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdminClient>, places: AdminPlace[]): Promise<AdminQueryResult<AdminOperationsData>> {
   const today = todayInSeoul();
-  const [crowdResult, runsResult, errorsResult, auditResult] = await Promise.all([
+  const [crowdResult, runsResult, errorsResult, auditResult, registryResult, reviewsResult] = await Promise.all([
     adminClient.schema('core').from('place_crowd_forecasts').select('place_id, forecast_date, forecast_score, crowd_level, source_updated_at').order('forecast_date', { ascending: false }).limit(500),
-    adminClient.schema('raw').from('sync_runs').select('id, source, status, items_fetched, items_upserted, error_count, metadata, started_at, completed_at').order('started_at', { ascending: false }).limit(30),
+    adminClient.schema('raw').from('sync_runs').select('id, source, status, items_fetched, items_upserted, error_count, metadata, started_at, completed_at').order('started_at', { ascending: false }).limit(100),
     adminClient.schema('raw').from('sync_errors').select('id, sync_run_id, endpoint, content_id, error_code, message, created_at').order('created_at', { ascending: false }).limit(50),
     readAuditEvents(adminClient, null, 20),
+    adminClient.rpc('sync_list_api_registry'),
+    adminClient.schema('raw').from('public_api_items').select('api_key, review_status'),
   ]);
-  const error = firstError(crowdResult.error, runsResult.error, errorsResult.error);
+  const error = firstError(crowdResult.error, runsResult.error, errorsResult.error, registryResult.error, reviewsResult.error);
   if (error) return { data: emptyOperations(), error };
 
   const crowdRows = (crowdResult.data ?? []) as CrowdRow[];
@@ -632,6 +637,11 @@ async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdm
   }));
   const candidates = places.map(mapCandidate);
   const enrichmentCoverage = await buildEnrichmentCoverage(adminClient, places);
+  const apiLedger = buildAdminApiLedger(
+    (registryResult.data ?? []) as ApiRegistryRow[],
+    (runsResult.data ?? []) as SyncRunRow[],
+    (reviewsResult.data ?? []) as ApiReviewRow[],
+  );
 
   return {
     data: {
@@ -651,6 +661,7 @@ async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdm
       auditEvents: auditResult.events,
       auditAvailable: auditResult.available,
       enrichmentCoverage,
+      apiLedger,
     },
     error: null,
   };

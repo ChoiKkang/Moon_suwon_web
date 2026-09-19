@@ -105,6 +105,34 @@ test('uses the dedicated pet base for detail requests', async () => {
   assert.equal(item?.acmpyPsblCpam, '가능');
 });
 
+test('content pagination stops once its processing limit is reached', async () => {
+  const requestedPages: string[] = [];
+  globalThis.fetch = (async (input) => {
+    const url = new URL(String(input));
+    requestedPages.push(`${url.searchParams.get('lDongSignguCd')}:${url.searchParams.get('pageNo')}`);
+    return response({
+      response: {
+        header: { resultCode: '0000' },
+        body: {
+          totalCount: 5,
+          pageNo: 1,
+          numOfRows: 100,
+          items: { item: [
+            { contentid: 'one', contenttypeid: '12', title: '1' },
+            { contentid: 'two', contenttypeid: '12', title: '2' },
+            { contentid: 'three', contenttypeid: '12', title: '3' },
+          ] },
+        },
+      },
+    });
+  }) as typeof fetch;
+
+  const items = await new KtoClient({ serviceKey: 'secret-key' }).fetchSuwonContentByType('12', 100, 2);
+
+  assert.deepEqual(items.map((item) => item.contentid), ['one', 'two']);
+  assert.deepEqual(requestedPages, ['111:1']);
+});
+
 test('retries a transient 429 and returns a valid zero-item page', async () => {
   let attempts = 0;
   globalThis.fetch = (async () => {

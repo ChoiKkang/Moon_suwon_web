@@ -34,7 +34,7 @@ async function main() {
   const publishedCourse = (coursesResult.data ?? []).find((row) => publishedCourseIds.has(row.id as string));
   if (!publishedPlace || !publishedCourse) throw new Error('Need at least one published place and course for the boundary probe');
 
-  const [publicPlaces, publicCourses, publicImported, publicPlaceRpc, publicCourseRpc, unpublishedPlaceRpc, unpublishedCourseRpc, anonymousAdminRpc, anonymousCheckinRpc, anonymousAuditTable, anonymousAuditRpc] = await Promise.all([
+  const [publicPlaces, publicCourses, publicImported, publicPlaceRpc, publicCourseRpc, unpublishedPlaceRpc, unpublishedCourseRpc, anonymousAdminRpc, anonymousVisitorRpc, anonymousCheckinRpc, anonymousAuditTable, anonymousAuditRpc] = await Promise.all([
     publicClient.schema('core').from('places').select('id').limit(1000),
     publicClient.schema('core').from('courses').select('id').limit(1000),
     publicClient.from('v_imported_places').select('id').limit(1000),
@@ -43,6 +43,10 @@ async function main() {
     publicClient.rpc('get_place_by_slug', { p_slug: unpublishedPlace.slug }),
     publicClient.rpc('get_course_by_slug', { p_slug: unpublishedCourse.slug }),
     publicClient.rpc('admin_upsert_course', { p_payload: {} }),
+    publicClient.rpc('admin_get_regional_visitor_summary', {
+      p_from: '2026-01-01',
+      p_to: '2026-01-31',
+    }),
     publicClient.rpc('checkin_place', {
       p_progress_id: '00000000-0000-0000-0000-000000000001',
       p_place_id: publishedPlace.id,
@@ -75,6 +79,24 @@ async function main() {
   if (!('pet_policy' in publicPlacePayload) || !('pet_data_status' in publicPlacePayload)) {
     throw new Error('published place RPC is missing pet policy/freshness fields');
   }
+  const additiveBlocks = [
+    'related_places',
+    'approved_photos',
+    'wellness_tags',
+    'weather_summary',
+    'mid_weather_summary',
+    'nearby_bus_arrivals',
+  ];
+  for (const blockName of additiveBlocks) {
+    const block = publicPlacePayload[blockName];
+    if (!block || typeof block !== 'object' || Array.isArray(block)) {
+      throw new Error(`published place RPC is missing ${blockName}`);
+    }
+    const payload = block as Record<string, unknown>;
+    if (!Array.isArray(payload.items) || !('data_status' in payload) || !('source_updated_at' in payload) || !('fetched_at' in payload)) {
+      throw new Error(`published place RPC ${blockName} is missing items/freshness fields`);
+    }
+  }
   if (publicCourseRpc.error || !publicCourseRpc.data || typeof publicCourseRpc.data !== 'object') {
     throw new Error(`published course RPC failed: ${publicCourseRpc.error?.message ?? 'empty payload'}`);
   }
@@ -91,6 +113,9 @@ async function main() {
   if (!anonymousAdminRpc.error) {
     throw new Error('admin_upsert_course should not be executable by the anonymous role');
   }
+  if (!anonymousVisitorRpc.error) {
+    throw new Error('admin_get_regional_visitor_summary should not be executable by the anonymous role');
+  }
   if (!anonymousCheckinRpc.error) {
     throw new Error('checkin_place should not be executable by the anonymous role');
   }
@@ -105,7 +130,30 @@ async function main() {
     throw new Error('candidate place leaked into public.v_imported_places');
   }
 
-  console.log(`Public boundary passed: ${publishedPlaceIds.size} places, ${publishedCourseIds.size} courses, additive pet fields exposed, unpublished getters blocked.`);
+  const [registryTable, rawItems, photoCandidates, wellness, localHub, relations, durunubi, visitors, weather, busStops, busArrivals, registryRpc] = await Promise.all([
+    publicClient.schema('ops').from('api_registry').select('api_key').limit(1),
+    publicClient.schema('raw').from('public_api_items').select('id').limit(1),
+    publicClient.schema('core').from('place_photo_candidates').select('id').limit(1),
+    publicClient.schema('core').from('place_wellness').select('source_item_key').limit(1),
+    publicClient.schema('core').from('local_hub_candidates').select('source_item_key').limit(1),
+    publicClient.schema('core').from('place_relations').select('origin_source_key').limit(1),
+    publicClient.schema('core').from('durunubi_courses').select('source_item_key').limit(1),
+    publicClient.schema('core').from('regional_visitor_stats').select('stat_date').limit(1),
+    publicClient.schema('core').from('weather_forecasts').select('forecast_at').limit(1),
+    publicClient.schema('core').from('place_bus_stops').select('place_id').limit(1),
+    publicClient.schema('core').from('bus_arrival_snapshots').select('station_id').limit(1),
+    publicClient.rpc('sync_list_api_registry'),
+  ]);
+
+  const privateProbes = [registryTable, rawItems, photoCandidates, wellness, localHub, relations, durunubi, visitors, weather, busStops, busArrivals];
+  if (privateProbes.some((probe) => !probe.error && (probe.data ?? []).length > 0)) {
+    throw new Error('an approved-API private table returned rows to the anonymous role');
+  }
+  if (!registryRpc.error) {
+    throw new Error('sync_list_api_registry should not be executable by the anonymous role');
+  }
+
+  console.log(`Public boundary passed: ${publishedPlaceIds.size} places, ${publishedCourseIds.size} courses, reviewed additive fields exposed, private analytics and unpublished getters blocked.`);
 }
 
 void main().catch((error: unknown) => {

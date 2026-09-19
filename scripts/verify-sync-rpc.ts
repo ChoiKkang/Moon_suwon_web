@@ -24,6 +24,45 @@ async function main() {
     throw new Error(`sync_run_start failed: ${startError?.message ?? 'run id 없음'}`);
   }
 
+  const smokeItemKey = `rpc-smoke-${runId}`;
+  const { data: registry, error: registryError } = await supabase.rpc('sync_list_api_registry');
+  if (registryError || !Array.isArray(registry) || registry.length !== 14) {
+    throw new Error(`sync_list_api_registry failed: ${registryError?.message ?? `expected 14 rows, got ${Array.isArray(registry) ? registry.length : 'non-array'}`}`);
+  }
+
+  const { data: itemResult, error: itemError } = await supabase.rpc('sync_public_api_item', {
+    p_run_id: runId,
+    p_api_key: 'kto_korean',
+    p_source_item_key: smokeItemKey,
+    p_scope_key: 'rpc-smoke',
+    p_payload: { smoke_test: true },
+    p_payload_hash: runId,
+    p_source_updated_at: null,
+  });
+  if (itemError || !itemResult || typeof itemResult !== 'object') {
+    throw new Error(`sync_public_api_item failed: ${itemError?.message ?? 'invalid response'}`);
+  }
+
+  const { error: reviewError } = await supabase.rpc('sync_public_api_review', {
+    p_api_key: 'kto_korean',
+    p_source_item_key: smokeItemKey,
+    p_scope_key: 'rpc-smoke',
+    p_review_status: 'excluded',
+    p_review_note: 'automated RPC smoke test',
+  });
+  if (reviewError) {
+    throw new Error(`sync_public_api_review failed: ${reviewError.message}`);
+  }
+
+  const { error: cleanupError } = await supabase
+    .schema('raw')
+    .from('public_api_items')
+    .delete()
+    .eq('api_key', 'kto_korean')
+    .eq('source_item_key', smokeItemKey)
+    .eq('scope_key', 'rpc-smoke');
+  if (cleanupError) throw new Error(`public API smoke cleanup failed: ${cleanupError.message}`);
+
   const { error: finishError } = await supabase.rpc('sync_run_finish', {
     p_run_id: runId,
     p_status: 'completed',
@@ -60,7 +99,7 @@ async function main() {
     throw new Error(`sync_reconcile_stale_runs failed: ${reconcileError?.message ?? 'invalid count'}`);
   }
 
-  console.log(`Sync RPC smoke test passed; enabled places: ${places.length}; pet queue: ${petQueue.length}; stale runs reconciled: ${Number(reconciled)}`);
+  console.log(`Sync RPC smoke test passed; approved APIs: ${registry.length}; enabled places: ${places.length}; pet queue: ${petQueue.length}; stale runs reconciled: ${Number(reconciled)}`);
 }
 
 void main().catch((error: unknown) => {

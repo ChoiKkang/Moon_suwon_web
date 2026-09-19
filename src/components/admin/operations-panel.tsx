@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Activity, AlertCircle, BarChart3, ChevronDown, Clock3, ExternalLink, History, Layers, ShieldAlert } from 'lucide-react';
+import { Activity, AlertCircle, BarChart3, ChevronDown, Clock3, Database, ExternalLink, History, Layers, ShieldAlert } from 'lucide-react';
 import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
-import type { AdminAuditEvent, AdminCandidate, AdminCrowdSummary, AdminEnrichmentCoverage, AdminSourceHealth, AdminSyncError, AdminSyncRun } from '@/lib/admin/types';
+import type { AdminApiLedgerItem, AdminAuditEvent, AdminCandidate, AdminCrowdSummary, AdminEnrichmentCoverage, AdminSourceHealth, AdminSyncError, AdminSyncRun } from '@/lib/admin/types';
 
 const KTO_SYNC_WORKFLOW_URL = 'https://github.com/ChoiKkang/Moon_suwon_web/actions/workflows/kto-data-sync.yml';
 
@@ -42,7 +42,21 @@ function auditTone(action: string): 'success' | 'warning' | 'danger' | 'info' {
   return 'info';
 }
 
-export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourceHealth, auditEvents, auditAvailable, enrichmentCoverage }: { crowd: AdminCrowdSummary; syncRuns: AdminSyncRun[]; syncErrors: AdminSyncError[]; candidates: AdminCandidate[]; sourceHealth: AdminSourceHealth[]; auditEvents: AdminAuditEvent[]; auditAvailable: boolean; enrichmentCoverage: AdminEnrichmentCoverage[] }) {
+function ledgerStatus(item: AdminApiLedgerItem) {
+  if (item.latestStatus === 'healthy') return { label: item.zeroResult ? '정상 0건' : '정상', tone: 'success' as const };
+  if (item.latestStatus === 'warning') return { label: '주의', tone: 'warning' as const };
+  if (item.latestStatus === 'failed') return { label: '실패', tone: 'danger' as const };
+  if (item.latestStatus === 'hold') return { label: '보류', tone: 'muted' as const };
+  return { label: '미실행', tone: 'muted' as const };
+}
+
+function formatSla(hours: number) {
+  if (hours < 1) return `${Math.round(hours * 60)}분`;
+  if (hours < 24) return `${hours}시간`;
+  return `${Math.round(hours / 24)}일`;
+}
+
+export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourceHealth, auditEvents, auditAvailable, enrichmentCoverage, apiLedger }: { crowd: AdminCrowdSummary; syncRuns: AdminSyncRun[]; syncErrors: AdminSyncError[]; candidates: AdminCandidate[]; sourceHealth: AdminSourceHealth[]; auditEvents: AdminAuditEvent[]; auditAvailable: boolean; enrichmentCoverage: AdminEnrichmentCoverage[]; apiLedger: AdminApiLedgerItem[] }) {
   const [tab, setTab] = useState<'crowd' | 'runs' | 'errors' | 'audit'>('crowd');
   const maxLevelCount = Math.max(1, ...Object.values(crowd.byLevel));
   const reviewCount = candidates.filter((candidate) => candidate.ingestionStatus === 'candidate' || candidate.ingestionStatus === 'stale').length;
@@ -53,6 +67,42 @@ export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourc
           카드가 섞여 있어 items-stretch와 h-full 없이는 줄이 어긋난다. */}
       <section className="grid grid-cols-2 items-stretch gap-4 md:grid-cols-5"><div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><Activity className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">오늘 예측</p><p className="mt-auto pt-1 text-3xl font-black text-white">{crowd.todayRows}</p></div><div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><BarChart3 className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">전체 예측</p><p className="mt-auto pt-1 text-3xl font-black text-white">{crowd.totalRows}</p></div><div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><Clock3 className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">최신 예측 날짜</p><p className="mt-auto pt-1 text-lg font-black text-white">{crowd.latestForecastDate ?? '없음'}</p></div><div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><AlertCircle className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">상태</p><div className="mt-auto pt-2"><AdminStatusBadge label={crowd.stale ? 'STALE' : 'HEALTHY'} tone={crowd.stale ? 'warning' : 'success'} /></div></div><div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#171f33]/80 p-5"><ShieldAlert className="h-5 w-5 text-[#ffd700]" /><p className="mt-4 text-xs font-bold text-[#d0c6ab]">검수 대기</p><p className="mt-auto pt-1 text-3xl font-black text-white">{reviewCount}</p></div></section>
       <section className="rounded-3xl border border-white/10 bg-[#171f33]/80 p-5 md:p-6"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">Source Health</p><h2 className="mt-2 text-xl font-black text-white">원천별 최신 상태</h2></div><span className="text-xs text-[#8f9bb3]">48시간 SLA</span></div><div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4">{sourceHealth.map((source) => <div key={source.source} className="flex h-full flex-col rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-4"><div className="flex items-start justify-between gap-2"><p className="text-sm font-black text-white">{source.source}</p><AdminStatusBadge label={source.freshness === 'fresh' ? '신선' : source.freshness === 'stale' ? '오래됨' : '미확인'} tone={source.freshness === 'fresh' ? 'success' : source.freshness === 'stale' ? 'warning' : 'muted'} /></div><p className="mt-2 flex-1 text-xs text-[#8f9bb3]">{source.lastCompletedAt ? formatDate(source.lastCompletedAt) : '완료 이력 없음'}</p><p className="mt-2 text-[11px] text-[#d0c6ab]">{source.fetched} fetched · {source.upserted} upserted · {source.errors} errors</p></div>)}{sourceHealth.length === 0 ? <p className="col-span-full rounded-2xl bg-[#0b1326]/60 p-5 text-sm text-[#8f9bb3]">원천별 실행 이력이 없습니다.</p> : null}</div></section>
+      <section className="rounded-3xl border border-white/10 bg-[#171f33]/80 p-5 md:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">Approved API Ledger</p>
+            <h2 className="mt-2 text-xl font-black text-white">승인 API 14개 관리대장</h2>
+            <p className="mt-2 text-xs leading-relaxed text-[#d0c6ab]">운영 전환 준비, 최근 수집, 검수 대기와 만료 상태를 한 화면에서 확인합니다.</p>
+          </div>
+          <Database className="h-5 w-5 text-[#ffd700]" />
+        </div>
+        <div className="mt-5 overflow-x-auto rounded-2xl border border-[#3e495d]/30">
+          <table className="min-w-[1180px] w-full border-collapse text-left text-xs">
+            <caption className="sr-only">승인된 공공 API 14개 운영 현황</caption>
+            <thead className="bg-[#0b1326] text-[#d0c6ab]">
+              <tr><th className="p-3">API</th><th className="p-3">계정·구현</th><th className="p-3">주기·SLA</th><th className="p-3">최근 상태</th><th className="p-3">수집 결과</th><th className="p-3">검수</th><th className="p-3">만료</th></tr>
+            </thead>
+            <tbody>
+              {apiLedger.map((item) => {
+                const status = ledgerStatus(item);
+                return (
+                  <tr key={item.apiKey} className="border-t border-[#3e495d]/30 align-top text-[#d0c6ab]">
+                    <td className="p-3"><p className="font-black text-white">{item.displayName}</p><p className="mt-1 text-[11px] text-[#8f9bb3]">{item.provider.toUpperCase()} · {item.apiKey}</p></td>
+                    <td className="p-3"><p>{item.accountStage}</p><p className="mt-1 text-[11px] text-[#8f9bb3]">{item.implementationStatus} · {item.reviewPolicy}</p></td>
+                    <td className="p-3"><p>{item.scheduleLabel}</p><p className="mt-1 text-[11px] text-[#8f9bb3]">SLA {formatSla(item.freshnessSlaHours)}</p></td>
+                    <td className="p-3"><div className="flex items-center gap-2"><span aria-hidden className={status.tone === 'success' ? 'text-emerald-300' : status.tone === 'danger' ? 'text-rose-300' : status.tone === 'warning' ? 'text-amber-300' : 'text-[#8f9bb3]'}>●</span><AdminStatusBadge label={status.label} tone={status.tone} /></div><p className="mt-2 text-[11px] text-[#8f9bb3]">{formatDate(item.latestCompletedAt)} · {item.freshness}</p></td>
+                    <td className="p-3"><p>{item.fetched} 조회 · {item.upserted} 저장</p><p className={`mt-1 text-[11px] ${item.errors > 0 ? 'text-rose-200' : 'text-[#8f9bb3]'}`}>오류 {item.errors}건</p></td>
+                    <td className="p-3"><p>승인 {item.reviewCounts.approved} · 대기 {item.reviewCounts.pending}</p><p className="mt-1 text-[11px] text-[#8f9bb3]">보류 {item.reviewCounts.hold} · 제외 {item.reviewCounts.excluded}</p></td>
+                    <td className="p-3"><AdminStatusBadge label={item.expirationStatus === 'expired' ? '만료' : item.expirationStatus === 'expiring' ? '만료 임박' : '유효'} tone={item.expirationStatus === 'expired' ? 'danger' : item.expirationStatus === 'expiring' ? 'warning' : 'success'} /><p className="mt-2 text-[11px] text-[#8f9bb3]">{item.expiresAt}</p></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {apiLedger.length === 0 ? <p className="p-5 text-sm text-[#8f9bb3]">API 관리대장을 불러오지 못했습니다.</p> : null}
+        </div>
+        <p className="mt-4 text-xs leading-relaxed text-[#8f9bb3]">두루누비는 수원과 교차하는 코스가 없으면 0건이어도 정상입니다. 검수 승인 전 데이터는 앱 공개 응답에 포함되지 않습니다.</p>
+      </section>
       <section className="rounded-3xl border border-[#ffd700]/20 bg-[#171f33]/80 p-5 md:p-6">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
           <div>

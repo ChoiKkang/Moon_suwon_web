@@ -2,13 +2,15 @@
 
 ## 저장소 secrets
 
-저장소 `ChoiKkang/Moon_suwon_web`에 아래 다섯 가지 Actions secret을 등록한다.
+저장소 `ChoiKkang/Moon_suwon_web`에 아래 일곱 가지 Actions secret을 등록한다.
 
 ```bash
 gh secret set NEXT_PUBLIC_SUPABASE_URL --repo ChoiKkang/Moon_suwon_web
 gh secret set NEXT_PUBLIC_SUPABASE_ANON_KEY --repo ChoiKkang/Moon_suwon_web
 gh secret set SUPABASE_SERVICE_ROLE_KEY --repo ChoiKkang/Moon_suwon_web
 gh secret set KTO_SERVICE_KEY --repo ChoiKkang/Moon_suwon_web
+gh secret set KMA_SERVICE_KEY --repo ChoiKkang/Moon_suwon_web
+gh secret set GG_BUS_SERVICE_KEY --repo ChoiKkang/Moon_suwon_web
 gh secret set DISCORD_WEBHOOK_URL --repo ChoiKkang/Moon_suwon_web
 ```
 
@@ -20,6 +22,8 @@ gh secret set DISCORD_WEBHOOK_URL --repo ChoiKkang/Moon_suwon_web
 
 `DISCORD_WEBHOOK_URL`은 GitHub Actions 결과를 Discord 채널에 보내는 incoming webhook 주소다. 채팅·이슈·로그에 주소가 노출되면 누구나 메시지를 보낼 수 있으므로 해당 Discord 채널에서 webhook을 삭제/재생성한 뒤 새 주소를 secret 표준입력으로 등록한다. 워크플로는 `allowed_mentions.parse=[]`로 알림을 보내며 webhook 오류가 데이터 작업을 실패시키지는 않는다. Discord Developer Portal의 Application ID/Public Key는 이 알림 경로에 필요하지 않다. Public Key는 나중에 슬래시 커맨드 같은 HTTP Interaction 서명 검증을 붙일 때만 사용한다.
 보안상 `Web quality`의 Discord job은 pull request(특히 fork)에서는 실행하지 않고 protected branch push 결과만 전송한다. KTO/코스 자동화는 schedule 또는 수동 실행 결과를 전송한다.
+
+승인 public-data workflow는 제공처별 키를 우선 사용한다. KMA_SERVICE_KEY와 GG_BUS_SERVICE_KEY가 없을 때만 호환용 KTO_SERVICE_KEY를 fallback으로 사용한다. 모든 키는 서버 프로세스와 Actions secret에만 둔다.
 
 ## 자동 일정
 
@@ -38,6 +42,29 @@ workflow는 Node.js 22와 IPv4 우선 DNS 설정으로 실행한다.
 `Course draft generation`은 매주 월요일 04:00 KST와 수동 실행을 지원한다. 수동 실행에서는 `dry_run`과 `limit(1~3)`을 선택할 수 있다. 공개·활성·승인된·좌표가 있는 장소를 기준으로 최대 세 개의 후보를 `core.courses`에 저장하지만 모두 비공개 초안이다. `/admin/courses`에서 실제 도보 동선과 운영 가능 여부를 검수한 뒤 공개 상태를 직접 켜야 한다. 같은 장소 조합은 automation key로 갱신되므로 반복 실행으로 중복 코스가 쌓이지 않는다. 각 초안에는 `core.courses.automation_metadata`에 직선거리 추정 여부, 장소별 근거, 품질 위반 목록, 입력 checksum이 저장된다. AI는 기본 비활성이고, 도입하더라도 검증된 장소 ID·근거를 바꾸거나 자동 공개할 수 없다.
 
 각 작업은 일시적인 네트워크 실패에 대비해 최대 3회 실행을 시도하고, 성공 뒤 `npm run data:verify -- --job <job>`로 최근 실행 이력과 공개 serving view를 확인한다. 실패·검증 결과는 GitHub Actions Step Summary와 `/admin/operations`의 `raw.sync_runs`/`raw.sync_errors`에서 확인한다.
+
+## 승인 public-data workflow 일정과 작업
+
+`.github/workflows/public-data-sync.yml`의 cron은 UTC 기준이다.
+
+| 작업 | UTC cron | 한국시간 | 비고 |
+|---|---|---|---|
+| weather_short | 20 0,3,6,9,12,15,18,21 * * * | 03:20부터 3시간 간격 | 단기예보 |
+| weather_mid | 40 9,21 * * * | 18:40, 06:40 | 중기예보 |
+| photo, wellness, durunubi | 10 21 * * 6 | 일요일 06:10 | 후보·검수 전용 |
+| local_hub, related, visitors | 30 21 2 * * | 매월 3일 06:30 | 월간 분석/관계 |
+| bus_arrival | 수동 | 요청 시 | 승인 정류장 매핑이 있을 때만 호출 |
+
+수동 실행 가능한 job은 photo, wellness, local_hub, related, durunubi, visitors, weather_short, weather_mid, bus_arrival이다.
+
+```bash
+gh workflow run public-data-sync.yml --repo ChoiKkang/Moon_suwon_web -f job=weather_short -f dry_run=true -f limit=2
+gh workflow run public-data-sync.yml --repo ChoiKkang/Moon_suwon_web -f job=related -f limit=20
+```
+
+dry-run은 원천 호출과 검수 분류만 수행하고 raw/core/review를 쓰지 않는다. limit은 전체 후보 처리 한도이며 1 이상의 정수만 허용한다. 정상적인 빈 결과는 completed와 zero_result=true로 기록한다. hold는 매핑·게시 상태·장소 매칭 같은 선행 검수가 없어서 공개하지 않은 상태이며 API 오류와 다르다.
+
+현재 검수 기준으로 두루누비는 전국 140건을 수집했지만 수원 교차 코스가 0건인 healthy zero다. 버스는 승인 정류장 매핑이 0건인 hold라 호출량·스냅샷이 0이다. 반려동물은 전용 발견 이력에 있는 ID만 상세 호출한다.
 
 ## 수동 실행
 
@@ -150,7 +177,18 @@ NODE_OPTIONS=--dns-result-order=ipv4first npm run sync:data -- --job crowd
 NODE_OPTIONS=--dns-result-order=ipv4first npm run sync:data -- --job pet
 ```
 
-로컬에서도 service-role 키가 필요한 RPC만 호출하며, 키는 출력하지 않는다.
+로컬에서도 service-role 키가 필요한 RPC만 호출하며, 키는 출력하지 않는다. 승인 public-data 작업은 provider 키 fallback을 적용한다.
+
+```bash
+NODE_OPTIONS=--dns-result-order=ipv4first npm run sync:public-data -- --job weather_short --dry-run --limit 2
+NODE_OPTIONS=--dns-result-order=ipv4first npm run sync:public-data -- --job bus_arrival --dry-run --limit 2
+```
+
+## 운영계정 전환 후 필수 점검
+
+운영계정 승인 뒤에는 14개 API별 승인·만료일·트래픽을 포털에서 확인하고, GitHub Actions/Vercel Production에 제공처별 secret을 각각 등록한다. 전환 직후에는 weather_short → weather_mid → KTO 후보 → visitors → bus_arrival 순서로 작은 dry-run과 실제 실행을 하고, 인증·쿼터 오류는 전체 재시도보다 포털 승인과 키 등록을 먼저 점검한다.
+
+모바일 앱 공개 필드 계약 버전은 [docs/public-api-contract.md](public-api-contract.md)의 additive block 계약이다. items=[] 정상 빈 블록을 숨김 상태로 처리하고, stale 값은 시각을 표시한 참고 정보로만 사용한다.
 
 ## 배포 후 웹 smoke test
 

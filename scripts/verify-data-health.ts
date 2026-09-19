@@ -1,5 +1,7 @@
 import { loadEnvConfig } from '@next/env';
 import { createClient } from '@supabase/supabase-js';
+import { PUBLIC_API_CATALOG, type PublicApiDefinition } from '../src/lib/public-data/catalog';
+import { evaluateApiHealth, type ApiRunHealth, type DatasetHealthStats } from '../src/lib/public-data/health';
 
 loadEnvConfig(process.cwd());
 
@@ -12,6 +14,7 @@ type RunRow = {
   error_count: number;
   started_at: string;
   completed_at: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 type ForecastHealthRow = {
@@ -44,11 +47,12 @@ if (!url || !serviceRoleKey || !anonKey) {
 const serviceClient = createClient(url, serviceRoleKey, { auth: { persistSession: false } });
 const publicClient = createClient(url, anonKey, { auth: { persistSession: false } });
 
-function parseJob(): SyncJob | 'all' {
+function parseJob(): string {
   const index = process.argv.indexOf('--job');
   const value = index >= 0 ? process.argv[index + 1] : 'all';
-  if (value === 'all' || JOBS.includes(value as SyncJob)) return value as SyncJob | 'all';
-  throw new Error('--job all|content|events|crowd|pet|access|audio 중 하나를 사용하세요.');
+  const allowed = new Set(['all', ...JOBS, ...PUBLIC_API_CATALOG.map((definition) => definition.syncJob)]);
+  if (allowed.has(value)) return value;
+  throw new Error(`--job은 all 또는 등록된 작업이어야 합니다: ${[...allowed].join('|')}`);
 }
 
 function hoursSince(value: string): number {
@@ -205,17 +209,211 @@ async function checkReviewQueue(failures: string[], warnings: string[]) {
   );
 }
 
+function mapRun(row: RunRow): ApiRunHealth {
+  return {
+    status: row.status,
+    itemsFetched: Number(row.items_fetched) || 0,
+    itemsUpserted: Number(row.items_upserted) || 0,
+    errorCount: Number(row.error_count) || 0,
+    completedAt: row.completed_at ?? row.started_at,
+    metadata: row.metadata ?? {},
+  };
+}
+
+async function exactCount(schema: 'raw' | 'core', table: string): Promise<number> {
+  const { count, error } = await serviceClient.schema(schema).from(table).select('*', { count: 'exact', head: true });
+  if (error) throw new Error(`${schema}.${table} 건수 조회 실패: ${error.message}`);
+  return count ?? 0;
+}
+
+async function loadDatasetStats(definition: PublicApiDefinition): Promise<DatasetHealthStats> {
+  if (definition.key === 'kto_korean') {
+    const [rawCount, published] = await Promise.all([
+      exactCount('raw', 'kto_kor_content'),
+      publicClient.from('v_published_places').select('*', { count: 'exact', head: true }),
+    ]);
+    if (published.error) throw new Error(`국문 관광정보 공개 건수 조회 실패: ${published.error.message}`);
+    return { rawCount, publicCount: published.count ?? 0 };
+  }
+  if (definition.key === 'kto_accessibility') {
+    const [rawCount, publicCount] = await Promise.all([
+      exactCount('raw', 'kto_with_tour'), exactCount('core', 'place_accessibility'),
+    ]);
+    return { rawCount, publicCount };
+  }
+  if (definition.key === 'kto_audio') {
+    const [rawCount, publicCount] = await Promise.all([
+      exactCount('raw', 'kto_audio_story'), exactCount('core', 'place_audio_stories'),
+    ]);
+    return { rawCount, publicCount };
+  }
+  if (definition.key === 'kto_pet') {
+    const [rawCount, publicCount] = await Promise.all([
+      exactCount('raw', 'kto_pet_tour'), exactCount('core', 'place_pet_policies'),
+    ]);
+    return { rawCount, publicCount };
+  }
+  if (definition.key === 'kto_crowd') {
+    const [rawCount, publicCount, ...scopeResults] = await Promise.all([
+      exactCount('raw', 'kto_crowd_forecast'),
+      exactCount('core', 'place_crowd_forecasts'),
+      ...['41111', '41113', '41115', '41117'].map((district) => serviceClient
+        .schema('raw')
+        .from('kto_crowd_forecast')
+        .select('*', { count: 'exact', head: true })
+        .eq('sigungu_code', district)),
+    ]);
+    const scopeCounts: Record<string, number> = {};
+    for (const [index, result] of scopeResults.entries()) {
+      if (result.error) throw new Error(`혼잡도 구별 조회 실패: ${result.error.message}`);
+      scopeCounts[['41111', '41113', '41115', '41117'][index]] = result.count ?? 0;
+    }
+    return { rawCount, publicCount, scopeCounts };
+  }
+
+  const { data: rawRows, error: rawError } = await serviceClient
+    .schema('raw')
+    .from('public_api_items')
+    .select('scope_key, review_status')
+    .eq('api_key', definition.key);
+  if (rawError) throw new Error(`${definition.key} 원본 조회 실패: ${rawError.message}`);
+  const rawCount = rawRows?.length ?? 0;
+
+  if (definition.key === 'kto_photo') {
+    const { data, error } = await serviceClient.schema('core').from('place_photo_candidates').select('review_status, copyright_code, source_url');
+    if (error) throw new Error(`관광사진 조회 실패: ${error.message}`);
+    const approved = (data ?? []).filter((row) => row.review_status === 'approved');
+    return {
+      rawCount,
+      publicCount: approved.length,
+      missingProvenanceCount: approved.filter((row) => !row.copyright_code || !row.source_url).length,
+    };
+  }
+
+  if (definition.key === 'kto_wellness') {
+    const { data, error } = await serviceClient.schema('core').from('place_wellness').select('review_status');
+    if (error) throw new Error(`웰니스 조회 실패: ${error.message}`);
+    return { rawCount, publicCount: (data ?? []).filter((row) => row.review_status === 'approved').length };
+  }
+
+  if (definition.key === 'kto_local_hub') {
+    const { data, error } = await serviceClient.schema('core').from('local_hub_candidates').select('district_code, review_status');
+    if (error) throw new Error(`지역 중심 관광지 조회 실패: ${error.message}`);
+    const scopeCounts: Record<string, number> = {};
+    for (const row of data ?? []) scopeCounts[row.district_code] = (scopeCounts[row.district_code] ?? 0) + 1;
+    return { rawCount, publicCount: (data ?? []).filter((row) => row.review_status === 'approved').length, scopeCounts };
+  }
+
+  if (definition.key === 'durunubi') {
+    const { data, error } = await serviceClient.schema('core').from('durunubi_courses').select('review_status, intersects_suwon');
+    if (error) throw new Error(`두루누비 조회 실패: ${error.message}`);
+    return { rawCount, publicCount: (data ?? []).filter((row) => row.review_status === 'approved' && row.intersects_suwon).length };
+  }
+
+  if (definition.key === 'kto_related') {
+    const { data, error } = await serviceClient.schema('core').from('place_relations').select('origin_place_id, related_place_id, review_status');
+    if (error) throw new Error(`연관 관광지 조회 실패: ${error.message}`);
+    const approved = (data ?? []).filter((row) => row.review_status === 'approved');
+    return {
+      rawCount,
+      publicCount: approved.length,
+      invalidRelationCount: approved.filter((row) => !row.origin_place_id || !row.related_place_id || row.origin_place_id === row.related_place_id).length,
+    };
+  }
+
+  if (definition.key === 'kto_visitors') {
+    const { data, error } = await serviceClient.schema('core').from('regional_visitor_stats').select('stat_date, district_code');
+    if (error) throw new Error(`방문자 통계 조회 실패: ${error.message}`);
+    const rows = data ?? [];
+    const latestMonth = rows.map((row) => String(row.stat_date).slice(0, 7)).sort().at(-1);
+    const districts = new Set(rows.filter((row) => String(row.stat_date).startsWith(latestMonth ?? '')).map((row) => row.district_code));
+    const scopeCounts = Object.fromEntries([...districts].map((district) => [district, 1]));
+    return { rawCount, publicCount: rows.length, scopeCounts, visitorMonthComplete: districts.size === 4 };
+  }
+
+  if (definition.key === 'kma_short' || definition.key === 'kma_mid') {
+    const kind = definition.key === 'kma_short' ? 'short' : 'mid';
+    const { data, error } = await serviceClient.schema('core').from('weather_forecasts').select('forecast_at').eq('forecast_kind', kind).order('forecast_at', { ascending: false }).limit(1);
+    if (error) throw new Error(`${kind} 예보 조회 실패: ${error.message}`);
+    const publicCount = await exactCount('core', 'weather_forecasts');
+    return { rawCount, publicCount: Math.min(rawCount, publicCount), latestForecastAt: data?.[0]?.forecast_at ?? null };
+  }
+
+  if (definition.key === 'gg_bus_arrival') {
+    const { data, error } = await serviceClient.schema('core').from('bus_arrival_snapshots').select('fetched_at').order('fetched_at', { ascending: false }).limit(1);
+    if (error) throw new Error(`버스 캐시 조회 실패: ${error.message}`);
+    const publicCount = await exactCount('core', 'bus_arrival_snapshots');
+    return { rawCount, publicCount, latestBusFetchedAt: data?.[0]?.fetched_at ?? null };
+  }
+
+  return { rawCount, publicCount: (rawRows ?? []).filter((row) => row.review_status === 'approved').length };
+}
+
+async function checkApprovedApiCatalog(
+  requestedJob: string,
+  failures: string[],
+  warnings: string[],
+) {
+  const definitions = requestedJob === 'all'
+    ? PUBLIC_API_CATALOG
+    : PUBLIC_API_CATALOG.filter((definition) => definition.syncJob === requestedJob);
+
+  for (const definition of definitions) {
+    const { data, error } = await serviceClient
+      .schema('raw')
+      .from('sync_runs')
+      .select('source, status, items_fetched, items_upserted, error_count, started_at, completed_at, metadata')
+      .eq('source', `GitHubActions:${definition.syncJob}`)
+      .order('started_at', { ascending: false })
+      .limit(2);
+    if (error) {
+      failures.push(`${definition.key}: 실행 이력 조회 실패 (${error.message})`);
+      continue;
+    }
+
+    try {
+      const rows = (data ?? []) as RunRow[];
+      const latest = rows[0] ? mapRun(rows[0]) : null;
+      const previous = rows[1] ? mapRun(rows[1]) : null;
+      if (!latest) {
+        const health = evaluateApiHealth(definition, null, previous, { rawCount: 0, publicCount: 0 });
+        console.log(`api ${definition.key}: ${health.status} | never run`);
+        for (const finding of health.findings) {
+          failures.push(`${definition.key}/${finding.code}: ${finding.message}`);
+        }
+        continue;
+      }
+      const dataset = await loadDatasetStats(definition);
+      if (latest?.metadata.scope_counts && typeof latest.metadata.scope_counts === 'object' && !dataset.scopeCounts) {
+        dataset.scopeCounts = latest.metadata.scope_counts as Record<string, number>;
+      }
+      const health = evaluateApiHealth(definition, latest, previous, dataset);
+      console.log(`api ${definition.key}: ${health.status} | raw=${dataset.rawCount} public=${dataset.publicCount}`);
+      for (const finding of health.findings) {
+        const message = `${definition.key}/${finding.code}: ${finding.message}`;
+        if (finding.severity === 'failed') failures.push(message);
+        else warnings.push(message);
+      }
+    } catch (error: unknown) {
+      failures.push(`${definition.key}: 데이터셋 검증 실패 (${error instanceof Error ? error.message : String(error)})`);
+    }
+  }
+}
+
 async function main() {
   const requestedJob = parseJob();
-  const jobs = requestedJob === 'all' ? JOBS : [requestedJob];
+  const jobs = requestedJob === 'all' ? JOBS : JOBS.includes(requestedJob as SyncJob) ? [requestedJob as SyncJob] : [];
   const failures: string[] = [];
   const warnings: string[] = [];
 
   for (const job of jobs) {
     await checkLatestRun(job, failures, warnings);
   }
-  await checkPublicServing(failures, warnings);
-  await checkReviewQueue(failures, warnings);
+  await checkApprovedApiCatalog(requestedJob, failures, warnings);
+  if (requestedJob === 'all' || JOBS.includes(requestedJob as SyncJob)) {
+    await checkPublicServing(failures, warnings);
+    await checkReviewQueue(failures, warnings);
+  }
 
   for (const warning of warnings) console.warn(`WARN ${warning}`);
   if (failures.length > 0) {
