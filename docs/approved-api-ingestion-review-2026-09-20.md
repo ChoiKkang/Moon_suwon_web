@@ -15,7 +15,7 @@
 
 검수 근거는 서비스 역할 RPC, `raw.sync_runs` 실행 메타데이터, 후보별 `review_status`/`review_note`, `public:verify`, `sync:rpc:verify` 결과다. 인증키·서비스 URL의 비밀값은 로그와 이 문서에 기록하지 않았다.
 
-최종 재검증에서 `npm test` 163/163, lint, typecheck, production build, 원격 data health, 공개/관리자 경계 검증이 모두 통과했다. 버스는 매핑 0건의 명시적 `hold`로 분류하며, 로컬 smoke server에서 `/`, `/courses`, `/places/paldalmun`, `/robots.txt`, `/sitemap.xml`이 200, `/admin/operations`가 인증 리다이렉트(307)임을 확인했다.
+최종 재검증에서 `npm test` 164/164, lint, typecheck, production build, 원격 data health, 공개/관리자 경계 검증이 모두 통과했다. 버스는 매핑 0건의 명시적 `hold`로 분류하며, 로컬 smoke server에서 `/`, `/courses`, `/places/paldalmun`, `/robots.txt`, `/sitemap.xml`이 200, `/admin/operations`가 인증 리다이렉트(307)임을 확인했다.
 
 ## 2. 14개 API 관리대장 및 실제 호출 상태
 
