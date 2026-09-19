@@ -27,6 +27,12 @@ const RETRY_BASE_DELAY_MS = 800;
 // spent on one logical request so a degraded upstream fails fast enough for the
 // run to finish and report errors instead of being killed mid-run.
 const MAX_TOTAL_REQUEST_MS = 45_000;
+// Suwon in the legal-dong code system: region 41 (경기도), districts 111 장안구,
+// 113 권선구, 115 팔달구, 117 영통구. The pet service already filters on these,
+// and the content service needs them too because newer rows carry no legacy
+// areaCode.
+const SUWON_LDONG_REGION_CODE = '41';
+const SUWON_LDONG_DISTRICT_CODES = ['111', '113', '115', '117'] as const;
 
 export class KtoApiError extends Error {
   readonly endpoint: string;
@@ -65,32 +71,44 @@ export class KtoClient {
    * The previous single-page call was fine for 관광지(12) at 39 rows but silently
    * truncated any larger type: 음식점(39) alone returns 186. Walk the pages until
    * totalCount is covered so a type is either fully collected or not requested.
+   *
+   * Queries the legal-dong codes per district rather than the legacy
+   * areaCode/sigunguCode pair. KTO is migrating to lDongRegnCd/lDongSignguCd and
+   * leaves the legacy fields blank on newer rows, so the old query returned
+   * barely half of what Suwon actually has: 관광지 39 of 84, 문화시설 19 of 42.
+   * Among the rows it never saw were 수원화성 성곽길, 수원 화령전 and the 삼남길
+   * walking course, all of which belong in a night walking service.
    */
   async fetchSuwonContentByType(contentTypeId: string, pageSize = 100): Promise<KtoListItem[]> {
     const collected: KtoListItem[] = [];
     const seen = new Set<string>();
 
-    for (let pageNo = 1; ; pageNo += 1) {
-      const page = await this.requestPage<KtoListItem>('areaBasedList2', {
-        areaCode: '31',
-        sigunguCode: '13',
-        contentTypeId,
-        numOfRows: String(pageSize),
-        pageNo: String(pageNo),
-      });
+    for (const districtCode of SUWON_LDONG_DISTRICT_CODES) {
+      let districtCount = 0;
 
-      if (page.items.length === 0) break;
+      for (let pageNo = 1; ; pageNo += 1) {
+        const page = await this.requestPage<KtoListItem>('areaBasedList2', {
+          lDongRegnCd: SUWON_LDONG_REGION_CODE,
+          lDongSignguCd: districtCode,
+          contentTypeId,
+          numOfRows: String(pageSize),
+          pageNo: String(pageNo),
+        });
 
-      for (const item of page.items) {
-        // The same contentid can repeat across pages when upstream ordering
-        // shifts mid-walk, and a duplicate would upsert twice.
-        if (item.contentid && !seen.has(item.contentid)) {
-          seen.add(item.contentid);
-          collected.push(item);
+        if (page.items.length === 0) break;
+
+        for (const item of page.items) {
+          // A contentid can repeat across pages when upstream ordering shifts
+          // mid-walk, and the district loops can overlap on boundary rows.
+          if (item.contentid && !seen.has(item.contentid)) {
+            seen.add(item.contentid);
+            collected.push(item);
+          }
         }
-      }
 
-      if (collected.length >= page.totalCount || page.items.length < pageSize) break;
+        districtCount += page.items.length;
+        if (districtCount >= page.totalCount || page.items.length < pageSize) break;
+      }
     }
 
     return collected;
