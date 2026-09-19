@@ -80,3 +80,16 @@ test('database crowd matching refuses ambiguous normalized names', () => {
   assert.match(sql, /v_match_count\s*<>\s*1/);
   assert.match(sql, /is_published boolean/);
 });
+
+test('pet enrichment only calls detail for IDs discovered by the pet service', () => {
+  const directory = new URL('../supabase/migrations/', import.meta.url);
+  const filename = readdirSync(directory).find((name) =>
+    name.endsWith('_scope_pet_enrichment_candidates.sql'),
+  );
+  assert.ok(filename, 'expected a forward migration that scopes the live pet queue');
+
+  const sql = readFileSync(new URL(filename, directory), 'utf8').toLowerCase();
+  assert.match(sql, /create or replace function public\.sync_list_pet_enrichment/);
+  assert.match(sql, /exists\s*\([\s\S]*from raw\.kto_pet_candidates\s+pc/);
+  assert.match(sql, /pc\.content_id\s*=\s*ps\.kto_content_id/);
+});
