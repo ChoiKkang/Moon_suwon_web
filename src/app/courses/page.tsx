@@ -59,17 +59,17 @@ export default async function CoursesPage() {
               {courses.map((course) => (
                 <article
                   key={course.id}
-                  className="group relative min-w-[86%] snap-start overflow-hidden rounded-[2rem] border border-[#3e495d]/40 bg-[#141d32] p-6 shadow-2xl motion-reveal md:min-w-0"
+                  className="group relative flex h-full min-w-[86%] snap-start flex-col overflow-hidden rounded-[2rem] border border-[#3e495d]/40 bg-[#141d32] p-6 shadow-2xl motion-reveal md:min-w-0"
                 >
                   {course.heroImageUrl ? (
                     <div
                       role="img"
                       aria-label={course.title}
-                      className="image-reveal mb-6 aspect-[16/9] rounded-3xl bg-cover bg-center"
+                      className="image-reveal mb-6 aspect-[16/9] shrink-0 rounded-3xl bg-cover bg-center"
                       style={{ backgroundImage: `url(${course.heroImageUrl})` }}
                     />
-                  ) : <div className="mb-6 flex aspect-[16/9] items-center justify-center rounded-3xl bg-[#0b1326] text-xs text-[#8f9bb3]">이미지 준비 중</div>}
-                  <div className="relative">
+                  ) : <div className="mb-6 flex aspect-[16/9] shrink-0 items-center justify-center rounded-3xl bg-[#0b1326] text-xs text-[#8f9bb3]">이미지 준비 중</div>}
+                  <div className="relative flex flex-1 flex-col">
                     <div className="mb-5 flex items-center justify-between gap-4">
                       <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[11px] font-black text-[#ffd700]">
                         추천 코스
@@ -87,9 +87,9 @@ export default async function CoursesPage() {
 
                     <h2 className="text-2xl font-black text-white">{course.title}</h2>
                     <p className="mt-2 text-sm font-bold text-[#ffd700]">{course.subtitle}</p>
-                    <p className="mt-4 min-h-20 text-sm leading-relaxed text-[#d0c6ab]">{course.description}</p>
+                    <p className="mt-4 line-clamp-4 min-h-24 text-sm leading-relaxed text-[#d0c6ab]">{course.description}</p>
 
-                    <div className="mt-6 flex gap-3">
+                    <div className="mt-6 flex shrink-0 gap-3">
                       <div className="rounded-2xl bg-[#0b1326]/70 px-4 py-3">
                         <div className="flex items-center gap-2 text-xs text-[#d0c6ab]">
                           <Clock className="h-4 w-4 text-[#ffd700]" />
@@ -108,7 +108,9 @@ export default async function CoursesPage() {
                       </div>
                     </div>
 
-                    <div className="mt-7 space-y-3">
+                    {/* 코스마다 정차지가 3~4곳으로 달라 목록 길이가 차이 난다.
+                        정차지 묶음을 아래로 밀어 카드 바닥에 맞춘다. */}
+                    <div className="mt-auto space-y-3 pt-7">
                       {course.places.map((place, index) => (
                         <Link
                           key={place.id}

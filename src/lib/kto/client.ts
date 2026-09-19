@@ -265,17 +265,37 @@ export class KtoClient {
     });
   }
 
+  /**
+   * 구 단위 방문 집중도 예측 전체.
+   *
+   * 페이지를 끝까지 넘긴다. 이전에는 numOfRows=1000으로 한 페이지만 받았는데
+   * 상류가 요청값을 무시하고 100건으로 잘라 보낸다. 팔달구는 관광지 35곳 x 30일
+   * = 1050건이라 첫 페이지에는 이름 순 앞쪽 4곳만 들어왔고, 수원화성과 화성행궁,
+   * 팔달문, 창룡문처럼 서비스가 실제로 쓰는 관광지는 뒷 페이지에 있어 예측이
+   * 붙지 않았다. 공개 장소 50곳 중 15곳만 혼잡도를 갖고 있던 이유다.
+   */
   async fetchCrowdForecasts(options: { areaCode?: string; sigunguCode?: string } = {}): Promise<KtoCrowdForecastItem[]> {
-    return this.requestItems<KtoCrowdForecastItem>(
-      'tatsCnctrRatedList',
-      {
-        areaCd: options.areaCode ?? '41',
-        signguCd: options.sigunguCode ?? '41115',
-        numOfRows: '1000',
-        pageNo: '1',
-      },
-      CROWD_BASE_URL,
-    );
+    const pageSize = 100;
+    const collected: KtoCrowdForecastItem[] = [];
+
+    for (let pageNo = 1; ; pageNo += 1) {
+      const page = await this.requestPage<KtoCrowdForecastItem>(
+        'tatsCnctrRatedList',
+        {
+          areaCd: options.areaCode ?? '41',
+          signguCd: options.sigunguCode ?? '41115',
+          numOfRows: String(pageSize),
+          pageNo: String(pageNo),
+        },
+        CROWD_BASE_URL,
+      );
+
+      if (page.items.length === 0) break;
+      collected.push(...page.items);
+      if (collected.length >= page.totalCount || page.items.length < pageSize) break;
+    }
+
+    return collected;
   }
 
   private async requestItems<T>(
