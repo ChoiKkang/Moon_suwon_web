@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Activity, AlertCircle, BarChart3, ChevronDown, Clock3, ExternalLink, History, ShieldAlert } from 'lucide-react';
+import { Activity, AlertCircle, BarChart3, ChevronDown, Clock3, ExternalLink, History, Layers, ShieldAlert } from 'lucide-react';
 import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
-import type { AdminAuditEvent, AdminCandidate, AdminCrowdSummary, AdminSourceHealth, AdminSyncError, AdminSyncRun } from '@/lib/admin/types';
+import type { AdminAuditEvent, AdminCandidate, AdminCrowdSummary, AdminEnrichmentCoverage, AdminSourceHealth, AdminSyncError, AdminSyncRun } from '@/lib/admin/types';
 
 const KTO_SYNC_WORKFLOW_URL = 'https://github.com/ChoiKkang/Moon_suwon_web/actions/workflows/kto-data-sync.yml';
 
@@ -11,6 +11,8 @@ const manualSyncJobs = [
   { id: 'content', label: '장소·이미지', description: 'KTO 장소와 대표 이미지를 갱신합니다.' },
   { id: 'crowd', label: '방문 집중도 예측', description: '일 단위 방문 집중도 예측을 갱신합니다.' },
   { id: 'pet', label: '반려동물 정보', description: '장소별 반려동물 동반 정책을 갱신합니다.' },
+  { id: 'access', label: '무장애 정보', description: '경사로·화장실 등 접근성 정보를 갱신합니다.' },
+  { id: 'audio', label: '오디오 해설', description: '공개 장소 주변 오디오 해설을 다시 잇습니다.' },
 ] as const;
 
 function formatDate(value: string | null) {
@@ -40,7 +42,7 @@ function auditTone(action: string): 'success' | 'warning' | 'danger' | 'info' {
   return 'info';
 }
 
-export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourceHealth, auditEvents, auditAvailable }: { crowd: AdminCrowdSummary; syncRuns: AdminSyncRun[]; syncErrors: AdminSyncError[]; candidates: AdminCandidate[]; sourceHealth: AdminSourceHealth[]; auditEvents: AdminAuditEvent[]; auditAvailable: boolean }) {
+export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourceHealth, auditEvents, auditAvailable, enrichmentCoverage }: { crowd: AdminCrowdSummary; syncRuns: AdminSyncRun[]; syncErrors: AdminSyncError[]; candidates: AdminCandidate[]; sourceHealth: AdminSourceHealth[]; auditEvents: AdminAuditEvent[]; auditAvailable: boolean; enrichmentCoverage: AdminEnrichmentCoverage[] }) {
   const [tab, setTab] = useState<'crowd' | 'runs' | 'errors' | 'audit'>('crowd');
   const maxLevelCount = Math.max(1, ...Object.values(crowd.byLevel));
   const reviewCount = candidates.filter((candidate) => candidate.ingestionStatus === 'candidate' || candidate.ingestionStatus === 'stale').length;
@@ -63,7 +65,7 @@ export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourc
             <ExternalLink className="h-4 w-4" />
           </a>
         </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {manualSyncJobs.map((job) => (
             <a key={job.id} href={KTO_SYNC_WORKFLOW_URL} target="_blank" rel="noreferrer" className="group rounded-2xl border border-[#3e495d]/40 bg-[#0b1326]/60 p-4 transition hover:border-[#ffd700]/40">
               <div className="flex items-center justify-between gap-3">
@@ -74,6 +76,51 @@ export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourc
               <p className="mt-3 text-[11px] font-bold text-[#ffd700]">Run workflow에서 `{job.id}` 선택</p>
             </a>
           ))}
+        </div>
+      </section>
+      <section className="rounded-3xl border border-white/10 bg-[#171f33]/80 p-5 md:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">Content Coverage</p>
+            <h2 className="mt-2 text-xl font-black text-white">공개 장소에 붙은 부가 정보</h2>
+            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-[#d0c6ab]">
+              동기화가 돌았는지와 별개로, 화면에 실제로 표시되는 정보가 얼마나 채워졌는지 보여줍니다. 비율이 낮은 항목은 원천에 데이터가 없는 경우가 많습니다.
+            </p>
+          </div>
+          <Layers className="h-5 w-5 shrink-0 text-[#ffd700]" />
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {enrichmentCoverage.map((coverage) => {
+            const percent = coverage.publishedPlaces > 0
+              ? Math.round((coverage.places / coverage.publishedPlaces) * 100)
+              : 0;
+            return (
+              <div key={coverage.key} className="rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-sm font-black text-white">{coverage.label}</p>
+                  <p className="text-xs font-bold text-[#ffd700]">{`${percent}%`}</p>
+                </div>
+                <p className="mt-2 text-2xl font-black text-white">
+                  {coverage.places}
+                  <span className="ml-1 text-sm font-bold text-[#8f9bb3]">{`/ ${coverage.publishedPlaces}곳`}</span>
+                </p>
+                <div
+                  className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#3e495d]/40"
+                  role="progressbar"
+                  aria-valuenow={percent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${coverage.label} 채움 비율`}
+                >
+                  <div className="h-full rounded-full bg-[#ffd700]" style={{ width: `${percent}%` }} />
+                </div>
+                {coverage.items !== null ? (
+                  <p className="mt-3 text-[11px] font-bold text-[#d0c6ab]">{`연결 ${coverage.items}건`}</p>
+                ) : null}
+                <p className="mt-1 text-[11px] leading-relaxed text-[#8f9bb3]">{coverage.note}</p>
+              </div>
+            );
+          })}
         </div>
       </section>
       <section className="rounded-3xl border border-white/10 bg-[#171f33]/80 p-5 md:p-6"><div className="flex flex-wrap gap-2 border-b border-[#3e495d]/30 pb-5">{([['crowd', '방문 집중도'], ['runs', 'Sync Runs'], ['errors', 'Errors'], ['audit', `운영 이력 ${auditEvents.length}`]] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setTab(value)} className={`rounded-full px-4 py-2 text-xs font-black transition ${tab === value ? 'bg-[#ffd700] text-[#3a3000]' : 'bg-[#0b1326]/70 text-[#8f9bb3] hover:text-white'}`}>{label}</button>)}</div>

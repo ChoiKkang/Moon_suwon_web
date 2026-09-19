@@ -155,6 +155,31 @@ export type KtoPage<T> = {
   numOfRows: number;
 };
 
+/**
+ * 오디(Odii) 오디오 가이드 스토리.
+ *
+ * 다른 KTO 서비스와 달리 contentid가 없다. tid(테마)/stid(스토리)와 좌표만 주므로
+ * 장소 연결은 좌표로 한다. audioUrl이 빈 항목도 많은데, 수원화성 성곽 해설이
+ * 그렇다. 재생 파일은 오디 앱 전용이고 API로는 본문만 공개된다.
+ */
+export type KtoAudioStoryItem = {
+  tid?: string;
+  tlid?: string;
+  stid?: string;
+  stlid?: string;
+  title?: string;
+  mapX?: string;
+  mapY?: string;
+  audioTitle?: string;
+  script?: string;
+  playTime?: string;
+  audioUrl?: string;
+  imageUrl?: string;
+  langCode?: string;
+  createdtime?: string;
+  modifiedtime?: string;
+};
+
 export type NormalizedPlace = {
   slug: string;
   official_name: string;

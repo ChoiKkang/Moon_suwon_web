@@ -189,6 +189,26 @@ export type AdminSyncRun = {
   isStale: boolean;
 };
 
+/**
+ * 부가 정보가 공개 장소 중 몇 곳에 붙었는지.
+ *
+ * 오디오 해설·무장애·반려동물은 각기 다른 KTO 서비스에서 오고 커버리지가 크게
+ * 다르다. 운영자가 "수집이 돌았는지"는 Sync Runs에서 보지만 "그래서 화면에 뭐가
+ * 붙었는지"는 알 수 없었다. 공개 장소 기준 채움 비율을 함께 보여준다.
+ */
+export type AdminEnrichmentCoverage = {
+  key: 'audio' | 'accessibility' | 'pet';
+  label: string;
+  /** 값이 붙은 공개 장소 수. */
+  places: number;
+  /** 공개 장소 총계. 비율 계산의 분모다. */
+  publishedPlaces: number;
+  /** 연결된 항목 수. 오디오 해설처럼 장소당 여러 건인 경우에만 의미가 있다. */
+  items: number | null;
+  /** 운영자가 읽을 보충 설명. */
+  note: string;
+};
+
 export type AdminSyncError = {
   id: string;
   syncRunId: string;
