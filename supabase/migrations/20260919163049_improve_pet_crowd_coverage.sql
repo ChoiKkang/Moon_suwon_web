@@ -22,14 +22,14 @@ as $$
          p.source_modified_at,
          pp.source_updated_at,
          ps.last_pet_checked_at,
-         pg_catalog.coalesce(pp.data_status, 'unknown'),
-         pg_catalog.coalesce(pps.is_published, false)
+         coalesce(pp.data_status, 'unknown'),
+         coalesce(pps.is_published, false)
   from core.places p
   join core.place_sources ps on ps.place_id = p.id
   left join core.place_pet_policies pp on pp.place_id = p.id
   left join editorial.place_publish_state pps on pps.place_id = p.id
   where p.is_active = true
-    and pg_catalog.coalesce(ps.sync_enabled, true) = true
+    and coalesce(ps.sync_enabled, true) = true
     and ps.ingestion_status in ('candidate', 'approved', 'stale')
     and (
       pp.place_id is null
@@ -42,7 +42,7 @@ as $$
     case when pp.place_id is null or pp.last_checked_at is null then 0 else 1 end,
     ps.last_pet_checked_at nulls first,
     p.official_name
-  limit pg_catalog.greatest(0, pg_catalog.least(pg_catalog.coalesce(p_limit, 250), 1000));
+  limit greatest(0, least(coalesce(p_limit, 250), 1000));
 $$;
 
 revoke all on function public.sync_list_pet_enrichment(integer) from public, anon, authenticated;
@@ -60,11 +60,11 @@ set search_path = pg_catalog
 as $$
 declare
   v_place_id uuid;
-  v_payload jsonb := pg_catalog.coalesce(p_payload, '{}'::jsonb);
+  v_payload jsonb := coalesce(p_payload, '{}'::jsonb);
   v_previous_payload jsonb;
   v_changed boolean;
-  v_type text := pg_catalog.lower(pg_catalog.coalesce(v_payload ->> 'acmpyTypeCd', ''));
-  v_possible text := pg_catalog.lower(pg_catalog.coalesce(v_payload ->> 'acmpyPsblCpam', ''));
+  v_type text := pg_catalog.lower(coalesce(v_payload ->> 'acmpyTypeCd', ''));
+  v_possible text := pg_catalog.lower(coalesce(v_payload ->> 'acmpyPsblCpam', ''));
   v_policy text;
   v_raw_note text;
   v_short_note text;
@@ -100,18 +100,18 @@ begin
     v_policy := 'unknown';
   end if;
 
-  v_raw_note := pg_catalog.nullif(pg_catalog.concat_ws(E'\n',
-    pg_catalog.nullif(pg_catalog.btrim(v_payload ->> 'acmpyPsblCpam'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_payload ->> 'acmpyNeedMtr'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_payload ->> 'etcAcmpyInfo'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_payload ->> 'acmpyTypeCd'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_payload ->> 'relaAcdntRiskMtr'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_payload ->> 'relaPosesFclty'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_payload ->> 'relaRntlPrdlst'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_payload ->> 'relaFrnshPrdlst'), ''),
-    pg_catalog.nullif(pg_catalog.btrim(v_payload ->> 'relaPurcPrdlst'), '')
+  v_raw_note := nullif(pg_catalog.concat_ws(E'\n',
+    nullif(pg_catalog.btrim(v_payload ->> 'acmpyPsblCpam'), ''),
+    nullif(pg_catalog.btrim(v_payload ->> 'acmpyNeedMtr'), ''),
+    nullif(pg_catalog.btrim(v_payload ->> 'etcAcmpyInfo'), ''),
+    nullif(pg_catalog.btrim(v_payload ->> 'acmpyTypeCd'), ''),
+    nullif(pg_catalog.btrim(v_payload ->> 'relaAcdntRiskMtr'), ''),
+    nullif(pg_catalog.btrim(v_payload ->> 'relaPosesFclty'), ''),
+    nullif(pg_catalog.btrim(v_payload ->> 'relaRntlPrdlst'), ''),
+    nullif(pg_catalog.btrim(v_payload ->> 'relaFrnshPrdlst'), ''),
+    nullif(pg_catalog.btrim(v_payload ->> 'relaPurcPrdlst'), '')
   ), '');
-  v_short_note := pg_catalog.nullif(pg_catalog.left(pg_catalog.regexp_replace(pg_catalog.coalesce(v_raw_note, ''), '\s+', ' ', 'g'), 240), '');
+  v_short_note := nullif(pg_catalog.left(pg_catalog.regexp_replace(coalesce(v_raw_note, ''), '\s+', ' ', 'g'), 240), '');
 
   insert into core.place_pet_policies (
     place_id, pet_policy, pet_note_raw, pet_note_short,
@@ -131,7 +131,7 @@ begin
         last_checked_at = excluded.last_checked_at,
         details_json = excluded.details_json,
         updated_at = pg_catalog.now()
-    where pg_catalog.coalesce(core.place_pet_policies.is_manual_override, false) = false;
+    where coalesce(core.place_pet_policies.is_manual_override, false) = false;
 
   update core.place_sources
   set last_pet_checked_at = pg_catalog.now()
@@ -162,16 +162,16 @@ declare
   v_level text;
   v_count integer := 0;
 begin
-  if pg_catalog.jsonb_typeof(pg_catalog.coalesce(p_rows, '[]'::jsonb)) <> 'array' then
+  if pg_catalog.jsonb_typeof(coalesce(p_rows, '[]'::jsonb)) <> 'array' then
     raise exception 'crowd rows must be a JSON array';
   end if;
 
-  for v_row in select value from pg_catalog.jsonb_array_elements(pg_catalog.coalesce(p_rows, '[]'::jsonb)) loop
-    v_area_code := pg_catalog.nullif(pg_catalog.btrim(v_row ->> 'area_code'), '');
-    v_sigungu_code := pg_catalog.nullif(pg_catalog.btrim(v_row ->> 'sigungu_code'), '');
-    v_name := pg_catalog.nullif(pg_catalog.btrim(v_row ->> 'tourist_attraction_name'), '');
-    v_forecast_date := pg_catalog.nullif(v_row ->> 'forecast_date', '')::date;
-    v_rate := pg_catalog.nullif(v_row ->> 'concentration_rate', '')::numeric;
+  for v_row in select value from pg_catalog.jsonb_array_elements(coalesce(p_rows, '[]'::jsonb)) loop
+    v_area_code := nullif(pg_catalog.btrim(v_row ->> 'area_code'), '');
+    v_sigungu_code := nullif(pg_catalog.btrim(v_row ->> 'sigungu_code'), '');
+    v_name := nullif(pg_catalog.btrim(v_row ->> 'tourist_attraction_name'), '');
+    v_forecast_date := nullif(v_row ->> 'forecast_date', '')::date;
+    v_rate := nullif(v_row ->> 'concentration_rate', '')::numeric;
     if v_area_code is null or v_sigungu_code is null or v_name is null or v_forecast_date is null or v_rate is null then continue; end if;
 
     insert into raw.kto_crowd_forecast (
@@ -179,7 +179,7 @@ begin
       concentration_rate, payload_json, fetched_at
     ) values (
       v_area_code, v_sigungu_code, v_name, v_forecast_date,
-      v_rate, pg_catalog.coalesce(v_row -> 'payload_json', v_row), pg_catalog.now()
+      v_rate, coalesce(v_row -> 'payload_json', v_row), pg_catalog.now()
     )
     on conflict (area_code, sigungu_code, tourist_attraction_name, forecast_date) do update
       set concentration_rate = excluded.concentration_rate,
@@ -191,7 +191,7 @@ begin
     from core.places candidate
     join core.place_sources source on source.place_id = candidate.id
     where candidate.is_active = true
-      and pg_catalog.coalesce(source.sync_enabled, true) = true
+      and coalesce(source.sync_enabled, true) = true
       and pg_catalog.regexp_replace(pg_catalog.lower(pg_catalog.btrim(candidate.official_name)), '[[:space:][:punct:]]+', '', 'g')
         = pg_catalog.regexp_replace(pg_catalog.lower(v_name), '[[:space:][:punct:]]+', '', 'g');
 
@@ -200,7 +200,7 @@ begin
     from core.places candidate
     join core.place_sources source on source.place_id = candidate.id
     where candidate.is_active = true
-      and pg_catalog.coalesce(source.sync_enabled, true) = true
+      and coalesce(source.sync_enabled, true) = true
       and pg_catalog.regexp_replace(pg_catalog.lower(pg_catalog.btrim(candidate.official_name)), '[[:space:][:punct:]]+', '', 'g')
         = pg_catalog.regexp_replace(pg_catalog.lower(v_name), '[[:space:][:punct:]]+', '', 'g')
     limit 1;

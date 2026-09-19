@@ -89,3 +89,36 @@ test('related-place identity includes district provenance through core upsert', 
     'on conflict (origin_source_key, related_source_key, base_month, district_code) do update',
   ));
 });
+
+test('approved API migrations never schema-qualify SQL conditional expressions', () => {
+  const migrationNames = readdirSync('supabase/migrations').filter((name) =>
+    [
+      '_approved_api_registry.sql',
+      '_approved_api_public_contract.sql',
+      '_improve_pet_crowd_coverage.sql',
+    ].some((suffix) => name.endsWith(suffix)),
+  );
+
+  assert.equal(migrationNames.length, 3, 'expected all three approved API migrations');
+  for (const migrationName of migrationNames) {
+    const sql = readFileSync(`supabase/migrations/${migrationName}`, 'utf8');
+    assert.doesNotMatch(
+      sql,
+      /\bpg_catalog\.(?:coalesce|nullif|greatest|least)\s*\(/i,
+      `${migrationName} must leave PostgreSQL conditional expressions unqualified`,
+    );
+  }
+});
+
+test('a forward migration repairs the public place RPC already applied remotely', () => {
+  const migrationNames = readdirSync('supabase/migrations').filter((name) =>
+    name.endsWith('_fix_approved_api_conditional_expressions.sql'),
+  );
+
+  assert.equal(migrationNames.length, 1, 'expected one forward repair migration');
+  const sql = readFileSync(`supabase/migrations/${migrationNames[0]}`, 'utf8');
+  assert.match(sql, /create or replace function public\.get_place_by_slug\(p_slug text\)/i);
+  assert.doesNotMatch(sql, /\bpg_catalog\.(?:coalesce|nullif|greatest|least)\s*\(/i);
+  assert.match(sql, /revoke all on function public\.get_place_by_slug\(text\) from public/i);
+  assert.match(sql, /grant execute on function public\.get_place_by_slug\(text\) to anon, authenticated/i);
+});

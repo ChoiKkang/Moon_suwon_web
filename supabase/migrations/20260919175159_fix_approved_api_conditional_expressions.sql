@@ -1,3 +1,5 @@
+-- Repair the public RPC created by 20260919162517 after PostgreSQL rejected
+-- schema-qualified conditional expressions at execution time.
 -- Additive, reviewed public contract for the mobile app and promotional web.
 -- Raw/candidate tables remain private; only this curated RPC may cross the boundary.
 
@@ -258,35 +260,3 @@ $$;
 
 revoke all on function public.get_place_by_slug(text) from public;
 grant execute on function public.get_place_by_slug(text) to anon, authenticated;
-
-create or replace function public.admin_get_regional_visitor_summary(
-  p_from date default (current_date - 30),
-  p_to date default current_date
-)
-returns table(
-  stat_date date,
-  district_code text,
-  visitor_type text,
-  visitor_count numeric,
-  source_updated_at timestamptz,
-  fetched_at timestamptz
-)
-language sql
-stable
-security definer
-set search_path to 'pg_catalog'
-as $$
-  select
-    visitors.stat_date,
-    visitors.district_code,
-    visitors.visitor_type,
-    visitors.visitor_count,
-    visitors.source_updated_at,
-    visitors.fetched_at
-  from core.regional_visitor_stats visitors
-  where visitors.stat_date between p_from and p_to
-  order by visitors.stat_date, visitors.district_code, visitors.visitor_type;
-$$;
-
-revoke all on function public.admin_get_regional_visitor_summary(date, date) from public, anon, authenticated;
-grant execute on function public.admin_get_regional_visitor_summary(date, date) to service_role;
