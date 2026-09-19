@@ -9,6 +9,7 @@ import type {
   AdminCoursePlace,
   AdminCrowdSummary,
   AdminDashboardData,
+  AdminEnrichmentCoverage,
   AdminEvent,
   AdminPlace,
   AdminPlaceCopy,
@@ -525,10 +526,67 @@ function buildSourceHealth(runs: AdminSyncRun[]): AdminSourceHealth[] {
 type AdminOperationsData = Pick<AdminDashboardData, 'crowd' | 'syncRuns' | 'syncErrors' | 'candidates' | 'sourceHealth'> & {
   auditEvents: AdminAuditEvent[];
   auditAvailable: boolean;
+  enrichmentCoverage: AdminEnrichmentCoverage[];
 };
 
 function emptyOperations(): AdminOperationsData {
-  return { crowd: emptyCrowd(), syncRuns: [], syncErrors: [], candidates: [], sourceHealth: [], auditEvents: [], auditAvailable: false };
+  return { crowd: emptyCrowd(), syncRuns: [], syncErrors: [], candidates: [], sourceHealth: [], auditEvents: [], auditAvailable: false, enrichmentCoverage: [] };
+}
+
+/**
+ * 부가 정보가 공개 장소에 얼마나 붙었는지 센다.
+ *
+ * 조회가 실패해도 운영 화면 전체를 막지 않는다. 커버리지는 보조 지표라서
+ * 빈 값으로 두고 나머지 패널을 계속 보여주는 편이 낫다.
+ */
+async function buildEnrichmentCoverage(
+  adminClient: ReturnType<typeof getAdminClient>,
+  places: AdminPlace[],
+): Promise<AdminEnrichmentCoverage[]> {
+  const publishedIds = new Set(places.filter((place) => place.isPublished).map((place) => place.id));
+  const publishedPlaces = publishedIds.size;
+
+  const [audioResult, accessResult] = await Promise.all([
+    adminClient.schema('core').from('place_audio_stories').select('place_id, audio_url'),
+    adminClient.schema('core').from('place_accessibility').select('place_id'),
+  ]);
+
+  const audioRows = (audioResult.data ?? []).filter((row) => publishedIds.has(String(row.place_id)));
+  const audioPlaces = new Set(audioRows.map((row) => String(row.place_id))).size;
+  const playableCount = audioRows.filter((row) => Boolean(row.audio_url)).length;
+  const accessPlaces = new Set(
+    (accessResult.data ?? []).map((row) => String(row.place_id)).filter((id) => publishedIds.has(id)),
+  ).size;
+  const petPlaces = places.filter((place) => place.isPublished && place.petPolicy !== 'unknown').length;
+
+  return [
+    {
+      key: 'audio',
+      label: '오디오 해설',
+      places: audioPlaces,
+      publishedPlaces,
+      items: audioRows.length,
+      note: playableCount > 0
+        ? `음원 재생 ${playableCount}건, 본문만 ${audioRows.length - playableCount}건`
+        : '본문 해설만 수집되었습니다.',
+    },
+    {
+      key: 'accessibility',
+      label: '무장애 정보',
+      places: accessPlaces,
+      publishedPlaces,
+      items: null,
+      note: '경사로·화장실·주차 등 확인된 항목만 표시됩니다.',
+    },
+    {
+      key: 'pet',
+      label: '반려동물 정보',
+      places: petPlaces,
+      publishedPlaces,
+      items: null,
+      note: '동반 가능 여부가 확인된 장소만 셉니다.',
+    },
+  ];
 }
 
 async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdminClient>, places: AdminPlace[]): Promise<AdminQueryResult<AdminOperationsData>> {
@@ -573,6 +631,7 @@ async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdm
     createdAt: row.created_at,
   }));
   const candidates = places.map(mapCandidate);
+  const enrichmentCoverage = await buildEnrichmentCoverage(adminClient, places);
 
   return {
     data: {
@@ -591,6 +650,7 @@ async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdm
       sourceHealth: buildSourceHealth(syncRuns),
       auditEvents: auditResult.events,
       auditAvailable: auditResult.available,
+      enrichmentCoverage,
     },
     error: null,
   };

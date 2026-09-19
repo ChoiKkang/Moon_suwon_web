@@ -3,6 +3,7 @@ import type { ImportedPlace } from './types';
 import { toSecureImageUrl } from '@/lib/media/urls';
 import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
 import type { AccessibilityFacts } from './accessibility';
+import { mapAudioStory, type AudioStory, type AudioStoryRow } from './audio-stories';
 
 type PlaceViewName = 'v_imported_places' | 'v_published_places';
 
@@ -141,6 +142,25 @@ export function getImportedPlaces() {
 
 export function getPublishedPlaces() {
   return getPlacesFromView('v_published_places');
+}
+
+/**
+ * 장소에 붙은 오디오 해설.
+ *
+ * 장소당 여러 건이라 평면 뷰에 담을 수 없어 별도 뷰에서 읽는다. 해설이 없으면
+ * 화면에서 카드를 감추므로 조회 실패와 0건을 같게 취급한다.
+ */
+export async function getPlaceAudioStories(placeId: string): Promise<AudioStory[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('v_published_place_audio_stories')
+    .select('story_lang_id, spot_title, audio_title, script, play_seconds, audio_url, distance_m')
+    .eq('place_id', placeId)
+    .order('distance_m', { ascending: true });
+
+  if (error) return [];
+
+  return ((data ?? []) as AudioStoryRow[]).map(mapAudioStory);
 }
 
 export async function getPublishedPlaceBySlug(slug: string): Promise<{

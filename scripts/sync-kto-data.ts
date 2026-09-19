@@ -11,8 +11,10 @@ import {
 } from '../src/lib/kto/pet-sync';
 import { isSuwonFestival, normalizeFestival, normalizeImages, normalizePlace } from '../src/lib/kto/normalize';
 import { assessNightDining, isWithinFortressWalk } from '../src/lib/kto/night-dining';
+import { AUDIO_MATCH_RADIUS_M, matchAudioStories } from '../src/lib/kto/audio-guide';
 import { readIntroFacts } from '../src/lib/kto/intro-facts';
 import type {
+  KtoAudioStoryItem,
   KtoCrowdForecastItem,
   KtoFestivalItem,
   KtoImageItem,
@@ -22,7 +24,7 @@ import type {
 
 loadEnvConfig(process.cwd());
 
-export type SyncJob = 'content' | 'events' | 'crowd' | 'pet' | 'access';
+export type SyncJob = 'content' | 'events' | 'crowd' | 'pet' | 'access' | 'audio';
 type SyncPlace = PetEnrichmentRow & { place_id: string };
 type RunnerOptions = { job: SyncJob; dryRun: boolean; limit: number | null };
 
@@ -97,7 +99,7 @@ function parseOptions(): RunnerOptions {
   const limitValue = limitIndex >= 0 ? Number(process.argv[limitIndex + 1]) : null;
 
   if (process.argv.includes('--help') || process.argv.includes('-h')) {
-    writeLine('Usage: npm run sync:data -- --job content|events|crowd|pet|access [--dry-run] [--limit N]');
+    writeLine('Usage: npm run sync:data -- --job content|events|crowd|pet|access|audio [--dry-run] [--limit N]');
     process.exit(0);
   }
 
@@ -107,8 +109,9 @@ function parseOptions(): RunnerOptions {
     && jobValue !== 'crowd'
     && jobValue !== 'pet'
     && jobValue !== 'access'
+    && jobValue !== 'audio'
   ) {
-    throw new Error('작업을 지정해야 합니다. --job content|events|crowd|pet|access 중 하나를 사용하세요.');
+    throw new Error('작업을 지정해야 합니다. --job content|events|crowd|pet|access|audio 중 하나를 사용하세요.');
   }
 
   if (limitValue !== null && (!Number.isInteger(limitValue) || limitValue < 0)) {
@@ -665,6 +668,97 @@ async function syncAccessibility(runId: string, stats: SyncStats, options: Runne
   return stats.errorCount > 0 ? 'partial' : 'completed';
 }
 
+/**
+ * 오디오 해설을 공개 장소에 잇는다.
+ *
+ * 오디(Odii)는 contentId 조회를 지원하지 않는다. 화성행궁을 중심으로 반경 20km를
+ * 한 번 받아 전체 스토리를 확보하고, 좌표로 장소에 잇는다. 장소마다 API를
+ * 호출하는 다른 잡과 달리 호출이 몇 번으로 끝난다.
+ */
+async function syncAudioGuides(runId: string, stats: SyncStats, options: RunnerOptions): Promise<'completed' | 'partial'> {
+  const { data: sources, error } = await supabase
+    .schema('core')
+    .from('places')
+    .select('id, lat, lng')
+    .eq('is_active', true);
+  if (error) throw new Error(`오디오 해설 대상 장소를 불러오지 못했습니다: ${error.message}`);
+
+  const { data: published, error: publishedError } = await supabase
+    .schema('editorial')
+    .from('place_publish_state')
+    .select('place_id')
+    .eq('is_published', true);
+  if (publishedError) throw new Error(`공개 상태를 불러오지 못했습니다: ${publishedError.message}`);
+
+  const publishedIds = new Set((published ?? []).map((row) => String(row.place_id)));
+  const targets = (sources ?? [])
+    .filter((row) => publishedIds.has(String(row.id)))
+    .filter((row) => row.lat !== null && row.lng !== null)
+    .map((row) => ({ placeId: String(row.id), lat: Number(row.lat), lng: Number(row.lng) }))
+    .slice(0, options.limit ?? undefined);
+
+  let stories: KtoAudioStoryItem[];
+  try {
+    // 수원 전역과 인접 시 경계를 함께 덮는 반경. 매칭에서 다시 좁히므로 넓게
+    // 받아도 엉뚱한 연결이 생기지 않는다.
+    stories = await kto.fetchAudioStoriesNear({ mapX: 127.0128, mapY: 37.2816, radiusM: 20_000 });
+  } catch (error: unknown) {
+    await recordSyncError(runId, stats, error, undefined, !options.dryRun);
+    writeError('audio: 오디오 해설 목록을 받지 못했습니다.');
+    return 'partial';
+  }
+
+  const matches = matchAudioStories(targets, stories);
+  stats.itemsFetched = stories.length;
+  writeLine(`audio: stories ${stories.length}, targets ${targets.length}, matches ${matches.length} (radius ${AUDIO_MATCH_RADIUS_M}m)`);
+
+  if (options.dryRun) {
+    stats.itemsUpserted = matches.length;
+    const placeCount = new Set(matches.map((match) => match.placeId)).size;
+    writeLine(`audio: dry-run would link ${matches.length} stories to ${placeCount} places`);
+    return stats.errorCount > 0 ? 'partial' : 'completed';
+  }
+
+  const keepByPlace = new Map<string, string[]>();
+  for (const match of matches) {
+    const keep = keepByPlace.get(match.placeId) ?? [];
+    keep.push(String(match.story.stlid));
+    keepByPlace.set(match.placeId, keep);
+  }
+
+  for (const match of matches) {
+    try {
+      const stored = await callRpc<boolean>(supabase, 'sync_kto_audio_story_item', {
+        p_run_id: runId,
+        p_place_id: match.placeId,
+        p_payload: match.story,
+        p_distance_m: match.distanceM,
+      });
+      if (stored) stats.itemsUpserted += 1;
+    } catch (error: unknown) {
+      await recordSyncError(runId, stats, error, match.story.stlid, true);
+    }
+  }
+
+  // 반경 밖으로 밀려난 과거 연결을 지운다. 대상 장소 전체를 순회해야 이제
+  // 매칭되지 않는 장소의 남은 연결까지 정리된다.
+  let pruned = 0;
+  for (const target of targets) {
+    try {
+      const removed = await callRpc<number>(supabase, 'sync_kto_audio_prune', {
+        p_place_id: target.placeId,
+        p_keep_story_lang_ids: keepByPlace.get(target.placeId) ?? [],
+      });
+      pruned += Number(removed) || 0;
+    } catch (error: unknown) {
+      await recordSyncError(runId, stats, error, target.placeId, true);
+    }
+  }
+
+  writeLine(`audio: linked ${stats.itemsUpserted}, pruned ${pruned}`);
+  return stats.errorCount > 0 ? 'partial' : 'completed';
+}
+
 async function main() {
   const options = parseOptions();
   const source = `GitHubActions:${options.job}`;
@@ -696,6 +790,7 @@ async function main() {
     if (options.job === 'crowd') status = await syncCrowd(runId, stats, options);
     if (options.job === 'pet') status = await syncPet(runId, stats, options);
     if (options.job === 'access') status = await syncAccessibility(runId, stats, options);
+    if (options.job === 'audio') status = await syncAudioGuides(runId, stats, options);
   } catch (error: unknown) {
     fatalError = error;
     status = 'failed';

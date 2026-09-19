@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { Accessibility, ArrowLeft, Camera, Compass, Dog, ExternalLink, MapPin, Moon, Phone, Route, Sparkles } from 'lucide-react';
-import { getPublishedPlaceBySlug } from '@/lib/places/queries';
+import { Accessibility, ArrowLeft, Camera, Compass, Dog, ExternalLink, Headphones, MapPin, Moon, Phone, Route, Sparkles } from 'lucide-react';
+import { getPlaceAudioStories, getPublishedPlaceBySlug } from '@/lib/places/queries';
 import { groupAccessibility } from '@/lib/places/accessibility';
+import { formatPlayTime, splitAudioStories } from '@/lib/places/audio-stories';
 import { StatusPill } from '@/components/public/status-pill';
 
 type PlaceDetailPageProps = {
@@ -63,6 +64,11 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
   // 무장애 정보는 값이 있는 항목만 보여준다. KTO가 서술형으로 주는 원문을 그대로
   // 쓰고 등급으로 환산하지 않는다.
   const accessibilityGroups = place ? groupAccessibility(place.accessibility) : [];
+
+  // 오디오 해설은 장소당 여러 건이라 별도 조회다. 없으면 카드를 감춘다.
+  const audioStories = place ? await getPlaceAudioStories(place.id) : [];
+  const { playable: playableStories, readable: readableStories } = splitAudioStories(audioStories);
+  const hasAudioStories = playableStories.length > 0 || readableStories.length > 0;
 
   return (
     <main className="min-h-screen bg-[#0b1326] text-[#dae2fd]">
@@ -232,6 +238,72 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
                     ))}
                   </div>
                   <p className="mt-4 text-[11px] text-[#8f9bb3]">한국관광공사 무장애 여행 정보 기준입니다. 방문 전 현장에 다시 확인해 주세요.</p>
+                </div>
+              ) : null}
+
+              {hasAudioStories ? (
+                <div className="mt-6 rounded-3xl border border-[#3e495d]/40 bg-[#0b1326]/70 p-5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Headphones className="h-5 w-5 text-[#ffd700]" />
+                    <p className="text-sm font-black text-white">이 자리에서 듣는 이야기</p>
+                  </div>
+
+                  {playableStories.length > 0 ? (
+                    <div className="mt-4 space-y-4">
+                      {playableStories.map((story) => (
+                        <div key={story.id} className="rounded-2xl border border-[#3e495d]/40 bg-[#171f33]/60 p-4">
+                          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <p className="text-sm font-bold text-white">{story.audioTitle}</p>
+                            {formatPlayTime(story.playSeconds) ? (
+                              <span className="text-[11px] text-[#8f9bb3]">{formatPlayTime(story.playSeconds)}</span>
+                            ) : null}
+                          </div>
+                          {story.audioUrl ? (
+                            <audio
+                              controls
+                              preload="none"
+                              src={story.audioUrl}
+                              aria-label={`${story.audioTitle} 오디오 해설`}
+                              className="mt-3 w-full"
+                            />
+                          ) : null}
+                          {story.script ? (
+                            <details className="mt-3">
+                              <summary className="cursor-pointer text-xs font-bold text-[#ffd700]">해설 읽기</summary>
+                              <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-[#d0c6ab]">{story.script}</p>
+                            </details>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {readableStories.length > 0 ? (
+                    <div className="mt-4">
+                      <p className="text-xs leading-relaxed text-[#8f9bb3]">
+                        걸으면서 읽기 좋은 해설입니다. 가까운 지점 순서로 정리했습니다.
+                      </p>
+                      <div className="mt-3 space-y-2">
+                        {readableStories.map((story) => (
+                          <details key={story.id} className="rounded-2xl border border-[#3e495d]/40 bg-[#171f33]/60 p-4">
+                            <summary className="cursor-pointer text-sm font-bold text-white">
+                              {story.audioTitle}
+                              {story.distanceM !== null ? (
+                                <span className="ml-2 text-[11px] font-normal text-[#8f9bb3]">{`약 ${story.distanceM}m`}</span>
+                              ) : null}
+                            </summary>
+                            {story.script ? (
+                              <p className="mt-3 whitespace-pre-line text-xs leading-relaxed text-[#d0c6ab]">{story.script}</p>
+                            ) : null}
+                          </details>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <p className="mt-4 text-[11px] text-[#8f9bb3]">
+                    한국관광공사 오디오 가이드(오디) 정보입니다. 현장 음성 안내는 오디 앱에서 들을 수 있습니다.
+                  </p>
                 </div>
               ) : null}
             </div>

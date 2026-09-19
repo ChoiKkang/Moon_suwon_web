@@ -13,6 +13,7 @@ on:
           - crowd
           - pet
           - access
+          - audio
       dry_run:
         description: API 조회만 하고 DB에는 저장하지 않기
         required: false
@@ -33,6 +34,9 @@ on:
     # Sunday 04:00 KST = Saturday 19:00 UTC. Runs after the weekly content sync
     # so newly published places get their accessibility data in the same night.
     - cron: '0 19 * * 6'
+    # Sunday 05:00 KST = Saturday 20:00 UTC. 오디오 해설은 공개 장소 좌표로
+    # 이어지므로 주간 콘텐츠 수집 뒤에 돌려야 새로 공개한 장소에도 붙는다.
+    - cron: '0 20 * * 6'
 
 permissions:
   contents: read
@@ -98,12 +102,13 @@ jobs:
               '30 18 * * *') job='pet' ;;
               '0 18 * * 6') job='content' ;;
               '0 19 * * 6') job='access' ;;
+              '0 20 * * 6') job='audio' ;;
               *) echo "Unknown schedule: $EVENT_SCHEDULE" >&2; exit 1 ;;
             esac
           fi
 
           case "$job" in
-            content|events|crowd|pet|access) ;;
+            content|events|crowd|pet|access|audio) ;;
             *) echo "Unknown sync job: $job" >&2; exit 1 ;;
           esac
 

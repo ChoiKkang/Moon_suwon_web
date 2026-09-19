@@ -1,5 +1,6 @@
 import type {
   KtoApiResponse,
+  KtoAudioStoryItem,
   KtoCrowdForecastItem,
   KtoDetailItem,
   KtoFestivalItem,
@@ -16,6 +17,11 @@ const KTO_BASE_URL = 'https://apis.data.go.kr/B551011/KorService2';
 const PET_BASE_URL = 'https://apis.data.go.kr/B551011/KorPetTourService2';
 // 무장애 여행 정보는 별도 서비스다. KorService2에는 detailWithTour2가 없다.
 const WITH_BASE_URL = 'https://apis.data.go.kr/B551011/KorWithService2';
+// 오디오 가이드는 오디(Odii) 서비스다. 오퍼레이션 이름과 langCode 표기가 다른
+// 서비스와 달라서 소문자 'ko'만 값을 돌려준다. 'Kor'이나 'KOR'을 보내면
+// resultCode 0000에 0건으로 응답해 조용히 빈 결과가 된다.
+const ODII_BASE_URL = 'https://apis.data.go.kr/B551011/Odii';
+const ODII_LANG_CODE = 'ko';
 const CROWD_BASE_URL = 'https://apis.data.go.kr/B551011/TatsCnctrRateService';
 const REQUEST_TIMEOUT_MS = 20_000;
 // KorPetTourService2 is the slowest of the three services. Its old 15s budget
@@ -170,6 +176,52 @@ export class KtoClient {
     }, PET_BASE_URL, PET_REQUEST_TIMEOUT_MS);
 
     return items[0] ?? null;
+  }
+
+  /**
+   * 수원 일대의 오디오 해설 전체. 좌표 기반 조회만 가능해 화성행궁을 중심으로
+   * 반경을 넓게 잡고 받은 뒤, 장소 연결은 호출한 쪽에서 좁힌다.
+   *
+   * 상류가 한 페이지에 100건까지만 주므로 totalCount를 채울 때까지 넘긴다.
+   */
+  async fetchAudioStoriesNear(options: {
+    mapX: number;
+    mapY: number;
+    radiusM: number;
+    pageSize?: number;
+  }): Promise<KtoAudioStoryItem[]> {
+    const pageSize = options.pageSize ?? 100;
+    const collected: KtoAudioStoryItem[] = [];
+    const seen = new Set<string>();
+
+    for (let pageNo = 1; ; pageNo += 1) {
+      const page = await this.requestPage<KtoAudioStoryItem>(
+        'storyLocationBasedList',
+        {
+          langCode: ODII_LANG_CODE,
+          mapX: String(options.mapX),
+          mapY: String(options.mapY),
+          radius: String(options.radiusM),
+          numOfRows: String(pageSize),
+          pageNo: String(pageNo),
+        },
+        ODII_BASE_URL,
+      );
+
+      if (page.items.length === 0) break;
+
+      for (const item of page.items) {
+        const key = item.stlid ?? '';
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          collected.push(item);
+        }
+      }
+
+      if (collected.length >= page.totalCount || page.items.length < pageSize) break;
+    }
+
+    return collected;
   }
 
   async fetchPetTourPage(options: {
