@@ -6,13 +6,21 @@ import type { PublicApiKey } from '../src/lib/public-data/catalog';
 import { PublicDataClient } from '../src/lib/public-data/client';
 import { getPublicDataServiceKey } from '../src/lib/env/server';
 import { createKtoExtraClient, SUWON_ADMIN_DISTRICT_CODES } from '../src/lib/public-data/kto-extra';
+import { matchPublishedPlace, type PlaceMatchCandidate } from '../src/lib/public-data/place-match';
 import {
   reviewDurunubiCourse,
   reviewPhotoCandidate,
+  reviewRelation,
   reviewTourismCandidate,
   type ReviewStatus,
 } from '../src/lib/public-data/review';
-import { latestMidForecastBase, normalizeMidForecast, normalizeVillageForecast, type VillageForecastItem } from '../src/lib/public-data/weather';
+import {
+  latestMidForecastBase,
+  normalizeMidForecast,
+  normalizeVillageForecast,
+  type NormalizedMidForecast,
+  type VillageForecastItem,
+} from '../src/lib/public-data/weather';
 
 loadEnvConfig(process.cwd());
 
@@ -66,6 +74,7 @@ export interface PublicDataRepository {
   recordError(runId: string, item: SyncCandidate, error: unknown): Promise<void>;
   finishRun(runId: string, status: 'completed' | 'partial' | 'failed' | 'hold', metadata: PublicDataRunMetadata): Promise<void>;
   listApprovedBusStops?(): Promise<Array<{ stationId: string; stationName: string }>>;
+  listPlaceMatchCandidates?(): Promise<PlaceMatchCandidate[]>;
 }
 
 type RunOptions = { job: PublicDataJob; dryRun: boolean; limit?: number };
@@ -141,12 +150,12 @@ export async function runPublicDataJob(options: RunOptions, dependencies: RunDep
       const result = await dependencies.repository.saveRaw(runId!, item);
       if (result.changed) {
         metadata.changed += 1;
-        if (item.coreDataset && item.corePayload) {
-          await dependencies.repository.saveCore(item);
-          metadata.upserted += 1;
-        }
       } else {
         metadata.unchanged += 1;
+      }
+      if (item.coreDataset && item.corePayload) {
+        await dependencies.repository.saveCore(item);
+        metadata.upserted += 1;
       }
       await dependencies.repository.saveReview(item);
     } catch (error) {
@@ -218,6 +227,210 @@ function makeCandidate(input: Omit<SyncCandidate, 'payloadHash'>): SyncCandidate
   return { ...input, payloadHash: hashPayload(input.payload) };
 }
 
+export function applyOptionalLimit<T>(items: T[], limit?: number): T[] {
+  return limit === undefined ? items : items.slice(0, limit);
+}
+
+export function buildMidForecastCandidates(forecasts: NormalizedMidForecast[]): SyncCandidate[] {
+  return forecasts.flatMap((forecast) => {
+    const payload = forecast as unknown as Record<string, unknown>;
+    const forecastAt = `${forecast.forecastDate}T00:00:00+09:00`;
+    const values: Array<{
+      category: 'WF_AM' | 'WF_PM' | 'TMN' | 'TMX';
+      valueText: string | null;
+      valueNumber: number | null;
+      unit: string | null;
+    }> = [
+      { category: 'WF_AM', valueText: forecast.weatherAm, valueNumber: null, unit: null },
+      { category: 'WF_PM', valueText: forecast.weatherPm, valueNumber: null, unit: null },
+      { category: 'TMN', valueText: null, valueNumber: forecast.minTemperatureC, unit: '℃' },
+      { category: 'TMX', valueText: null, valueNumber: forecast.maxTemperatureC, unit: '℃' },
+    ];
+
+    return values.map(({ category, valueText, valueNumber, unit }) => makeCandidate({
+      apiKey: 'kma_mid',
+      sourceItemKey: `${forecast.forecastDate}:${category}`,
+      scopeKey: '11B00000:11B10101',
+      payload,
+      reviewStatus: 'approved',
+      reviewNote: 'automatic_official_forecast',
+      coreDataset: 'weather',
+      corePayload: {
+        forecast_kind: 'mid',
+        scope_key: '11B00000:11B10101',
+        issued_at: forecast.issuedAt,
+        forecast_at: forecastAt,
+        category,
+        value_text: valueText,
+        value_number: valueNumber,
+        unit,
+        source_payload: forecast,
+      },
+      publishable: true,
+    }));
+  });
+}
+
+export function buildWellnessCandidate(
+  raw: Record<string, unknown>,
+  places: readonly PlaceMatchCandidate[] = [],
+): SyncCandidate {
+  const sourceItemKey = text(raw, 'contentId', 'contentid', 'title');
+  const baseAddress = text(raw, 'baseAddr', 'addr1');
+  const detailAddress = text(raw, 'detailAddr', 'addr2');
+  const address = [baseAddress, detailAddress].filter(Boolean).join(' ') || null;
+  const lat = numberOrNull(raw.mapY ?? raw.mapy);
+  const lng = numberOrNull(raw.mapX ?? raw.mapx);
+  const contentId = text(raw, 'contentId', 'contentid') || null;
+  const match = matchPublishedPlace({ contentId, names: [text(raw, 'title')] }, places);
+  const decision = reviewTourismCandidate({
+    sourceId: sourceItemKey,
+    address,
+    lat,
+    lng,
+    matchedPlaceId: match.placeId,
+  });
+
+  return makeCandidate({
+    apiKey: 'kto_wellness',
+    sourceItemKey,
+    scopeKey: 'suwon:20000m',
+    payload: raw,
+    reviewStatus: decision.status,
+    reviewNote: decision.reasons.join(','),
+    coreDataset: 'wellness',
+    corePayload: {
+      source_item_key: sourceItemKey,
+      place_id: match.placeId,
+      name: text(raw, 'title') || sourceItemKey,
+      address_full: address,
+      lat,
+      lng,
+      tags: text(raw, 'tagName', 'wellnessTag', 'wellnessThemaCd')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean),
+      source_payload: raw,
+    },
+    publishable: decision.status === 'approved',
+  });
+}
+
+export function buildPhotoCandidate(
+  raw: Record<string, unknown>,
+  places: readonly PlaceMatchCandidate[] = [],
+): SyncCandidate {
+  const sourceItemKey = text(raw, 'galContentId', 'galContentid');
+  const title = text(raw, 'galTitle') || sourceItemKey;
+  const address = text(raw, 'galPhotographyLocation', 'addr1') || null;
+  const imageUrl = text(raw, 'galWebImageUrl', 'galWebImageUrl2') || null;
+  const match = matchPublishedPlace({ names: [title, address] }, places);
+  const decision = reviewPhotoCandidate({
+    sourceId: sourceItemKey,
+    address,
+    imageUrl,
+    copyrightCode: text(raw, 'cpyrhtDivCd', 'galCopyright') || null,
+    sourceUrl: sourceItemKey
+      ? `https://korean.visitkorea.or.kr/detail/rem_detail.do?cotid=${encodeURIComponent(sourceItemKey)}`
+      : null,
+    matchedPlaceId: match.placeId,
+  });
+
+  return makeCandidate({
+    apiKey: 'kto_photo',
+    sourceItemKey,
+    scopeKey: 'keyword:수원',
+    payload: raw,
+    reviewStatus: decision.status,
+    reviewNote: decision.reasons.join(','),
+    coreDataset: 'photo',
+    corePayload: {
+      source_item_key: sourceItemKey,
+      place_id: match.placeId,
+      title,
+      address_full: address,
+      image_url: imageUrl,
+      thumbnail_url: text(raw, 'galWebImageUrl2') || null,
+      copyright_code: text(raw, 'cpyrhtDivCd', 'galCopyright') || null,
+      photographer: text(raw, 'galPhotographer') || null,
+      source_url: sourceItemKey
+        ? `https://korean.visitkorea.or.kr/detail/rem_detail.do?cotid=${encodeURIComponent(sourceItemKey)}`
+        : null,
+    },
+    publishable: decision.status === 'approved',
+  });
+}
+
+export function buildLocalHubCandidate(
+  raw: Record<string, unknown>,
+  baseMonth: string,
+  districtCode: string,
+  places: readonly PlaceMatchCandidate[] = [],
+): SyncCandidate {
+  const sourceItemKey = text(raw, 'hubTatsCd', 'contentid', 'hubTatsNm');
+  const title = text(raw, 'hubTatsNm', 'title') || sourceItemKey;
+  const match = matchPublishedPlace({ names: [title] }, places);
+  return makeCandidate({
+    apiKey: 'kto_local_hub',
+    sourceItemKey,
+    scopeKey: `${baseMonth}:${districtCode}`,
+    payload: raw,
+    reviewStatus: match.placeId ? 'approved' : 'hold',
+    reviewNote: match.placeId ? '' : match.reason,
+    coreDataset: 'local_hub',
+    corePayload: {
+      source_item_key: sourceItemKey,
+      base_month: baseMonth,
+      district_code: districtCode,
+      place_id: match.placeId,
+      title,
+      source_payload: raw,
+    },
+    publishable: match.placeId !== null,
+  });
+}
+
+export function buildRelatedCandidate(
+  raw: Record<string, unknown>,
+  baseMonth: string,
+  districtCode: string,
+  places: readonly PlaceMatchCandidate[] = [],
+): SyncCandidate {
+  const origin = text(raw, 'tAtsCd', 'originId', 'tAtsNm');
+  const related = text(raw, 'rlteTatsCd', 'relatedId', 'rlteTatsNm');
+  const originMatch = matchPublishedPlace({ names: [text(raw, 'tAtsNm')] }, places);
+  const relatedMatch = matchPublishedPlace({ names: [text(raw, 'rlteTatsNm')] }, places);
+  const relationScore = numberOrNull(raw.rlteRank ?? raw.relationScore);
+  const decision = reviewRelation({
+    originPlaceId: originMatch.placeId,
+    relatedPlaceId: relatedMatch.placeId,
+    originPublished: originMatch.placeId !== null,
+    relatedPublished: relatedMatch.placeId !== null,
+    score: relationScore,
+  });
+
+  return makeCandidate({
+    apiKey: 'kto_related',
+    sourceItemKey: `${origin}:${related}`,
+    scopeKey: `${baseMonth}:${districtCode}`,
+    payload: raw,
+    reviewStatus: decision.status,
+    reviewNote: decision.reasons.join(','),
+    coreDataset: 'related',
+    corePayload: {
+      origin_source_key: origin,
+      related_source_key: related,
+      base_month: baseMonth,
+      district_code: districtCode,
+      origin_place_id: originMatch.placeId,
+      related_place_id: relatedMatch.placeId,
+      relation_score: relationScore,
+      source_payload: raw,
+    },
+    publishable: decision.status === 'approved',
+  });
+}
+
 function suwonCoordinate(item: Record<string, unknown>): boolean {
   const lat = numberOrNull(item.lat ?? item.mapy ?? item.startY);
   const lng = numberOrNull(item.lng ?? item.mapx ?? item.startX);
@@ -226,33 +439,14 @@ function suwonCoordinate(item: Record<string, unknown>): boolean {
 
 async function loadDefaultJob(job: PublicDataJob, limit: number | undefined, repository: PublicDataRepository): Promise<LoadedPublicDataJob> {
   const kto = createKtoExtraClient(getPublicDataServiceKey('kto'));
+  const places = ['photo', 'wellness', 'local_hub', 'related'].includes(job)
+    ? await repository.listPlaceMatchCandidates?.() ?? []
+    : [];
   if (job === 'photo') {
     const items = await kto.fetchPhotos({ keyword: '수원', limit });
     return {
       scopeCounts: { suwon_keyword: items.length },
-      candidates: items.map((raw) => {
-        const item = raw as Record<string, unknown>;
-        const sourceItemKey = text(item, 'galContentId', 'galContentid');
-        const address = text(item, 'galPhotographyLocation', 'addr1') || null;
-        const imageUrl = text(item, 'galWebImageUrl', 'galWebImageUrl2') || null;
-        const decision = reviewPhotoCandidate({
-          sourceId: sourceItemKey, address, imageUrl,
-          copyrightCode: text(item, 'cpyrhtDivCd', 'galCopyright') || null,
-          sourceUrl: sourceItemKey ? `https://korean.visitkorea.or.kr/detail/rem_detail.do?cotid=${encodeURIComponent(sourceItemKey)}` : null,
-          matchedPlaceId: null,
-        });
-        return makeCandidate({
-          apiKey: 'kto_photo', sourceItemKey, scopeKey: 'keyword:수원', payload: item,
-          reviewStatus: decision.status, reviewNote: decision.reasons.join(','),
-          coreDataset: 'photo', corePayload: {
-            source_item_key: sourceItemKey, title: text(item, 'galTitle') || sourceItemKey,
-            address_full: address, image_url: imageUrl, thumbnail_url: text(item, 'galWebImageUrl2') || null,
-            copyright_code: text(item, 'cpyrhtDivCd', 'galCopyright') || null,
-            photographer: text(item, 'galPhotographer') || null,
-            source_url: sourceItemKey ? `https://korean.visitkorea.or.kr/detail/rem_detail.do?cotid=${encodeURIComponent(sourceItemKey)}` : null,
-          },
-        });
-      }),
+      candidates: items.map((raw) => buildPhotoCandidate(raw as Record<string, unknown>, places)),
     };
   }
 
@@ -260,22 +454,7 @@ async function loadDefaultJob(job: PublicDataJob, limit: number | undefined, rep
     const items = await kto.fetchWellness({ mapX: 127.0095, mapY: 37.2818, radiusM: 20_000, limit });
     return {
       scopeCounts: { suwon_20km: items.length },
-      candidates: items.map((raw) => {
-        const item = raw as Record<string, unknown>;
-        const sourceItemKey = text(item, 'contentid', 'contentId', 'title');
-        const address = text(item, 'addr1') || null;
-        const decision = reviewTourismCandidate({ sourceId: sourceItemKey, address, lat: numberOrNull(item.mapy), lng: numberOrNull(item.mapx), matchedPlaceId: null });
-        return makeCandidate({
-          apiKey: 'kto_wellness', sourceItemKey, scopeKey: 'suwon:20000m', payload: item,
-          reviewStatus: decision.status, reviewNote: decision.reasons.join(','),
-          coreDataset: 'wellness', corePayload: {
-            source_item_key: sourceItemKey, name: text(item, 'title') || sourceItemKey,
-            address_full: address, lat: numberOrNull(item.mapy), lng: numberOrNull(item.mapx),
-            tags: text(item, 'tagName', 'wellnessTag').split(',').map((value) => value.trim()).filter(Boolean),
-            source_payload: item,
-          },
-        });
-      }),
+      candidates: items.map((raw) => buildWellnessCandidate(raw as Record<string, unknown>, places)),
     };
   }
 
@@ -291,20 +470,9 @@ async function loadDefaultJob(job: PublicDataJob, limit: number | undefined, rep
         const item = raw as Record<string, unknown>;
         const districtCode = text(item, 'signguCd', 'signguCode') || 'unknown';
         if (job === 'local_hub') {
-          const sourceItemKey = text(item, 'hubTatsCd', 'contentid', 'hubTatsNm');
-          return makeCandidate({
-            apiKey: 'kto_local_hub', sourceItemKey, scopeKey: `${baseMonth}:${districtCode}`, payload: item,
-            reviewStatus: 'hold', reviewNote: 'place_match_required', coreDataset: 'local_hub',
-            corePayload: { source_item_key: sourceItemKey, base_month: baseMonth, district_code: districtCode, title: text(item, 'hubTatsNm', 'title') || sourceItemKey, source_payload: item },
-          });
+          return buildLocalHubCandidate(item, baseMonth, districtCode, places);
         }
-        const origin = text(item, 'tAtsCd', 'originId', 'tAtsNm');
-        const related = text(item, 'rlteTatsCd', 'relatedId', 'rlteTatsNm');
-        return makeCandidate({
-          apiKey: 'kto_related', sourceItemKey: `${origin}:${related}`, scopeKey: `${baseMonth}:${districtCode}`, payload: item,
-          reviewStatus: origin === related ? 'excluded' : 'hold', reviewNote: origin === related ? 'self_relation' : 'place_match_required', coreDataset: 'related',
-          corePayload: { origin_source_key: origin, related_source_key: related, base_month: baseMonth, district_code: districtCode, relation_score: numberOrNull(item.rlteRank ?? item.relationScore), source_payload: item },
-        });
+        return buildRelatedCandidate(item, baseMonth, districtCode, places);
       }),
     };
   }
@@ -329,8 +497,11 @@ async function loadDefaultJob(job: PublicDataJob, limit: number | undefined, rep
 
   if (job === 'visitors') {
     const range = previousMonthRange();
-    const all = await kto.fetchRegionalVisitors({ ...range, limit });
-    const items = all.filter((item) => (SUWON_ADMIN_DISTRICT_CODES as readonly string[]).includes(item.signguCode));
+    const items = await kto.fetchRegionalVisitors({
+      ...range,
+      districtCodes: SUWON_ADMIN_DISTRICT_CODES,
+      limit,
+    });
     return {
       scopeCounts: Object.fromEntries(SUWON_ADMIN_DISTRICT_CODES.map((code) => [code, items.filter((item) => item.signguCode === code).length])),
       candidates: items.map((raw) => {
@@ -371,18 +542,15 @@ async function loadDefaultJob(job: PublicDataJob, limit: number | undefined, rep
     ]);
     const issuedAt = `${tmFc.slice(0, 4)}-${tmFc.slice(4, 6)}-${tmFc.slice(6, 8)}T${tmFc.slice(8, 10)}:00:00+09:00`;
     const forecasts = normalizeMidForecast(land.items[0] ?? {}, temperature.items[0] ?? {}, issuedAt);
-    const candidates = forecasts.map((forecast) => makeCandidate({
-      apiKey: 'kma_mid', sourceItemKey: forecast.forecastDate, scopeKey: '11B00000:11B10101', payload: forecast as unknown as Record<string, unknown>,
-      reviewStatus: 'approved', reviewNote: 'automatic_official_forecast', publishable: true,
-    }));
-    return { candidates: limit ? candidates.slice(0, limit) : candidates, scopeCounts: { capital_region: forecasts.length } };
+    const candidates = buildMidForecastCandidates(forecasts);
+    return { candidates: applyOptionalLimit(candidates, limit), scopeCounts: { capital_region: forecasts.length } };
   }
 
   const stops = await repository.listApprovedBusStops?.() ?? [];
   if (stops.length === 0) return { candidates: [], scopeCounts: { mapped_stations: 0 }, warnings: ['no reviewed station mapping'], hold: true };
   const key = getPublicDataServiceKey('gyeonggi');
   const candidates: SyncCandidate[] = [];
-  for (const stop of stops.slice(0, limit)) {
+  for (const stop of applyOptionalLimit(stops, limit)) {
     const url = new URL('https://apis.data.go.kr/6410000/busarrivalservice/v2/getBusArrivalListv2');
     url.searchParams.set('serviceKey', key);
     url.searchParams.set('stationId', stop.stationId);
@@ -455,6 +623,29 @@ function createSupabaseRepository(client: SupabaseClient): PublicDataRepository 
       const { data, error } = await client.schema('core').from('place_bus_stops').select('station_id, station_name').eq('review_status', 'approved');
       if (error) throw new Error(error.message);
       return (data ?? []).map((row) => ({ stationId: String(row.station_id), stationName: String(row.station_name) }));
+    },
+    async listPlaceMatchCandidates() {
+      const [placesResult, sourcesResult, statesResult, copyResult] = await Promise.all([
+        client.schema('core').from('places').select('id, official_name').eq('is_active', true),
+        client.schema('core').from('place_sources').select('place_id, kto_content_id'),
+        client.schema('editorial').from('place_publish_state').select('place_id, is_published'),
+        client.schema('editorial').from('place_copy').select('place_id, display_name'),
+      ]);
+      const error = placesResult.error ?? sourcesResult.error ?? statesResult.error ?? copyResult.error;
+      if (error) throw new Error(`place matching lookup failed: ${error.message}`);
+      const sourceByPlace = new Map((sourcesResult.data ?? []).map((row) => [String(row.place_id), String(row.kto_content_id)]));
+      const publishedByPlace = new Map((statesResult.data ?? []).map((row) => [String(row.place_id), row.is_published === true]));
+      const displayNameByPlace = new Map((copyResult.data ?? []).map((row) => [String(row.place_id), row.display_name ? String(row.display_name) : null]));
+      return (placesResult.data ?? []).map((row) => {
+        const placeId = String(row.id);
+        return {
+          placeId,
+          officialName: String(row.official_name),
+          displayName: displayNameByPlace.get(placeId) ?? null,
+          ktoContentId: sourceByPlace.get(placeId) ?? null,
+          isPublished: publishedByPlace.get(placeId) === true,
+        };
+      });
     },
   };
 }

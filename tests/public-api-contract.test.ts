@@ -24,6 +24,7 @@ test('place detail keeps legacy keys and adds the reviewed API blocks', () => {
     'approved_photos',
     'wellness_tags',
     'weather_summary',
+    'mid_weather_summary',
     'nearby_bus_arrivals',
   ]) {
     assert.match(sql, new RegExp(`'${key}'`), `${key} must remain in the place fixture`);
@@ -32,6 +33,18 @@ test('place detail keeps legacy keys and adds the reviewed API blocks', () => {
   assert.match(sql, /'data_status'/);
   assert.match(sql, /'source_updated_at'/);
   assert.match(sql, /'fetched_at'/);
+});
+
+test('mid-range forecast is exposed as an additive reviewed app block', () => {
+  const sql = contractSql();
+  const placeFunction = sql.match(
+    /create or replace function public.get_place_by_slug[\s\S]+?\n\$\$\s*;/,
+  )?.[0];
+
+  assert.ok(placeFunction, 'get_place_by_slug must be replaced');
+  assert.match(placeFunction, /'mid_weather_summary'/);
+  assert.ok(placeFunction.includes("weather.forecast_kind = 'mid'"));
+  assert.ok(placeFunction.includes("weather.scope_key = '11b00000:11b10101'"));
 });
 
 test('candidate content is gated by review and related places stay published', () => {

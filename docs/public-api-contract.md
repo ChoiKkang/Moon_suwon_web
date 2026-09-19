@@ -4,7 +4,7 @@
 
 ## 공통 블록 형태
 
-새 블록 5개는 모두 다음 형태다.
+새 블록 6개는 모두 다음 형태다.
 
 ```json
 {
@@ -75,6 +75,18 @@
     "source_updated_at": "2026-09-20T02:00:00Z",
     "fetched_at": "2026-09-20T02:05:00Z"
   },
+  "mid_weather_summary": {
+    "items": [{
+      "forecast_at": "2026-09-24T00:00:00+09:00",
+      "category": "WF_AM",
+      "value_text": "맑음",
+      "value_number": null,
+      "unit": null
+    }],
+    "data_status": "fresh",
+    "source_updated_at": "2026-09-20T06:00:00+09:00",
+    "fetched_at": "2026-09-20T06:05:00+09:00"
+  },
   "nearby_bus_arrivals": {
     "items": [{
       "station_id": "200000001",
@@ -102,6 +114,7 @@
   "approved_photos": { "items": [], "data_status": "unknown", "source_updated_at": null, "fetched_at": null },
   "wellness_tags": { "items": [], "data_status": "unknown", "source_updated_at": null, "fetched_at": null },
   "weather_summary": { "items": [], "data_status": "unknown", "source_updated_at": null, "fetched_at": null },
+  "mid_weather_summary": { "items": [], "data_status": "unknown", "source_updated_at": null, "fetched_at": null },
   "nearby_bus_arrivals": { "items": [], "data_status": "unknown", "source_updated_at": null, "fetched_at": null }
 }
 ```

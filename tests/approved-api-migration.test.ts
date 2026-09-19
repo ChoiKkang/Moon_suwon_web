@@ -35,3 +35,57 @@ test('approved API private stores revoke public roles and sync RPCs are service-
   assert.match(sql, /grant execute on function public\.sync_public_api_item[^;]+ to service_role/);
   assert.match(sql, /create or replace function public\.sync_public_api_review/);
 });
+
+test('review RPC mirrors decisions into every publishable candidate store', () => {
+  const sql = registryMigration();
+  const reviewRpc = sql.match(
+    /create or replace function public\.sync_public_api_review\([\s\S]+?\n\$\$;/,
+  )?.[0];
+  assert.ok(reviewRpc, 'sync_public_api_review function must exist');
+  assert.match(
+    reviewRpc,
+    /v_reviewed_at\s*:=\s*case when p_review_status = 'pending' then null else now\(\) end/,
+  );
+
+  for (const relation of [
+    'core.place_photo_candidates',
+    'core.place_wellness',
+    'core.local_hub_candidates',
+    'core.place_relations',
+    'core.durunubi_courses',
+  ]) {
+    const update = reviewRpc.match(
+      new RegExp(`update ${relation.replace('.', '\\.')}([\\s\\S]+?)where`),
+    )?.[1];
+    assert.ok(update, `${relation} review update must exist`);
+    assert.match(update, /review_status\s*=\s*p_review_status/);
+    assert.match(update, /reviewed_at\s*=\s*v_reviewed_at/);
+    assert.match(update, /review_note\s*=\s*v_review_note/);
+  }
+});
+
+test('public candidate lookups and foreign keys have supporting indexes', () => {
+  const sql = registryMigration();
+  const compactSql = sql.replace(/\s+/g, ' ');
+
+  for (const indexClause of [
+    'on core.place_photo_candidates(place_id, review_status)',
+    'on core.place_wellness(place_id, review_status)',
+    'on core.local_hub_candidates(place_id, review_status)',
+    'on core.place_relations(origin_place_id, review_status)',
+    'on core.place_relations(related_place_id)',
+  ]) {
+    assert.ok(compactSql.includes(indexClause), 'missing supporting index: ' + indexClause);
+  }
+});
+
+test('related-place identity includes district provenance through core upsert', () => {
+  const compactSql = registryMigration().replace(/\s+/g, ' ');
+
+  assert.ok(compactSql.includes(
+    'primary key(origin_source_key, related_source_key, base_month, district_code)',
+  ));
+  assert.ok(compactSql.includes(
+    'on conflict (origin_source_key, related_source_key, base_month, district_code) do update',
+  ));
+});

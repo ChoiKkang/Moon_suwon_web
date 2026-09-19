@@ -9,9 +9,9 @@ export type PageRequester = {
 };
 
 export type KtoPhotoItem = Record<string, string> & { galContentId: string };
-export type KtoWellnessItem = Record<string, string> & { contentid?: string; title?: string };
+export type KtoWellnessItem = Record<string, string> & { contentId?: string; contentid?: string; title?: string };
 export type KtoLocalHubItem = Record<string, string> & { hubTatsCd?: string; hubTatsNm?: string };
-export type KtoRelatedItem = Record<string, string> & { baseYm?: string };
+export type KtoRelatedItem = Record<string, string> & { baseYm?: string; signguCd?: string };
 export type DurunubiItem = Record<string, string> & { crsIdx?: string; crsKorNm?: string };
 export type RegionalVisitorItem = Record<string, string> & {
   baseYmd: string;
@@ -82,6 +82,7 @@ export class KtoExtraClient {
   async fetchWellness(options: { mapX: number; mapY: number; radiusM: number; limit?: number }): Promise<KtoWellnessItem[]> {
     const rows = await collectPages({
       fetchPage: (pageNo) => this.requesters.wellness.requestPage('locationBasedList', {
+        langDivCd: 'KOR',
         mapX: String(options.mapX),
         mapY: String(options.mapY),
         radius: String(options.radiusM),
@@ -115,24 +116,41 @@ export class KtoExtraClient {
     return asTyped<DurunubiItem>(rows);
   }
 
-  async fetchRegionalVisitors(options: { startDate: string; endDate: string; limit?: number }): Promise<RegionalVisitorItem[]> {
-    const rows = await collectPages({
-      fetchPage: (pageNo) => this.requesters.visitors.requestPage('locgoRegnVisitrDDList', {
+  async fetchRegionalVisitors(options: {
+    startDate: string;
+    endDate: string;
+    districtCodes?: readonly string[];
+    limit?: number;
+  }): Promise<RegionalVisitorItem[]> {
+    const rows: RegionalVisitorItem[] = [];
+    const seen = new Set<string>();
+    const districtCodes = options.districtCodes ? new Set(options.districtCodes) : null;
+
+    for (let pageNo = 1; pageNo <= 1_000; pageNo += 1) {
+      const page = await this.requesters.visitors.requestPage('locgoRegnVisitrDDList', {
         startYmd: options.startDate,
         endYmd: options.endDate,
         pageNo: String(pageNo),
-        numOfRows: String(PAGE_SIZE),
-      }),
-      identity: (item) => [item.baseYmd, item.signguCode ?? item.signguCd, item.touDivNm ?? item.visitorType].join(':'),
-      limit: options.limit,
-    });
-    return rows.map((item) => ({
-      ...item,
-      baseYmd: item.baseYmd,
-      signguCode: item.signguCode ?? item.signguCd,
-      touDivNm: item.touDivNm ?? item.visitorType,
-      sourceItemKey: [item.baseYmd, item.signguCode ?? item.signguCd, item.touDivNm ?? item.visitorType].join(':'),
-    })) as RegionalVisitorItem[];
+        numOfRows: '1000',
+      });
+
+      for (const item of page.items) {
+        const signguCode = item.signguCode ?? item.signguCd;
+        if (districtCodes && !districtCodes.has(signguCode)) continue;
+        const touDivNm = item.touDivNm ?? item.visitorType;
+        const sourceItemKey = [item.baseYmd, signguCode, touDivNm].join(':');
+        if (!item.baseYmd || !signguCode || !touDivNm || seen.has(sourceItemKey)) continue;
+        seen.add(sourceItemKey);
+        rows.push({ ...item, signguCode, touDivNm, sourceItemKey } as RegionalVisitorItem);
+        if (options.limit !== undefined && rows.length >= options.limit) return rows;
+      }
+
+      if (page.items.length === 0) break;
+      if (page.numOfRows > 0 && page.items.length < page.numOfRows) break;
+      if (page.numOfRows > 0 && pageNo * page.numOfRows >= page.totalCount) break;
+    }
+
+    return rows;
   }
 
   private async fetchDistrictCollection<T extends KtoLocalHubItem>(
@@ -155,20 +173,29 @@ export class KtoExtraClient {
       const rows = await collectPages({
         fetchPage: (pageNo) => this.requesters[source].requestPage(endpoint, {
           baseYm: options.baseMonth,
+          areaCd: '41',
           signguCd: districtCode,
           pageNo: String(pageNo),
           numOfRows: String(PAGE_SIZE),
         }),
-        identity: (item) => `${districtCode}:${firstKey(item, identityKeys)}`,
+        identity: (item) => {
+          const sourceKey = source === 'related'
+            ? `${firstKey(item, ['tAtsCd', 'originId', 'tAtsNm'])}:${firstKey(item, ['rlteTatsCd', 'relatedId', 'rlteTatsNm'])}`
+            : firstKey(item, identityKeys);
+          return `${districtCode}:${sourceKey}`;
+        },
         limit: remaining,
       });
       scopeCounts[districtCode] = rows.length;
       if (rows.length === 0) zeroDistricts.push(districtCode);
       for (const row of rows) {
-        const key = firstKey(row, identityKeys);
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        items.push(row as T);
+        const key = source === 'related'
+          ? `${firstKey(row, ['tAtsCd', 'originId', 'tAtsNm'])}:${firstKey(row, ['rlteTatsCd', 'relatedId', 'rlteTatsNm'])}`
+          : firstKey(row, identityKeys);
+        const scopedKey = `${districtCode}:${key}`;
+        if (!key || seen.has(scopedKey)) continue;
+        seen.add(scopedKey);
+        items.push(...asTyped<T>([{ ...row, signguCd: districtCode }]));
       }
     }
 

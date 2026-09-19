@@ -176,6 +176,38 @@ begin
         and weather.forecast_at >= pg_catalog.now() - pg_catalog.make_interval(hours => 1)
         and weather.forecast_at <= pg_catalog.now() + pg_catalog.make_interval(hours => 24)
     ),
+    'mid_weather_summary', (
+      select pg_catalog.json_build_object(
+        'items', pg_catalog.coalesce(
+          pg_catalog.json_agg(
+            pg_catalog.json_build_object(
+              'forecast_at', weather.forecast_at,
+              'category', weather.category,
+              'value_text', weather.value_text,
+              'value_number', weather.value_number,
+              'unit', weather.unit
+            ) order by weather.forecast_at, weather.category
+          ), '[]'::json
+        ),
+        'data_status', case
+          when pg_catalog.max(weather.fetched_at) is null then 'unknown'
+          when pg_catalog.max(weather.fetched_at) < pg_catalog.now() - pg_catalog.make_interval(hours => 18) then 'stale'
+          else 'fresh'
+        end,
+        'source_updated_at', pg_catalog.max(weather.issued_at),
+        'fetched_at', pg_catalog.max(weather.fetched_at)
+      )
+      from core.weather_forecasts weather
+      where weather.forecast_kind = 'mid'
+        and weather.scope_key = '11B00000:11B10101'
+        and weather.issued_at = (
+          select pg_catalog.max(latest_weather.issued_at)
+          from core.weather_forecasts latest_weather
+          where latest_weather.forecast_kind = 'mid'
+            and latest_weather.scope_key = '11B00000:11B10101'
+        )
+        and weather.forecast_at >= pg_catalog.now()
+    ),
     'nearby_bus_arrivals', (
       select pg_catalog.json_build_object(
         'items', pg_catalog.coalesce(

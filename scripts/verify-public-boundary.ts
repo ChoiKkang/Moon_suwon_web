@@ -79,7 +79,14 @@ async function main() {
   if (!('pet_policy' in publicPlacePayload) || !('pet_data_status' in publicPlacePayload)) {
     throw new Error('published place RPC is missing pet policy/freshness fields');
   }
-  const additiveBlocks = ['related_places', 'approved_photos', 'wellness_tags', 'weather_summary', 'nearby_bus_arrivals'];
+  const additiveBlocks = [
+    'related_places',
+    'approved_photos',
+    'wellness_tags',
+    'weather_summary',
+    'mid_weather_summary',
+    'nearby_bus_arrivals',
+  ];
   for (const blockName of additiveBlocks) {
     const block = publicPlacePayload[blockName];
     if (!block || typeof block !== 'object' || Array.isArray(block)) {

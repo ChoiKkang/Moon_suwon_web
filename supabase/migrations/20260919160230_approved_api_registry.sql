@@ -134,7 +134,7 @@ create table if not exists core.place_relations (
   reviewed_at timestamptz,
   review_note text,
   fetched_at timestamptz not null default now(),
-  primary key(origin_source_key, related_source_key, base_month)
+  primary key(origin_source_key, related_source_key, base_month, district_code)
 );
 
 create table if not exists core.durunubi_courses (
@@ -200,6 +200,17 @@ create table if not exists core.bus_arrival_snapshots (
   source_payload jsonb not null,
   primary key(station_id, route_id, arrival_order)
 );
+
+create index if not exists idx_place_photo_candidates_place_review
+  on core.place_photo_candidates(place_id, review_status);
+create index if not exists idx_place_wellness_place_review
+  on core.place_wellness(place_id, review_status);
+create index if not exists idx_local_hub_candidates_place_review
+  on core.local_hub_candidates(place_id, review_status);
+create index if not exists idx_place_relations_origin_review
+  on core.place_relations(origin_place_id, review_status);
+create index if not exists idx_place_relations_related
+  on core.place_relations(related_place_id);
 
 alter table ops.api_registry enable row level security;
 alter table raw.public_api_items enable row level security;
@@ -287,22 +298,68 @@ create or replace function public.sync_public_api_review(
 returns void
 language plpgsql
 security invoker
-set search_path = pg_catalog, public, raw
+set search_path = pg_catalog, public, raw, core
 as $$
+declare
+  v_reviewed_at timestamptz;
+  v_review_note text;
 begin
   if p_review_status not in ('pending', 'approved', 'hold', 'excluded') then
     raise exception 'invalid review status';
   end if;
 
+  v_reviewed_at := case when p_review_status = 'pending' then null else now() end;
+  v_review_note := nullif(btrim(coalesce(p_review_note, '')), '');
+
   update raw.public_api_items
   set review_status = p_review_status,
-      reviewed_at = case when p_review_status = 'pending' then null else now() end,
-      review_note = nullif(btrim(coalesce(p_review_note, '')), '')
+      reviewed_at = v_reviewed_at,
+      review_note = v_review_note
   where api_key = p_api_key
     and source_item_key = p_source_item_key
     and scope_key = coalesce(p_scope_key, '');
 
   if not found then raise exception 'public API item not found'; end if;
+
+  case p_api_key
+    when 'kto_photo' then
+      update core.place_photo_candidates
+      set review_status = p_review_status,
+          reviewed_at = v_reviewed_at,
+          review_note = v_review_note
+      where source_item_key = p_source_item_key;
+    when 'kto_wellness' then
+      update core.place_wellness
+      set review_status = p_review_status,
+          reviewed_at = v_reviewed_at,
+          review_note = v_review_note
+      where source_item_key = p_source_item_key;
+    when 'kto_local_hub' then
+      update core.local_hub_candidates
+      set review_status = p_review_status,
+          reviewed_at = v_reviewed_at,
+          review_note = v_review_note
+      where source_item_key = p_source_item_key
+        and base_month = split_part(coalesce(p_scope_key, ''), ':', 1)
+        and district_code = split_part(coalesce(p_scope_key, ''), ':', 2);
+    when 'kto_related' then
+      update core.place_relations
+      set review_status = p_review_status,
+          reviewed_at = v_reviewed_at,
+          review_note = v_review_note
+      where origin_source_key = split_part(p_source_item_key, ':', 1)
+        and related_source_key = split_part(p_source_item_key, ':', 2)
+        and base_month = split_part(coalesce(p_scope_key, ''), ':', 1)
+        and district_code = split_part(coalesce(p_scope_key, ''), ':', 2);
+    when 'durunubi' then
+      update core.durunubi_courses
+      set review_status = p_review_status,
+          reviewed_at = v_reviewed_at,
+          review_note = v_review_note
+      where source_item_key = p_source_item_key;
+    else
+      null;
+  end case;
 end;
 $$;
 
@@ -377,8 +434,7 @@ begin
         nullif(p_payload->>'related_place_id', '')::uuid,
         nullif(p_payload->>'relation_score', '')::numeric,
         coalesce(p_payload->'source_payload', '{}'::jsonb), now()
-      ) on conflict (origin_source_key, related_source_key, base_month) do update set
-        district_code = excluded.district_code,
+      ) on conflict (origin_source_key, related_source_key, base_month, district_code) do update set
         origin_place_id = excluded.origin_place_id,
         related_place_id = excluded.related_place_id,
         relation_score = excluded.relation_score,
