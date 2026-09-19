@@ -22,7 +22,7 @@ import type {
 
 loadEnvConfig(process.cwd());
 
-export type SyncJob = 'content' | 'events' | 'crowd' | 'pet';
+export type SyncJob = 'content' | 'events' | 'crowd' | 'pet' | 'access';
 type SyncPlace = PetEnrichmentRow & { place_id: string };
 type RunnerOptions = { job: SyncJob; dryRun: boolean; limit: number | null };
 
@@ -97,12 +97,18 @@ function parseOptions(): RunnerOptions {
   const limitValue = limitIndex >= 0 ? Number(process.argv[limitIndex + 1]) : null;
 
   if (process.argv.includes('--help') || process.argv.includes('-h')) {
-    writeLine('Usage: npm run sync:data -- --job content|events|crowd|pet [--dry-run] [--limit N]');
+    writeLine('Usage: npm run sync:data -- --job content|events|crowd|pet|access [--dry-run] [--limit N]');
     process.exit(0);
   }
 
-  if (jobValue !== 'content' && jobValue !== 'events' && jobValue !== 'crowd' && jobValue !== 'pet') {
-    throw new Error('작업을 지정해야 합니다. --job content|events|crowd|pet 중 하나를 사용하세요.');
+  if (
+    jobValue !== 'content'
+    && jobValue !== 'events'
+    && jobValue !== 'crowd'
+    && jobValue !== 'pet'
+    && jobValue !== 'access'
+  ) {
+    throw new Error('작업을 지정해야 합니다. --job content|events|crowd|pet|access 중 하나를 사용하세요.');
   }
 
   if (limitValue !== null && (!Number.isInteger(limitValue) || limitValue < 0)) {
@@ -589,6 +595,76 @@ async function syncPet(runId: string, stats: SyncStats, options: RunnerOptions):
   return classifySyncStatus({ listRequestFailed: false, itemErrors: stats.errorCount, itemsAttempted: stats.detailsAttempted, validEmpty: stats.zeroResultContentIds.length });
 }
 
+/**
+ * 무장애 여행 정보 수집.
+ *
+ * 공개 장소만 대상으로 한다. 검수 대기 후보까지 조회하면 API 호출이 세 배로
+ * 늘지만 화면에 쓰이지 않는다. 데이터가 없는 장소는 HTTP 200에 빈 응답이
+ * 오므로 오류가 아니라 "정보 없음"으로 센다.
+ */
+async function syncAccessibility(runId: string, stats: SyncStats, options: RunnerOptions): Promise<'completed' | 'partial'> {
+  const { data, error } = await supabase
+    .schema('core')
+    .from('place_sources')
+    .select('kto_content_id, place_id');
+  if (error) throw new Error(`무장애 대상 장소를 불러오지 못했습니다: ${error.message}`);
+
+  const { data: published, error: publishedError } = await supabase
+    .schema('editorial')
+    .from('place_publish_state')
+    .select('place_id')
+    .eq('is_published', true);
+  if (publishedError) throw new Error(`공개 상태를 불러오지 못했습니다: ${publishedError.message}`);
+
+  const publishedIds = new Set((published ?? []).map((row) => String(row.place_id)));
+  const targets = (data ?? [])
+    .filter((row) => publishedIds.has(String(row.place_id)))
+    .map((row) => String(row.kto_content_id))
+    .filter((contentId) => contentId.length > 0)
+    .slice(0, options.limit ?? undefined);
+
+  stats.itemsFetched = targets.length;
+  writeLine(`access: targets ${targets.length}`);
+
+  for (let offset = 0; offset < targets.length; offset += PET_CONCURRENCY) {
+    const batch = targets.slice(offset, offset + PET_CONCURRENCY);
+    await Promise.all(batch.map(async (contentId) => {
+      let row: Awaited<ReturnType<typeof kto.fetchAccessibility>>;
+      try {
+        row = await kto.fetchAccessibility(contentId);
+      } catch (error: unknown) {
+        await recordSyncError(runId, stats, error, contentId, !options.dryRun);
+        return;
+      }
+
+      if (!row) {
+        stats.zeroResultContentIds.push(contentId);
+        return;
+      }
+
+      if (options.dryRun) {
+        stats.itemsUpserted += 1;
+        return;
+      }
+
+      try {
+        const stored = await callRpc<boolean>(supabase, 'sync_kto_with_tour_item', {
+          p_run_id: runId,
+          p_content_id: contentId,
+          p_payload: row,
+        });
+        if (stored) stats.itemsUpserted += 1;
+        else stats.zeroResultContentIds.push(contentId);
+      } catch (error: unknown) {
+        await recordSyncError(runId, stats, error, contentId, true);
+      }
+    }));
+  }
+
+  writeLine(`access: upserted ${stats.itemsUpserted}, no-data ${stats.zeroResultContentIds.length}`);
+  return stats.errorCount > 0 ? 'partial' : 'completed';
+}
+
 async function main() {
   const options = parseOptions();
   const source = `GitHubActions:${options.job}`;
@@ -619,6 +695,7 @@ async function main() {
     if (options.job === 'events') status = await syncEvents(runId, stats, options);
     if (options.job === 'crowd') status = await syncCrowd(runId, stats, options);
     if (options.job === 'pet') status = await syncPet(runId, stats, options);
+    if (options.job === 'access') status = await syncAccessibility(runId, stats, options);
   } catch (error: unknown) {
     fatalError = error;
     status = 'failed';

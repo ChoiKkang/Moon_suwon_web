@@ -9,10 +9,13 @@ import type {
   KtoPage,
   KtoPetListItem,
   KtoPetTourItem,
+  KtoWithTourItem,
 } from './types';
 
 const KTO_BASE_URL = 'https://apis.data.go.kr/B551011/KorService2';
 const PET_BASE_URL = 'https://apis.data.go.kr/B551011/KorPetTourService2';
+// 무장애 여행 정보는 별도 서비스다. KorService2에는 detailWithTour2가 없다.
+const WITH_BASE_URL = 'https://apis.data.go.kr/B551011/KorWithService2';
 const CROWD_BASE_URL = 'https://apis.data.go.kr/B551011/TatsCnctrRateService';
 const REQUEST_TIMEOUT_MS = 20_000;
 // KorPetTourService2 is the slowest of the three services. Its old 15s budget
@@ -141,6 +144,20 @@ export class KtoClient {
       contentId,
       contentTypeId,
     });
+
+    return items[0] ?? null;
+  }
+
+  /**
+   * 장소별 무장애 여행 정보. 값이 없는 장소도 HTTP 200에 빈 items로 응답하므로
+   * null과 "데이터 없음"을 같게 취급한다.
+   */
+  async fetchAccessibility(contentId: string): Promise<KtoWithTourItem | null> {
+    const items = await this.requestItems<KtoWithTourItem>('detailWithTour2', {
+      contentId,
+      numOfRows: '1',
+      pageNo: '1',
+    }, WITH_BASE_URL);
 
     return items[0] ?? null;
   }
