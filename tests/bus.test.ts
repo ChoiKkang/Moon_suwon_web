@@ -29,6 +29,26 @@ test('negative bus arrival seconds are rejected', () => {
   );
 });
 
+test('numeric identifiers returned by the live GBIS response are normalized', () => {
+  const rows = normalizeBusArrivals([{
+    stationId: 200000321,
+    routeId: 200000120,
+    routeName: '  수원역  ',
+    predictTimeSec1: 180,
+    locationNo1: 3,
+  }], NOW);
+
+  assert.deepEqual(rows, [{
+    stationId: '200000321',
+    routeId: '200000120',
+    routeName: '수원역',
+    arrivalOrder: 1,
+    arrivalSeconds: 180,
+    remainingStops: 3,
+    fetchedAt: NOW,
+  }]);
+});
+
 test('bus cache distinguishes fresh, stale, and expired snapshots', () => {
   const now = new Date(NOW);
   assert.equal(isBusSnapshotFresh('2026-09-20T11:58:01.000Z', now), true);

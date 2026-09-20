@@ -1,13 +1,15 @@
+type BusArrivalValue = string | number | null;
+
 export type BusArrivalSourceItem = {
-  stationId: string;
-  routeId: string;
-  routeName?: string;
-  predictTime1?: string;
-  predictTime2?: string;
-  predictTimeSec1?: string;
-  predictTimeSec2?: string;
-  locationNo1?: string;
-  locationNo2?: string;
+  stationId: BusArrivalValue;
+  routeId: BusArrivalValue;
+  routeName?: BusArrivalValue;
+  predictTime1?: BusArrivalValue;
+  predictTime2?: BusArrivalValue;
+  predictTimeSec1?: BusArrivalValue;
+  predictTimeSec2?: BusArrivalValue;
+  locationNo1?: BusArrivalValue;
+  locationNo2?: BusArrivalValue;
 };
 
 export type NormalizedBusArrival = {
@@ -20,8 +22,12 @@ export type NormalizedBusArrival = {
   fetchedAt: string;
 };
 
-function nonNegativeInteger(value: string | undefined, label: string): number | null {
-  if (value === undefined || value.trim() === '') return null;
+function textValue(value: BusArrivalValue | undefined): string {
+  return value === null || value === undefined ? '' : String(value).trim();
+}
+
+function nonNegativeInteger(value: BusArrivalValue | undefined, label: string): number | null {
+  if (textValue(value) === '') return null;
   const parsed = Number(value);
   if (!Number.isInteger(parsed)) throw new Error(`${label} must be an integer`);
   if (parsed < 0) throw new Error(`${label} cannot be negative`);
@@ -34,7 +40,9 @@ export function normalizeBusArrivals(items: BusArrivalSourceItem[], fetchedAt: s
   const rows: NormalizedBusArrival[] = [];
 
   for (const item of items) {
-    if (!item.stationId?.trim() || !item.routeId?.trim()) throw new Error('stationId and routeId are required');
+    const stationId = textValue(item.stationId);
+    const routeId = textValue(item.routeId);
+    if (!stationId || !routeId) throw new Error('stationId and routeId are required');
     for (const arrivalOrder of [1, 2] as const) {
       const secondsValue = item[`predictTimeSec${arrivalOrder}`];
       const minuteValue = item[`predictTime${arrivalOrder}`];
@@ -46,9 +54,9 @@ export function normalizeBusArrivals(items: BusArrivalSourceItem[], fetchedAt: s
           })();
       if (seconds === null) continue;
       rows.push({
-        stationId: item.stationId,
-        routeId: item.routeId,
-        routeName: item.routeName?.trim() || null,
+        stationId,
+        routeId,
+        routeName: textValue(item.routeName) || null,
         arrivalOrder,
         arrivalSeconds: seconds,
         remainingStops: nonNegativeInteger(item[`locationNo${arrivalOrder}`], 'remaining stops'),
