@@ -8,14 +8,14 @@
 
 - 14개 API 관리대장과 운영 콘솔 표시를 구성했고, 원격 `ops.api_registry`에 14개 행이 존재한다.
 - 운영 DB 마이그레이션 `20260919181438_scope_pet_enrichment_candidates`를 적용했다. `sync_list_pet_enrichment`는 `service_role`만 실행할 수 있고, 반려동물 공급자 발견 이력이 있는 ID만 상세 호출 대상으로 반환한다.
-- 전체 실수집에서 인증·쿼터 오류는 없었다. 경기도 버스는 공식 정류장 이력·좌표를 이용해 게시 장소 48곳에 144건의 후보 매핑을 만들었지만, 모두 `pending`이라 잘못된 정류장을 추측해 호출하지 않고 `hold`로 유지했다.
+- 경기도 버스는 공식 정류장 이력·좌표로 게시 장소 48곳에 144건의 후보 매핑을 만들고, 실시간 도착 응답으로 129건(고유 정류장 52개)을 `approved`, 현재 결과가 없던 15건을 `hold`로 판정했다. 승인 매핑 대상 전체 수집은 `691/691`, 오류 0으로 한 차례 health 검증까지 통과했다. 이후 추가 재실행에서 제공처 일일 요청한도 초과(HTTP 429)가 확인되어 더 이상 반복 호출하지 않고 쿼터 리셋 대기로 전환했다.
 - 두루누비는 전국 140건을 정상 수집했지만 수원 교차 코스 0건이다. 이는 실패가 아니라 `healthy zero`이며, 수원 게시 데이터에는 영향을 주지 않는다.
 - 사진·웰니스는 수원 범위/저작권 증거가 부족해 공개하지 않았고, 기초지자체·연관 관광지는 보수적인 장소 매칭과 게시 상태 검수 뒤 일부만 승인했다.
 - 익명 앱 RPC는 신규 관계·날씨 데이터가 있는 장소와 없는 장소 모두 계약을 지키며 응답했고, `raw`/`core`/운영 스키마 직접 조회는 차단됐다.
 
 검수 근거는 서비스 역할 RPC, `raw.sync_runs` 실행 메타데이터, 후보별 `review_status`/`review_note`, `public:verify`, `sync:rpc:verify` 결과다. 인증키·서비스 URL의 비밀값은 로그와 이 문서에 기록하지 않았다.
 
-최종 재검증에서 `npm test` 167/167, lint, typecheck, production build, 원격 data health, 공개/관리자 경계 검증이 모두 통과했다. 버스는 승인 매핑 0건·후보 매핑 144건의 명시적 `hold`로 분류하며, 공개 serving에는 포함하지 않는다. 운영 serving 점검에서 `/`, `/courses`, `/places/paldalmun`, `/robots.txt`, `/sitemap.xml`은 정상 응답하고 `/admin/operations`는 로그인 필요 안내를 표시한다.
+최종 재검증에서 `npm test` 168/168, lint, typecheck, 원격 data health(성공 실행 기준), 공개/관리자 경계 검증이 통과했다. 버스는 승인 매핑 129건·`hold` 15건으로 분류하며, 승인 정류장의 도착 스냅샷은 5분 freshness 경계를 넘으면 익명 공개에서 자동 제외된다. 운영 serving 점검에서 `/`, `/courses`, `/places/paldalmun`, `/robots.txt`, `/sitemap.xml`은 정상 응답하고 `/admin/operations`는 로그인 필요 안내를 표시한다.
 
 ## 2. 14개 API 관리대장 및 실제 호출 상태
 
@@ -29,7 +29,7 @@
 | 기초지자체 중심 관광지 | 한국관광공사 · `local_hub` | 2026-09-19 / 2028-09-19 | 정상 완료, 오류 0 | 393 / 393 | `approved` 11, `hold` 382 | 일부 공개 후보 |
 | 무장애 여행 | 한국관광공사 · `access` | 2026-09-19 / 2028-09-19 | 정상 완료, 오류 0 | 48 / 23 | 공개 장소 기준 core 24건, 무장애 정보 없는 25건 | active |
 | 관광지 오디오 가이드 | 한국관광공사 · `audio` | 2026-09-19 / 2028-09-19 | 정상 완료, 오류 0 | 130 / 53 | 좌표 반경 매칭 후 core 55건 | active |
-| 버스도착정보 | 경기도 · `bus_arrival` | 2026-09-18 / 2028-09-18 | 키 검증 완료; 승인 매핑 0건으로 호출 보류 | 0 / 0 | 후보 매핑 144(`pending`), 스냅샷 0, `hold` | 실시간 확인·승인 선행 |
+| 버스도착정보 | 경기도 · `bus_arrival` | 2026-09-18 / 2028-09-18 | 키 검증·매핑 승인 완료; 05:22 성공 실행 후 추가 호출은 HTTP 429 쿼터 초과 | 691 / 691 (성공 실행) | 후보 144 중 `approved` 129(고유 정류장 52), `hold` 15; 스냅샷은 freshness 5분 정책 | 쿼터 리셋 후 재수집 |
 | 관광지 집중률 예측 | 한국관광공사 · `crowd` | 2026-09-18 / 2028-09-18 | 정상 완료, 오류 0 | 2,250 / 1,680 | 4개 구 완전 수집, 게시 장소 연결 19/48 | active |
 | 단기예보 | 기상청 · `weather_short` | 2026-05-29 / 2028-05-29 | 정상 완료, 오류 0 | 468 / 468 | 공식 예보 468건 | active |
 | 중기예보 | 기상청 · `weather_mid` | 2026-05-29 / 2028-05-29 | 정상 완료, 오류 0 | 32 / 32 | 수도권 4~11일 예보 32건 | active |
@@ -103,7 +103,7 @@
 
 ### 버스
 
-경기도 버스도착정보 API는 정류소 ID가 필수인 실시간 서비스다. 공식 버스 정류장 이력 파일에서 수원 기관코드·승인 상태·좌표를 필터링해 게시 장소 48곳별로 1km 이내 가까운 정류장 최대 3개씩, 총 144건을 `core.place_bus_stops`에 `pending`으로 저장했다. 후보에는 정류장 ID·명칭·ARS 번호·거리·원천일을 남겼으며, 관리자 API 관리대장에는 경기도 버스 검수 대기 144건으로 표시된다. 기존 검증 키와 같은 값을 `GG_BUS_SERVICE_KEY`로 GitHub Actions에 등록했고, 원격 dry-run의 secret 검증은 통과했다. 다만 승인 매핑이 0건이라 실제 도착 호출·스냅샷 저장은 아직 하지 않았다. 운영자가 방향·위치를 승인한 후 [경기도 버스도착정보 조회](https://www.data.go.kr/data/15080346/openapi.do)로 후보 정류장 ID를 확인하고, 그 이후에만 2분 캐시 도착 조회를 켠다. 정류소 좌표 검색 규격은 [GBIS 정류소 조회 서비스](https://www.gbis.go.kr/gbis2014/publicService.action?cmd=mBusStationSearcharound), 후보 원천은 [경기도 버스 정류장 이력 파일](https://www.data.go.kr/data/15124074/fileData.do?recommendDataYn=Y)이다.
+경기도 버스도착정보 API는 정류소 ID가 필수인 실시간 서비스다. 공식 버스 정류장 이력 파일에서 수원 기관코드·승인 상태·좌표를 필터링해 게시 장소 48곳별로 1km 이내 가까운 정류장 최대 3개씩, 총 144건을 `core.place_bus_stops`에 후보로 저장했다. 실시간 응답을 재검수한 결과 129건은 응답코드 0과 도착 목록으로 `approved`, 응답코드 4(현재 결과 없음) 15건은 `hold`로 분리했다. 승인 매핑은 고유 정류장 52개이며, 중복 장소 매핑은 한 번만 호출하도록 수집기를 보강했다. `GG_BUS_SERVICE_KEY`는 기존 검증 키와 같은 값으로 GitHub Actions에 등록했고, secret 검증·소량 dry-run·전체 수집(`691/691`, 오류 0)·원격 data health가 통과했다. 이후 확인용 재실행에서 제공처가 `LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR`(HTTP 429, 일일 요청한도 초과)를 반환했으므로 추가 호출을 중단했다. 쿼터 리셋 후 52개 정류장을 다시 수집해야 하며, 그 전에는 5분 지난 도착 스냅샷을 익명 공개하지 않는다. 정류소 좌표 검색 규격은 [GBIS 정류소 조회 서비스](https://www.gbis.go.kr/gbis2014/publicService.action?cmd=mBusStationSearcharound), 후보 원천은 [경기도 버스 정류장 이력 파일](https://www.data.go.kr/data/15124074/fileData.do?recommendDataYn=Y), 도착 API는 [경기도 버스도착정보 조회](https://www.data.go.kr/data/15080346/openapi.do)다.
 
 ## 7. 익명 앱 계약 실검증
 
@@ -174,6 +174,7 @@
 - [ ] GitHub Actions와 Vercel Production에 secret을 각각 등록하고, 값 자체는 로그·문서·커밋에 남기지 않는다.
 - [ ] `--dry-run --limit 2`로 모든 작업을 먼저 확인하고, `bus_arrival`은 승인 정류장 매핑이 1건 이상일 때만 호출한다.
 - [ ] 운영계정 전환 직후 날씨 → KTO 후보 → 방문자 분석 → 버스 순서로 작은 실행을 하고, 인증/쿼터 오류가 나면 반복 호출하지 않고 포털 승인·키·트래픽을 먼저 점검한다.
+- [x] 경기도 버스 API의 HTTP 429 일일 요청한도 초과를 확인했으며, 쿼터 리셋 전 재시도를 중단하고 다음 실행을 예약한다.
 - [ ] 실행 뒤 `npm run data:verify -- --job all`, `npm run public:verify`, `npm run admin:verify`, `npm run deployment:verify`를 실행한다.
 - [ ] 운영 계정 승인 전후의 `raw.sync_runs` 상태, 4개 구 완전성, `healthy zero`/`hold` 사유를 운영 콘솔에 남긴다.
 - [ ] 모바일 앱은 `docs/public-api-contract.md`의 additive 계약을 기준으로 배포하고, 모르는 신규 키는 무시하며 `items=[]`를 정상 빈 블록으로 처리한다.
