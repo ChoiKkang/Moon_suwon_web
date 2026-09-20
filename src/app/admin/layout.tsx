@@ -14,7 +14,7 @@ export default async function AdminLayout({
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
     if (message.includes('인증 오류')) {
-      redirect('/?auth-error=true');
+      redirect('/?admin-login-required=true');
     }
     if (message.includes('관리자 권한')) {
       redirect('/?admin-error=true');

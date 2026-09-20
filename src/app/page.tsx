@@ -33,10 +33,12 @@ export default async function HomePage({
   const isAdmin = String(profile?.role ?? '').toUpperCase() === 'ADMIN';
   const {
     'auth-error': authErrorParam,
+    'admin-login-required': adminLoginRequiredParam,
     'admin-error': adminErrorParam,
     'account-deleted': accountDeletedParam,
   } = await searchParams;
   const hasAuthError = authErrorParam === 'true';
+  const hasAdminLoginRequired = adminLoginRequiredParam === 'true';
   const hasAdminError = adminErrorParam === 'true';
   const hasAccountDeleted = accountDeletedParam === 'true';
 
@@ -53,6 +55,7 @@ export default async function HomePage({
       events={events}
       eventsError={eventsError}
       hasAuthError={hasAuthError}
+      hasAdminLoginRequired={hasAdminLoginRequired}
       hasAdminError={hasAdminError}
       hasAccountDeleted={hasAccountDeleted}
     />

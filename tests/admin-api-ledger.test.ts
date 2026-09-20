@@ -109,3 +109,13 @@ test('public landing controls expose accessible names and semantic rails', () =>
   assert.match(landing, /text-zinc-400/);
   assert.match(rail, /role="region"/);
 });
+
+test('admin guard explains that a session is required instead of showing an OAuth failure', () => {
+  const layout = readFileSync(new URL('../src/app/admin/layout.tsx', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../src/app/page.tsx', import.meta.url), 'utf8');
+  const landing = readFileSync(new URL('../src/components/landing-client.tsx', import.meta.url), 'utf8');
+  assert.match(layout, /admin-login-required=true/);
+  assert.match(page, /adminLoginRequiredParam/);
+  assert.match(landing, /hasAdminLoginRequired/);
+  assert.match(landing, /관리자 로그인이 필요합니다/);
+});

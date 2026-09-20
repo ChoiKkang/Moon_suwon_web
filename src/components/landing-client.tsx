@@ -28,6 +28,7 @@ interface LandingClientProps {
   events: UpcomingEvent[];
   eventsError: string | null;
   hasAuthError: boolean;
+  hasAdminLoginRequired: boolean;
   hasAdminError: boolean;
   hasAccountDeleted: boolean;
 }
@@ -44,6 +45,7 @@ export function LandingClient({
   events,
   eventsError,
   hasAuthError,
+  hasAdminLoginRequired,
   hasAdminError,
   hasAccountDeleted,
 }: LandingClientProps) {
@@ -70,6 +72,15 @@ export function LandingClient({
   return (
     <div className="bg-[#0b1326] text-[#dae2fd] font-sans overflow-x-hidden min-h-screen flex flex-col selection:bg-yellow-500/20 selection:text-yellow-200">
       {/* OAuth 콜백 실패 알림. /auth/callback이 auth-error 파라미터를 붙여 되돌린다. */}
+      {hasAdminLoginRequired && (
+        <div
+          role="alert"
+          className="fixed top-20 inset-x-0 z-[60] mx-auto w-[min(92%,32rem)] flex items-start gap-3 rounded-xl border border-amber-400/40 bg-amber-950/90 px-4 py-3 text-sm text-amber-100 shadow-lg backdrop-blur-md"
+        >
+          <ShieldAlert className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+          <span>관리자 로그인이 필요합니다. 로그인 후 운영 콘솔을 다시 열어 주세요.</span>
+        </div>
+      )}
       {hasAuthError && (
         <div
           role="alert"
