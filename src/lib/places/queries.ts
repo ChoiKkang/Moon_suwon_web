@@ -4,6 +4,7 @@ import { toSecureImageUrl } from '@/lib/media/urls';
 import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
 import type { AccessibilityFacts } from './accessibility';
 import { mapAudioStory, type AudioStory, type AudioStoryRow } from './audio-stories';
+import { parsePublicPlaceExtras, type PublicPlaceExtras } from './public-extras';
 
 type PlaceViewName = 'v_imported_places' | 'v_published_places';
 
@@ -192,4 +193,25 @@ export async function getPublishedPlaceBySlug(slug: string): Promise<{
   }
 
   return { place: null, error: null };
+}
+
+/**
+ * Optional place-detail blocks are served by the reviewed public RPC rather
+ * than by raw/core tables. A failure here is deliberately isolated from the
+ * main place view so a stale enrichment cannot blank a published page.
+ */
+export async function getPublicPlaceExtras(slug: string): Promise<{
+  extras: PublicPlaceExtras | null;
+  error: string | null;
+}> {
+  const supabase = await createClient();
+  const candidates = [...new Set([slug, slug.normalize('NFC'), slug.normalize('NFD')])];
+
+  for (const candidate of candidates) {
+    const { data, error } = await supabase.rpc('get_place_by_slug', { p_slug: candidate });
+    if (error) return { extras: null, error: error.message };
+    if (data) return { extras: parsePublicPlaceExtras(data), error: null };
+  }
+
+  return { extras: null, error: null };
 }

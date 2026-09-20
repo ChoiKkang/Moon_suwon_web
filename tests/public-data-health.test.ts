@@ -57,6 +57,19 @@ test('bus arrival with no reviewed stations remains an explicit hold', () => {
   assert.deepEqual(result.findings, []);
 });
 
+test('request-time bus cache expiry is a warning, not a failed scheduled sync', () => {
+  const result = evaluateApiHealth(
+    getPublicApiDefinition('gg_bus_arrival'),
+    run({ completedAt: '2026-09-20T11:00:00Z', metadata: { operational_status: 'completed', scope_counts: { mapped_stations: 12 } } }),
+    null,
+    { rawCount: 720, publicCount: 720, latestBusFetchedAt: '2026-09-20T11:00:00Z' },
+    new Date('2026-09-21T12:00:00Z'),
+  );
+  assert.equal(result.status, 'warning');
+  assert.ok(result.findings.some((finding) => finding.code === 'bus_cache_expired' && finding.severity === 'warning'));
+  assert.equal(result.findings.some((finding) => finding.code === 'sla_expired'), false);
+});
+
 test('photo count dropping by ninety percent is a warning', () => {
   const result = evaluateApiHealth(
     getPublicApiDefinition('kto_photo'),

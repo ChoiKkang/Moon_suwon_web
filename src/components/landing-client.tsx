@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { type User } from '@supabase/supabase-js';
 import { LoginModal } from '@/components/auth/login-modal';
 import { signOut } from '@/app/actions/auth';
-import { Moon, Menu, Sparkles, LogOut, LayoutDashboard, ShieldAlert, UserCog, CheckCircle2, ArrowRight, Clock, MapPin } from 'lucide-react';
+import { Moon, Menu, Sparkles, LogOut, LayoutDashboard, ShieldAlert, UserCog, CheckCircle2, ArrowRight, Clock, MapPin, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import type { ImportedPlace } from '@/lib/places/types';
 import type { ServiceCourse } from '@/lib/courses/types';
@@ -16,6 +16,7 @@ import { ScrollRail } from '@/components/public/scroll-rail';
 import { SectionHeading } from '@/components/public/section-heading';
 import { StatusPill } from '@/components/public/status-pill';
 import { VisualPlaceholder } from '@/components/public/visual-placeholder';
+import { AppCta } from '@/components/public/app-cta';
 
 interface LandingClientProps {
   initialUser: User | null;
@@ -33,6 +34,16 @@ interface LandingClientProps {
   hasAdminError: boolean;
   hasAccountDeleted: boolean;
 }
+
+const STORY_SPOT_SLUGS = [
+  'hwaseong-haenggung',
+  'janganmun',
+  'hwahongmun',
+  'banghwasuryujeong',
+  'yeonmudae',
+  'changnyongmun',
+  'seojangdae',
+] as const;
 
 export function LandingClient({
   initialUser,
@@ -60,6 +71,11 @@ export function LandingClient({
   const crowdDescription = hasRelaxedSpots
     ? '오늘 사람이 덜 몰릴 곳부터 보여드립니다. 한국관광공사가 제공하는 하루 단위 예상치라 지금 현장 인원은 아닙니다.'
     : '오늘은 어느 곳이든 사람이 많을 전망입니다. 그래도 상대적으로 덜 붐빌 순서로 보여드립니다. 하루 단위 예상치라 지금 현장 인원은 아닙니다.';
+  const storySpots = STORY_SPOT_SLUGS
+    .map((slug) => importedPlaces.find((place) => place.slug === slug))
+    .filter((place): place is ImportedPlace => Boolean(place?.shortStory))
+    .slice(0, 4);
+  const storyActTitles = ['행궁의 명령', '북쪽 관문', '물과 달빛', '훈련과 귀환'];
 
   const formatEventDate = (startDate: string, endDate: string) => {
     const format = (value: string) => value.replace(/-/g, '.');
@@ -126,6 +142,7 @@ export function LandingClient({
             <Link className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="/courses">문화유산 코스</Link>
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#now-good">오늘 붐빔 정도</a>
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#moon-spots">달빛 스팟</a>
+            <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#night-story">정조의 밤</a>
             <Link className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="/events">행사 소식</Link>
             <a className="text-[#d0c6ab] hover:text-[#fff6df] transition-colors duration-300 text-sm font-semibold tracking-wider" href="#heritage-story">수원 소개</a>
             {initialIsAdmin && (
@@ -188,6 +205,7 @@ export function LandingClient({
             <Link onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="/courses">문화유산 코스</Link>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#now-good">오늘 붐빔 정도</a>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#moon-spots">달빛 스팟</a>
+            <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#night-story">정조의 밤</a>
             <Link onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="/events">행사 소식</Link>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#heritage-story">수원 소개</a>
             {initialIsAdmin && (
@@ -268,7 +286,7 @@ export function LandingClient({
             </h1>
             
             <p className="motion-reveal max-w-2xl text-base leading-relaxed text-[#d0c6ab] [animation-delay:240ms] md:text-lg">
-              세계문화유산 수원화성의 시간을 초월한 아름다움을 경험하세요. 달빛수원 앱을 다운로드하여 큐레이션된 산책 코스, 역사적 통찰, 그리고 특별한 야간 이벤트를 만나보세요.
+              세계문화유산 수원화성의 시간을 초월한 아름다움을 경험하세요. 큐레이션된 산책 코스, 역사적 통찰, 그리고 특별한 야간 이벤트를 둘러본 뒤 앱에서 현장 경험을 이어갈 수 있습니다.
             </p>
             
             <div className="motion-reveal mt-8 flex w-full max-w-md flex-col justify-center gap-4 [animation-delay:360ms] sm:flex-row">
@@ -432,6 +450,46 @@ export function LandingClient({
           </div>
         </section>
 
+        <section id="night-story" className="relative overflow-hidden bg-[#0b1326] py-24">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,215,0,0.09),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(103,140,255,0.11),transparent_38%)]" />
+          <div className="relative container mx-auto max-w-[1440px] px-6 md:px-20">
+            <SectionHeading eyebrow="정조의 밤 4막" title="장소를 따라 이어지는 밤의 이야기" description="공개 승인된 장소 이야기만 골라, 수원화성의 밤을 네 장면으로 이어 보았습니다." />
+            {storySpots.length > 0 ? (
+              <ScrollRail label="정조의 밤 이야기 목록" className="xl:grid-cols-4">
+                {storySpots.map((place, index) => (
+                  <Link
+                    key={place.slug}
+                    href={`/places/${place.slug}`}
+                    className="group flex min-w-[82%] snap-start flex-col overflow-hidden rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/90 shadow-xl transition hover:-translate-y-1 hover:border-[#ffd700]/40 md:min-w-0"
+                  >
+                    {place.heroImageUrl ? (
+                      <div role="img" aria-label={place.displayName} className="aspect-[4/3] shrink-0 bg-cover bg-center" style={{ backgroundImage: `url(${place.heroImageUrl})` }} />
+                    ) : (
+                      <VisualPlaceholder label={place.displayName} className="aspect-[4/3] shrink-0" />
+                    )}
+                    <div className="flex flex-1 flex-col p-5">
+                      <div className="flex items-center gap-2 text-xs font-black tracking-wide text-[#ffd700]">
+                        <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                        {storyActTitles[index] ?? `장면 ${index + 1}`}
+                      </div>
+                      <h3 className="mt-3 text-lg font-black text-white">{place.displayName}</h3>
+                      <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-[#d0c6ab]">{place.shortStory}</p>
+                      <span className="mt-auto inline-flex items-center gap-1.5 pt-5 text-xs font-black text-[#ffd700]">
+                        장소 이야기 보기
+                        <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" aria-hidden="true" />
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </ScrollRail>
+            ) : (
+              <div className="rounded-3xl border border-[#3e495d]/30 bg-[#171f33]/70 p-8 text-sm text-[#d0c6ab]">
+                공개 승인된 장소 이야기를 준비 중입니다. 코스와 달빛 스팟은 먼저 확인할 수 있습니다.
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* App Showcase & SEO Section */}
         <section id="heritage-story" className="py-24 bg-[#131b2e] relative overflow-hidden">
           <div className="container mx-auto px-6 md:px-20 max-w-[1440px]">
@@ -483,6 +541,7 @@ export function LandingClient({
                     <p className="text-xs text-[#d0c6ab]">추천 코스</p>
                   </div>
                 </div>
+                <AppCta className="mt-8 max-w-md" context="큐레이션된 코스와 현장 미션을 앱에서 이어가세요." />
               </div>
             </div>
           </div>
@@ -539,6 +598,7 @@ export function LandingClient({
             <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/courses">코스 보기</Link>
             <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#now-good">오늘 붐빔 정도</a>
             <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#moon-spots">달빛 스팟</a>
+            <a className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="#night-story">정조의 밤</a>
             <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/events">행사 소식</Link>
             <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/support">고객 지원</Link>
             <Link className="text-[#fff6df] hover:text-[#ffd700] font-semibold transition-colors" href="/privacy">개인정보처리방침</Link>

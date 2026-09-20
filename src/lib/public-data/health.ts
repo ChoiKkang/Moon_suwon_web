@@ -75,7 +75,12 @@ export function evaluateApiHealth(
   if (latestRun.errorCount > 0) warn('run_errors', `최근 실행에 오류 ${latestRun.errorCount}건이 있습니다.`);
 
   const runAgeHours = hoursBetween(now, latestRun.completedAt);
-  if (runAgeHours > definition.freshnessSlaHours) {
+  // Bus arrivals are request-time data with a two-minute cache. The latest
+  // sync run is only a mapping/diagnostic run, so applying its five-minute SLA
+  // would mark the API failed every night even when nobody has requested a
+  // live arrival yet.
+  const isRequestTimeBus = definition.key === 'gg_bus_arrival';
+  if (!isRequestTimeBus && runAgeHours > definition.freshnessSlaHours) {
     fail('sla_expired', `마지막 완료 시각이 SLA ${definition.freshnessSlaHours}시간을 넘었습니다.`);
   }
 
@@ -124,7 +129,7 @@ export function evaluateApiHealth(
   }
   if (definition.key === 'gg_bus_arrival' && dataset.publicCount > 0) {
     if (hoursBetween(now, dataset.latestBusFetchedAt) > definition.freshnessSlaHours) {
-      fail('bus_cache_expired', '승인된 정류장의 버스 캐시가 만료되었습니다.');
+      warn('bus_cache_expired', '최근 요청 이후 버스 캐시가 만료되었습니다. 다음 요청에서 다시 수집합니다.');
     }
   }
 

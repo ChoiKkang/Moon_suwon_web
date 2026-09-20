@@ -22,6 +22,7 @@ import type {
   CandidateIngestionStatus,
 } from './types';
 import { buildAdminApiLedger, mergeBusStopReviewRows, type ApiRegistryRow, type ApiReviewRow, type BusStopReviewRow } from './api-ledger';
+import { buildPublicContentCoverage, type PublicContentCoverageInput } from './content-coverage';
 import { candidateMatchesFilter, normalizeCandidateFilter } from './review';
 import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
 
@@ -75,6 +76,7 @@ type PlaceCopyRow = {
   short_description: string | null;
   night_highlight: string | null;
   photo_tip: string | null;
+  mission_type: string | null;
   mission_title: string | null;
   mission_body: string | null;
   mission_prompt: string | null;
@@ -257,6 +259,7 @@ function mapCopy(row: PlaceCopyRow | undefined): AdminPlaceCopy {
     shortDescription: row?.short_description ?? null,
     nightHighlight: row?.night_highlight ?? null,
     photoTip: row?.photo_tip ?? null,
+    missionType: row?.mission_type ?? null,
     missionTitle: row?.mission_title ?? null,
     missionBody: row?.mission_body ?? null,
     missionPrompt: row?.mission_prompt ?? null,
@@ -271,7 +274,7 @@ async function getAdminPlacesForClient(adminClient: ReturnType<typeof getAdminCl
     adminClient.schema('core').from('place_sources').select('place_id, kto_content_id, kto_content_type_id, ingestion_status, first_seen_at, last_seen_at'),
     adminClient.schema('core').from('place_images').select('place_id, image_url, is_hero').eq('is_hero', true),
     adminClient.schema('editorial').from('place_publish_state').select('place_id, is_published, display_priority, is_now_good_enabled, night_suitability_score, recommended_from, recommended_until, recommendation_boost, ops_memo'),
-    adminClient.schema('editorial').from('place_copy').select('id, place_id, display_name, short_description, night_highlight, photo_tip, mission_title, mission_body, mission_prompt, couple_question, short_story'),
+    adminClient.schema('editorial').from('place_copy').select('id, place_id, display_name, short_description, night_highlight, photo_tip, mission_type, mission_title, mission_body, mission_prompt, couple_question, short_story'),
     adminClient.schema('core').from('place_pet_policies').select('place_id, pet_policy, pet_note_short, data_status, source_updated_at, is_manual_override'),
   ]);
   const error = firstError(placesResult.error, sourceResult.error, imageResult.error, stateResult.error, copyResult.error, petResult.error);
@@ -549,9 +552,14 @@ async function buildEnrichmentCoverage(
   const publishedIds = new Set(places.filter((place) => place.isPublished).map((place) => place.id));
   const publishedPlaces = publishedIds.size;
 
-  const [audioResult, accessResult] = await Promise.all([
+  const [audioResult, accessResult, photoResult, wellnessResult, relationResult, busStopResult, weatherResult] = await Promise.all([
     adminClient.schema('core').from('place_audio_stories').select('place_id, audio_url'),
     adminClient.schema('core').from('place_accessibility').select('place_id'),
+    adminClient.schema('core').from('place_photo_candidates').select('place_id, review_status'),
+    adminClient.schema('core').from('place_wellness').select('place_id, review_status'),
+    adminClient.schema('core').from('place_relations').select('origin_place_id, related_place_id, review_status'),
+    adminClient.schema('core').from('place_bus_stops').select('place_id, review_status'),
+    adminClient.schema('core').from('weather_forecasts').select('forecast_at').eq('forecast_kind', 'short').eq('scope_key', '60:121').order('fetched_at', { ascending: false }).limit(2000),
   ]);
 
   const audioRows = (audioResult.data ?? []).filter((row) => publishedIds.has(String(row.place_id)));
@@ -561,6 +569,27 @@ async function buildEnrichmentCoverage(
     (accessResult.data ?? []).map((row) => String(row.place_id)).filter((id) => publishedIds.has(id)),
   ).size;
   const petPlaces = places.filter((place) => place.isPublished && place.petPolicy !== 'unknown').length;
+  const missionPlaces = places.filter((place) => place.isPublished && Boolean(place.copy.missionType && place.copy.missionPrompt)).length;
+  const storyPlaces = places.filter((place) => place.isPublished && Boolean(place.copy.shortStory)).length;
+  const photoRows = (photoResult.data ?? []).filter((row) => row.review_status === 'approved' && publishedIds.has(String(row.place_id)));
+  const wellnessRows = (wellnessResult.data ?? []).filter((row) => row.review_status === 'approved' && publishedIds.has(String(row.place_id)));
+  const relationRows = (relationResult.data ?? []).filter((row) => row.review_status === 'approved' && publishedIds.has(String(row.origin_place_id)) && publishedIds.has(String(row.related_place_id)));
+  const busRows = (busStopResult.data ?? []).filter((row) => row.review_status === 'approved' && publishedIds.has(String(row.place_id)));
+  const weatherRows = weatherResult.data ?? [];
+  const publicContentCoverage: PublicContentCoverageInput = {
+    publishedPlaces,
+    missionPlaces,
+    storyPlaces,
+    relatedPlaces: new Set(relationRows.map((row) => String(row.origin_place_id))).size,
+    relatedItems: relationRows.length,
+    photoPlaces: new Set(photoRows.map((row) => String(row.place_id))).size,
+    photoItems: photoRows.length,
+    wellnessPlaces: new Set(wellnessRows.map((row) => String(row.place_id))).size,
+    wellnessItems: wellnessRows.length,
+    busPlaces: new Set(busRows.map((row) => String(row.place_id))).size,
+    busItems: busRows.length,
+    weatherItems: weatherRows.length,
+  };
 
   return [
     {
@@ -589,6 +618,7 @@ async function buildEnrichmentCoverage(
       items: null,
       note: '동반 가능 여부가 확인된 장소만 셉니다.',
     },
+    ...buildPublicContentCoverage(publicContentCoverage),
   ];
 }
 

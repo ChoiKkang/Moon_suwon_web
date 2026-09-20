@@ -44,6 +44,7 @@ function place(overrides: Partial<AdminPlace> = {}): AdminPlace {
       shortDescription: '용연 위에 앉은 정자',
       nightHighlight: '수면에 비친 조명 반영',
       photoTip: null,
+      missionType: null,
       missionTitle: null,
       missionBody: null,
       missionPrompt: null,

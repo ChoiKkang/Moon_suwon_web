@@ -10,6 +10,7 @@ export type AdminPlaceCopy = {
   shortDescription: string | null;
   nightHighlight: string | null;
   photoTip: string | null;
+  missionType: string | null;
   missionTitle: string | null;
   missionBody: string | null;
   missionPrompt: string | null;
@@ -190,14 +191,15 @@ export type AdminSyncRun = {
 };
 
 /**
- * 부가 정보가 공개 장소 중 몇 곳에 붙었는지.
+ * 부가 정보가 공개 장소 중 몇 곳에 붙었는지. 원천·승인 API와 편집 문구를
+ * 같은 카드에서 비교해 운영자가 수집 성공과 실제 화면 커버리지를 구분한다.
  *
  * 오디오 해설·무장애·반려동물은 각기 다른 KTO 서비스에서 오고 커버리지가 크게
  * 다르다. 운영자가 "수집이 돌았는지"는 Sync Runs에서 보지만 "그래서 화면에 뭐가
  * 붙었는지"는 알 수 없었다. 공개 장소 기준 채움 비율을 함께 보여준다.
  */
 export type AdminEnrichmentCoverage = {
-  key: 'audio' | 'accessibility' | 'pet';
+  key: 'audio' | 'accessibility' | 'pet' | 'missions' | 'stories' | 'related' | 'photos' | 'wellness' | 'bus' | 'weather';
   label: string;
   /** 값이 붙은 공개 장소 수. */
   places: number;

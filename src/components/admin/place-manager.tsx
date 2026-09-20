@@ -221,5 +221,5 @@ export function PlaceManager({
 }
 
 function emptyCopy(): AdminPlaceCopy {
-  return { id: null, displayName: null, shortDescription: null, nightHighlight: null, photoTip: null, missionTitle: null, missionBody: null, missionPrompt: null, coupleQuestion: null, shortStory: null };
+  return { id: null, displayName: null, shortDescription: null, nightHighlight: null, photoTip: null, missionType: null, missionTitle: null, missionBody: null, missionPrompt: null, coupleQuestion: null, shortStory: null };
 }

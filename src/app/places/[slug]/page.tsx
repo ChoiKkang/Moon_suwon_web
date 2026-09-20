@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { Accessibility, ArrowLeft, Camera, Compass, Dog, ExternalLink, Headphones, MapPin, Moon, Navigation, Phone, Route, Sparkles } from 'lucide-react';
+import { Accessibility, ArrowLeft, Bus, Camera, Cloud, Compass, Dog, ExternalLink, Headphones, Heart, MapPin, Moon, Navigation, Phone, Route, Sparkles } from 'lucide-react';
 import { filterCoursesContainingPlace, getPublishedCourses } from '@/lib/courses/queries';
-import { getPlaceAudioStories, getPublishedPlaceBySlug } from '@/lib/places/queries';
+import { getPlaceAudioStories, getPublicPlaceExtras, getPublishedPlaceBySlug } from '@/lib/places/queries';
 import { groupAccessibility } from '@/lib/places/accessibility';
 import { formatPlayTime, splitAudioStories } from '@/lib/places/audio-stories';
 import { StatusPill } from '@/components/public/status-pill';
 import { buildPlaceNavigationLinks } from '@/lib/navigation/links';
+import { AppCta } from '@/components/public/app-cta';
+import { shouldShowBusArrivals } from '@/lib/places/public-extras';
 
 type PlaceDetailPageProps = {
   params: Promise<{
@@ -21,6 +23,44 @@ const petPolicyLabels: Record<string, string> = {
   not_allowed: '반려동물 동반 불가',
   unknown: '반려동물 정보 확인 필요',
 };
+
+const missionTypeLabels: Record<string, string> = {
+  photo: '촬영 미션',
+  look: '관찰 미션',
+  listen: '청취 미션',
+  walk: '걷기 미션',
+};
+
+const weatherCategoryLabels: Record<string, string> = {
+  TMP: '기온',
+  TMN: '최저 기온',
+  TMX: '최고 기온',
+  SKY: '하늘 상태',
+  PTY: '강수',
+  PCP: '강수량',
+  POP: '강수확률',
+  WSD: '풍속',
+};
+
+function freshnessLabel(status: string) {
+  if (status === 'fresh') return '최근 수집';
+  if (status === 'stale') return '일부 지연';
+  if (status === 'expired') return '만료';
+  return '상태 확인 필요';
+}
+
+function formatForecastAt(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? '예보 시각 정보 없음'
+    : date.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function formatArrival(seconds: number | null) {
+  if (seconds === null) return '도착 시각 확인 중';
+  if (seconds < 60) return `${seconds}초 후`;
+  return `${Math.max(1, Math.round(seconds / 60))}분 후`;
+}
 
 // Per-place metadata so each published spot has its own share title instead of
 // falling back to the site-wide default.
@@ -65,11 +105,16 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
 
   // 오디오 해설과 공개 코스는 장소 상세에서 함께 사용하는 읽기 데이터다.
   // 둘 다 실패해도 장소 본문은 유지하고 해당 부가 블록만 안전하게 숨긴다.
-  const [audioStories, publishedCoursesResult] = place
-    ? await Promise.all([getPlaceAudioStories(place.id), getPublishedCourses()])
-    : [[], { courses: [], error: null }];
+  const [audioStories, publishedCoursesResult, extrasResult] = place
+    ? await Promise.all([getPlaceAudioStories(place.id), getPublishedCourses(), getPublicPlaceExtras(place.slug)])
+    : [[], { courses: [], error: null }, { extras: null, error: null }];
   const { playable: playableStories, readable: readableStories } = splitAudioStories(audioStories);
   const hasAudioStories = playableStories.length > 0 || readableStories.length > 0;
+  const extras = extrasResult.extras;
+  const hasMission = Boolean(extras?.missionPrompt || extras?.coupleQuestion);
+  const hasWeather = Boolean(extras && extras.weatherSummary.items.length > 0);
+  const hasBusArrivals = Boolean(extras && shouldShowBusArrivals(extras.nearbyBusArrivals));
+  const hasRelatedPlaces = Boolean(extras && extras.relatedPlaces.items.length > 0);
   const containingCourses = place && !publishedCoursesResult.error
     ? filterCoursesContainingPlace(publishedCoursesResult.courses, place.id)
     : [];
@@ -129,6 +174,30 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
         <section className="px-6 pb-20 md:px-20">
           <div className="mx-auto grid max-w-[1440px] grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
             <div className="rounded-[2rem] border border-[#3e495d]/35 bg-[#141d32] p-6 md:p-8">
+              {hasMission && extras ? (
+                <div className="mb-8 rounded-3xl border border-[#ffd700]/25 bg-[#ffd700]/5 p-5 md:p-6">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Sparkles className="h-5 w-5 text-[#ffd700]" aria-hidden="true" />
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#ffd700]">
+                      {missionTypeLabels[extras.missionType ?? ''] ?? '달빛 미션'}
+                    </p>
+                  </div>
+                  {extras.missionPrompt ? (
+                    <p className="mt-4 text-lg font-black leading-relaxed text-[#fff6df]">{extras.missionPrompt}</p>
+                  ) : null}
+                  {extras.coupleQuestion ? (
+                    <div className="mt-4 flex gap-3 rounded-2xl bg-[#0b1326]/65 p-4">
+                      <Heart className="mt-0.5 h-4 w-4 shrink-0 text-[#ffd700]" aria-hidden="true" />
+                      <p className="text-sm leading-relaxed text-[#d0c6ab]">{extras.coupleQuestion}</p>
+                    </div>
+                  ) : null}
+                  <p className="mt-4 text-xs leading-relaxed text-[#8f9bb3]">
+                    이 페이지에서는 미션을 미리 보고, 현장 체크인과 진행은 달빛수원 앱에서 이어갑니다.
+                  </p>
+                  <AppCta className="mt-4 w-full" context="현장 미션과 위치 기반 안내를 앱에서 이어가세요." />
+                </div>
+              ) : null}
+
               {place.nightHighlight || place.photoTip || place.shortStory ? (
                 <div className="mb-8 space-y-4">
                   <h2 className="text-2xl font-black text-white">밤에 보는 이곳</h2>
@@ -339,9 +408,87 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
                   </p>
                 </div>
               ) : null}
+
+              {hasWeather && extras ? (
+                <div className="mt-6 rounded-3xl border border-[#3e495d]/40 bg-[#0b1326]/70 p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <Cloud className="h-5 w-5 text-[#ffd700]" aria-hidden="true" />
+                      <p className="text-sm font-black text-white">오늘 밤 날씨 참고</p>
+                    </div>
+                    <span className="rounded-full bg-[#171f33] px-2.5 py-1 text-[10px] font-black text-[#d0c6ab]">
+                      {freshnessLabel(extras.weatherSummary.dataStatus)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-[#8f9bb3]">기상청 단기예보 기준입니다. 현장 체감과 운영 여부는 출발 전에 다시 확인하세요.</p>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {extras.weatherSummary.items.slice(0, 4).map((item) => (
+                      <div key={`${item.forecastAt}-${item.category}`} className="rounded-2xl bg-[#171f33]/70 p-3">
+                        <div className="flex items-center justify-between gap-3 text-[11px] text-[#8f9bb3]">
+                          <span>{weatherCategoryLabels[item.category] ?? item.category}</span>
+                          <span>{formatForecastAt(item.forecastAt)}</span>
+                        </div>
+                        <p className="mt-2 text-sm font-black text-[#fff6df]">
+                          {item.valueText ?? item.valueNumber}{item.unit ?? ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {hasBusArrivals && extras ? (
+                <div className="mt-6 rounded-3xl border border-[#3e495d]/40 bg-[#0b1326]/70 p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <Bus className="h-5 w-5 text-[#ffd700]" aria-hidden="true" />
+                      <p className="text-sm font-black text-white">주변 버스 도착</p>
+                    </div>
+                    <span className="rounded-full bg-[#171f33] px-2.5 py-1 text-[10px] font-black text-[#d0c6ab]">
+                      {freshnessLabel(extras.nearbyBusArrivals.dataStatus)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-[#8f9bb3]">승인된 정류장 매핑과 최근 수집된 도착 정보만 표시합니다. 심야에는 운행 정보가 없을 수 있습니다.</p>
+                  <div className="mt-4 space-y-2">
+                    {extras.nearbyBusArrivals.items.slice(0, 6).map((arrival) => (
+                      <div key={`${arrival.stationId}-${arrival.routeId ?? 'route'}-${arrival.arrivalOrder ?? 'arrival'}`} className="flex items-center justify-between gap-3 rounded-2xl bg-[#171f33]/70 px-3 py-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-black text-white">{arrival.stationName}</p>
+                          <p className="mt-1 text-[11px] text-[#8f9bb3]">{arrival.routeName ?? arrival.routeId ?? '노선 확인 중'}{arrival.remainingStops !== null ? ` · ${arrival.remainingStops}정거장` : ''}</p>
+                        </div>
+                        <p className="shrink-0 text-xs font-black text-[#ffd700]">{formatArrival(arrival.arrivalSeconds)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <aside className="rounded-[2rem] border border-[#ffd700]/25 bg-[#171f33] p-6">
+              {hasRelatedPlaces && extras ? (
+                <div className="mb-8">
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-5 w-5 text-[#ffd700]" aria-hidden="true" />
+                    <h2 className="text-xl font-black text-white">이어서 걸을 곳</h2>
+                  </div>
+                  <p className="mt-3 text-xs leading-relaxed text-[#d0c6ab]">공개 승인된 연관 관광지 중 다음 동선으로 이어 보기 좋은 곳입니다.</p>
+                  <div className="mt-4 space-y-2">
+                    {extras.relatedPlaces.items.slice(0, 4).map((related) => (
+                      <Link
+                        key={related.id}
+                        href={`/places/${related.slug}`}
+                        className="flex items-center justify-between rounded-2xl border border-[#ffd700]/20 bg-[#0b1326]/60 px-4 py-3 text-sm font-bold text-white transition hover:border-[#ffd700]/60"
+                      >
+                        <span>{related.displayName}</span>
+                        <ExternalLink className="h-4 w-4 text-[#ffd700]" aria-hidden="true" />
+                      </Link>
+                    ))}
+                  </div>
+                  {extras.relatedPlaces.dataStatus === 'stale' ? (
+                    <p className="mt-3 text-[11px] text-amber-100">연관 정보가 일부 지연되어 있을 수 있습니다.</p>
+                  ) : null}
+                </div>
+              ) : null}
               <Route className="h-8 w-8 text-[#ffd700]" />
               <h2 className="mt-5 text-2xl font-black text-white">이 스팟이 포함된 코스</h2>
               {publishedCoursesResult.error ? (
