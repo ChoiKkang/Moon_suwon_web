@@ -8,5 +8,5 @@ import type { ReactNode } from 'react';
  * h-full과 flex 배치를 함께 써야 효과가 있다.
  */
 export function ScrollRail({ children, label, className = '' }: { children: ReactNode; label: string; className?: string }) {
-  return <div aria-label={label} className={`scroll-rail flex snap-x snap-mandatory items-stretch gap-5 overflow-x-auto pb-3 md:grid md:grid-cols-2 md:items-stretch md:overflow-visible xl:grid-cols-4 ${className}`}>{children}</div>;
+  return <div role="region" aria-label={label} className={`scroll-rail flex snap-x snap-mandatory items-stretch gap-5 overflow-x-auto pb-3 md:grid md:grid-cols-2 md:items-stretch md:overflow-visible xl:grid-cols-4 ${className}`}>{children}</div>;
 }

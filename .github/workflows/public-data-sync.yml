@@ -87,7 +87,17 @@ jobs:
           : "${NEXT_PUBLIC_SUPABASE_URL:?required}"
           : "${NEXT_PUBLIC_SUPABASE_ANON_KEY:?required}"
           : "${SUPABASE_SERVICE_ROLE_KEY:?required}"
-          : "${KTO_SERVICE_KEY:?required compatibility key}"
+          case "${{ matrix.job }}" in
+            weather_short|weather_mid)
+              : "${KMA_SERVICE_KEY:?KMA_SERVICE_KEY required for weather jobs}"
+              ;;
+            bus_arrival)
+              : "${GG_BUS_SERVICE_KEY:?GG_BUS_SERVICE_KEY required for bus jobs}"
+              ;;
+            *)
+              : "${KTO_SERVICE_KEY:?KTO_SERVICE_KEY required for KTO-backed jobs}"
+              ;;
+          esac
       - name: Run approved source sync
         shell: bash
         run: |

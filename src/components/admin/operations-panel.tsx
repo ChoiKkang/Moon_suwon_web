@@ -6,6 +6,7 @@ import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
 import type { AdminApiLedgerItem, AdminAuditEvent, AdminCandidate, AdminCrowdSummary, AdminEnrichmentCoverage, AdminSourceHealth, AdminSyncError, AdminSyncRun } from '@/lib/admin/types';
 
 const KTO_SYNC_WORKFLOW_URL = 'https://github.com/ChoiKkang/Moon_suwon_web/actions/workflows/kto-data-sync.yml';
+const PUBLIC_DATA_SYNC_WORKFLOW_URL = 'https://github.com/ChoiKkang/Moon_suwon_web/actions/workflows/public-data-sync.yml';
 
 const manualSyncJobs = [
   { id: 'content', label: '장소·이미지', description: 'KTO 장소와 대표 이미지를 갱신합니다.' },
@@ -13,6 +14,18 @@ const manualSyncJobs = [
   { id: 'pet', label: '반려동물 정보', description: '장소별 반려동물 동반 정책을 갱신합니다.' },
   { id: 'access', label: '무장애 정보', description: '경사로·화장실 등 접근성 정보를 갱신합니다.' },
   { id: 'audio', label: '오디오 해설', description: '공개 장소 주변 오디오 해설을 다시 잇습니다.' },
+] as const;
+
+const publicManualSyncJobs = [
+  { id: 'photo', label: '관광 사진', description: '검수 후보 사진을 수집합니다. 승인 전에는 공개하지 않습니다.' },
+  { id: 'wellness', label: '웰니스 관광', description: '웰니스 후보 정보를 수집합니다. 수원 범위와 원천을 검수합니다.' },
+  { id: 'local_hub', label: '기초지자체 관광지', description: '수원 기초지자체 관광지 정보를 갱신합니다.' },
+  { id: 'related', label: '연관 관광지', description: '관광지별 연관 정보를 갱신하고 중복·범위를 검수합니다.' },
+  { id: 'durunubi', label: '두루누비', description: '수원 교차 코스가 없으면 정상 0건으로 유지합니다.' },
+  { id: 'visitors', label: '지역별 방문자수', description: '운영 분석용 지역 방문자 통계를 갱신합니다.' },
+  { id: 'weather_short', label: '기상청 단기예보', description: '공개 화면에 사용할 단기예보를 갱신합니다.' },
+  { id: 'weather_mid', label: '기상청 중기예보', description: '공개 화면에 사용할 중기예보를 갱신합니다.' },
+  { id: 'bus_arrival', label: '경기도 버스도착', description: '정류장 매핑이 승인되기 전까지 보류 상태입니다.' },
 ] as const;
 
 function formatDate(value: string | null) {
@@ -128,6 +141,33 @@ export function OperationsPanel({ crowd, syncRuns, syncErrors, candidates, sourc
               <p className="mt-3 text-[11px] font-bold text-[#ffd700]">Run workflow에서 `{job.id}` 선택</p>
             </a>
           ))}
+        </div>
+        <div className="mt-7 border-t border-[#3e495d]/30 pt-6">
+          <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#ffd700]">Approved Public Data</p>
+              <h3 className="mt-2 text-lg font-black text-white">승인 API 추가 수집</h3>
+              <p className="mt-2 max-w-3xl text-xs leading-relaxed text-[#d0c6ab]">
+                공개 데이터 워크플로에서 작업을 선택합니다. 검수 전 후보는 관리자 화면에만 남고, 경기도 버스는 정류장 매핑 승인 전까지 보류입니다.
+              </p>
+            </div>
+            <a href={PUBLIC_DATA_SYNC_WORKFLOW_URL} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-[#ffd700]/50 px-4 py-3 text-xs font-black text-[#ffd700] transition hover:bg-[#ffd700]/10">
+              공개 데이터 워크플로
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
+          <div className="mt-5 grid items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {publicManualSyncJobs.map((job) => (
+              <a key={job.id} href={PUBLIC_DATA_SYNC_WORKFLOW_URL} target="_blank" rel="noreferrer" className="group flex h-full flex-col rounded-2xl border border-[#3e495d]/40 bg-[#0b1326]/60 p-4 transition hover:border-[#ffd700]/40">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-black text-white">{job.label}</p>
+                  <ExternalLink className="h-4 w-4 text-[#8f9bb3] transition group-hover:text-[#ffd700]" />
+                </div>
+                <p className="mt-2 flex-1 text-xs leading-relaxed text-[#8f9bb3]">{job.description}</p>
+                <p className="mt-3 text-[11px] font-bold text-[#ffd700]">Run workflow에서 `{job.id}` 선택</p>
+              </a>
+            ))}
+          </div>
         </div>
       </section>
       <section className="rounded-3xl border border-white/10 bg-[#171f33]/80 p-5 md:p-6">

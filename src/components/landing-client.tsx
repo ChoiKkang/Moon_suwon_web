@@ -161,6 +161,9 @@ export function LandingClient({
 
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={isMobileMenuOpen ? '모바일 메뉴 닫기' : '모바일 메뉴 열기'}
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-navigation"
             className="md:hidden text-[#fff6df]"
           >
             <Menu className="w-6 h-6" />
@@ -169,7 +172,7 @@ export function LandingClient({
 
         {/* Mobile Navigation Dropdown */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-[#4d4732]/20 bg-[#0b1326] px-6 py-4 flex flex-col gap-4">
+          <div id="mobile-navigation" className="md:hidden border-t border-[#4d4732]/20 bg-[#0b1326] px-6 py-4 flex flex-col gap-4">
             <Link onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="/courses">문화유산 코스</Link>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#now-good">오늘 붐빔 정도</a>
             <a onClick={() => setIsMobileMenuOpen(false)} className="text-[#d0c6ab] hover:text-[#fff6df] py-1 text-sm font-semibold" href="#moon-spots">달빛 스팟</a>
@@ -533,7 +536,7 @@ export function LandingClient({
               <Link className="text-[#d0c6ab] hover:text-[#ffd700] transition-colors" href="/admin">운영 콘솔</Link>
             )}
           </div>
-          <div className="text-center mt-2 text-xs text-zinc-500">
+          <div className="text-center mt-2 text-xs text-zinc-400">
             © 달빛수원. 수원화성의 밤을 걷는 야간 특화 문화유산 가이드.
           </div>
 

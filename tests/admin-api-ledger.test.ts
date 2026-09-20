@@ -86,8 +86,26 @@ test('marks past approval expiration', () => {
 test('operations UI renders the server-provided ledger and Durunubi zero note', () => {
   const component = readFileSync(new URL('../src/components/admin/operations-panel.tsx', import.meta.url), 'utf8');
   const query = readFileSync(new URL('../src/lib/admin/queries.ts', import.meta.url), 'utf8');
+  const workflow = readFileSync(new URL('../.github/workflows/public-data-sync.yml', import.meta.url), 'utf8');
   assert.match(component, /승인 API 14개 관리대장/);
   assert.match(component, /두루누비는 수원과 교차하는 코스가 없으면 0건이어도 정상/);
+  assert.match(component, /actions\/workflows\/public-data-sync\.yml/);
+  for (const job of ['photo', 'wellness', 'local_hub', 'related', 'durunubi', 'visitors', 'weather_short', 'weather_mid', 'bus_arrival']) {
+    assert.match(component, new RegExp("id: '" + job + "'"));
+  }
   assert.match(query, /rpc\('sync_list_api_registry'\)/);
   assert.doesNotMatch(component, /schema\(['"](?:ops|raw|core)['"]\)/);
+  assert.match(workflow, /KMA_SERVICE_KEY/);
+  assert.match(workflow, /GG_BUS_SERVICE_KEY/);
+  assert.match(workflow, /weather_short\|weather_mid/);
+  assert.match(workflow, /bus_arrival/);
+});
+
+test('public landing controls expose accessible names and semantic rails', () => {
+  const landing = readFileSync(new URL('../src/components/landing-client.tsx', import.meta.url), 'utf8');
+  const rail = readFileSync(new URL('../src/components/public/scroll-rail.tsx', import.meta.url), 'utf8');
+  assert.match(landing, /aria-label=\{isMobileMenuOpen \? '모바일 메뉴 닫기' : '모바일 메뉴 열기'\}/);
+  assert.match(landing, /aria-expanded=\{isMobileMenuOpen\}/);
+  assert.match(landing, /text-zinc-400/);
+  assert.match(rail, /role="region"/);
 });
