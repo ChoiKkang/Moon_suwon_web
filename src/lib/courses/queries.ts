@@ -52,6 +52,10 @@ export function courseHasPublishedPlaces(placeIds: string[], publishedPlaceIds: 
   return placeIds.length > 0 && placeIds.every((placeId) => publishedPlaceIds.has(placeId));
 }
 
+export function filterCoursesContainingPlace(courses: ServiceCourse[], placeId: string): ServiceCourse[] {
+  return courses.filter((course) => course.places.some((place) => place.id === placeId));
+}
+
 export function mapCoursePlace(detail: CourseDetailRow): ImportedPlace {
   const petPolicy: PetPolicy = detail.pet_policy === 'allowed' || detail.pet_policy === 'partial' || detail.pet_policy === 'not_allowed' || detail.pet_policy === 'unknown'
     ? detail.pet_policy
