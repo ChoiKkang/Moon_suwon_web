@@ -563,7 +563,23 @@ async function loadDefaultJob(job: PublicDataJob, limit: number | undefined, rep
     url.searchParams.set('serviceKey', key);
     url.searchParams.set('stationId', stop.stationId);
     url.searchParams.set('format', 'json');
-    const response = await fetch(url, { headers: { Accept: 'application/json' } });
+    let response: Response | null = null;
+    let lastFetchError: unknown = null;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15_000);
+      try {
+        response = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal });
+        if (!([408, 429, 500, 502, 503, 504] as number[]).includes(response.status) || attempt === 3) break;
+      } catch (error) {
+        lastFetchError = error;
+        if (attempt === 3) throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+    }
+    if (!response) throw lastFetchError instanceof Error ? lastFetchError : new Error('Bus arrival request failed');
     const payload = await response.json() as { response?: { msgHeader?: { resultCode?: number }; msgBody?: { busArrivalList?: BusArrivalSourceItem | BusArrivalSourceItem[] } } };
     const resultCode = Number(payload.response?.msgHeader?.resultCode ?? -1);
     if (!response.ok || (resultCode !== 0 && resultCode !== 4)) throw new Error(`Bus arrival request failed for reviewed station ${stop.stationId}`);
