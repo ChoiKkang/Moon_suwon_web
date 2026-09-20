@@ -557,7 +557,9 @@ async function loadDefaultJob(job: PublicDataJob, limit: number | undefined, rep
     url.searchParams.set('format', 'json');
     const response = await fetch(url, { headers: { Accept: 'application/json' } });
     const payload = await response.json() as { response?: { msgHeader?: { resultCode?: number }; msgBody?: { busArrivalList?: BusArrivalSourceItem | BusArrivalSourceItem[] } } };
-    if (!response.ok || Number(payload.response?.msgHeader?.resultCode ?? -1) !== 0) throw new Error(`Bus arrival request failed for reviewed station ${stop.stationId}`);
+    const resultCode = Number(payload.response?.msgHeader?.resultCode ?? -1);
+    if (!response.ok || (resultCode !== 0 && resultCode !== 4)) throw new Error(`Bus arrival request failed for reviewed station ${stop.stationId}`);
+    if (resultCode === 4) continue;
     const raw = payload.response?.msgBody?.busArrivalList;
     const items = raw ? (Array.isArray(raw) ? raw : [raw]) : [];
     const fetchedAt = new Date().toISOString();
@@ -622,7 +624,12 @@ function createSupabaseRepository(client: SupabaseClient): PublicDataRepository 
     async listApprovedBusStops() {
       const { data, error } = await client.schema('core').from('place_bus_stops').select('station_id, station_name').eq('review_status', 'approved');
       if (error) throw new Error(error.message);
-      return (data ?? []).map((row) => ({ stationId: String(row.station_id), stationName: String(row.station_name) }));
+      const unique = new Map<string, { stationId: string; stationName: string }>();
+      for (const row of data ?? []) {
+        const stationId = String(row.station_id);
+        if (!unique.has(stationId)) unique.set(stationId, { stationId, stationName: String(row.station_name) });
+      }
+      return [...unique.values()];
     },
     async listPlaceMatchCandidates() {
       const [placesResult, sourcesResult, statesResult, copyResult] = await Promise.all([
