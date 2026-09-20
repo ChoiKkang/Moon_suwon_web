@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Clock, Dog, ExternalLink, MapPin, Moon, Navigation } from 'lucide-react';
 import { getPublishedCourses } from '@/lib/courses/queries';
 import { ScrollRail } from '@/components/public/scroll-rail';
+import { VisualPlaceholder } from '@/components/public/visual-placeholder';
 import { buildCourseDirectionsUrl, buildPlaceNavigationLinks } from '@/lib/navigation/links';
 
 export default async function CoursesPage() {
@@ -73,7 +74,7 @@ export default async function CoursesPage() {
                       className="image-reveal mb-6 aspect-[16/9] shrink-0 rounded-3xl bg-cover bg-center"
                       style={{ backgroundImage: `url(${course.heroImageUrl})` }}
                     />
-                  ) : <div className="mb-6 flex aspect-[16/9] shrink-0 items-center justify-center rounded-3xl bg-[#0b1326] text-xs text-[#8f9bb3]">이미지 준비 중</div>}
+                  ) : <VisualPlaceholder label={course.title} className="mb-6 aspect-[16/9] shrink-0 rounded-3xl" />}
                   <div className="relative flex flex-1 flex-col">
                     <div className="mb-5 flex items-center justify-between gap-4">
                       <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[11px] font-black text-[#ffd700]">

@@ -56,6 +56,8 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
   }
 
   const navigationLinks = place ? buildPlaceNavigationLinks(place) : null;
+  const heroImageUrl = place?.heroImageUrl ?? null;
+  const hasHeroImage = Boolean(heroImageUrl);
 
   // 무장애 정보는 값이 있는 항목만 보여준다. KTO가 서술형으로 주는 원문을 그대로
   // 쓰고 등급으로 환산하지 않는다.
@@ -74,20 +76,22 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
 
   return (
     <main className="min-h-screen bg-[#0b1326] text-[#dae2fd]">
-      <section className="ambient-glow relative min-h-[72vh] overflow-hidden px-6 py-10 md:px-20">
+      <section className={`ambient-glow relative overflow-hidden px-6 py-10 md:px-20 ${hasHeroImage ? 'min-h-[72vh]' : 'min-h-[52vh]'}`}>
         <div className="absolute inset-0">
-          {place?.heroImageUrl ? (
+          {heroImageUrl ? (
             <div
               role="img"
-              aria-label={place.displayName}
+              aria-label={place?.displayName ?? '장소 이미지'}
               className="image-reveal h-full w-full bg-cover bg-center opacity-45"
-              style={{ backgroundImage: `url(${place.heroImageUrl})` }}
+              style={{ backgroundImage: `url(${heroImageUrl})` }}
             />
-          ) : null}
+          ) : (
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,215,0,0.16),transparent_30%),radial-gradient(circle_at_70%_70%,rgba(90,130,255,0.16),transparent_42%)]" aria-hidden="true" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-b from-[#0b1326]/50 via-[#0b1326]/80 to-[#0b1326]" />
         </div>
 
-        <div className="relative mx-auto flex min-h-[62vh] max-w-[1440px] flex-col justify-between">
+        <div className={`relative mx-auto flex max-w-[1440px] flex-col justify-between ${hasHeroImage ? 'min-h-[62vh]' : 'min-h-[42vh]'}`}>
           <Link href="/courses" className="inline-flex w-fit items-center gap-2 text-sm font-bold text-[#ffd700]">
             <ArrowLeft className="h-4 w-4" />
             코스 목록으로
@@ -103,6 +107,7 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
                 <Moon className="h-4 w-4" />
                 달빛 스팟
               </div>
+              {!hasHeroImage ? <p className="mb-4 text-xs font-bold text-[#8f9bb3]">대표 이미지를 준비 중인 장소입니다.</p> : null}
               <h1 className="motion-reveal text-5xl font-black leading-tight text-[#fff6df] md:text-8xl">{place.displayName}</h1>
               <p className="motion-reveal mt-6 max-w-2xl text-base leading-relaxed text-[#d0c6ab] [animation-delay:160ms] md:text-lg">
                 {place.shortDescription ?? '소개 문구를 준비 중입니다. 위치와 방문 정보는 아래에서 확인할 수 있습니다.'}

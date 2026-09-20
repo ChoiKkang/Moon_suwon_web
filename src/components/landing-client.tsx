@@ -15,6 +15,7 @@ import { MediaCard } from '@/components/public/media-card';
 import { ScrollRail } from '@/components/public/scroll-rail';
 import { SectionHeading } from '@/components/public/section-heading';
 import { StatusPill } from '@/components/public/status-pill';
+import { VisualPlaceholder } from '@/components/public/visual-placeholder';
 
 interface LandingClientProps {
   initialUser: User | null;
@@ -248,7 +249,7 @@ export function LandingClient({
             <Image
               alt="수원화성 야경"
               className="object-cover"
-              src="/assets/AB6AXuAr2IWAb3hzIl4dB_UZ2hG1Fn3eVdPeJIAbvjMOFhxYoHoLogK3j5yXR7zW4X_qGufXYUV5wxbPOuXtWwJypmvLm66Gou28-e280c9c2a3b763e510ae172b5c07fc4f"
+              src="/assets/AB6AXuAr2IWAb3hzIl4dB_UZ2hG1Fn3eVdPeJIAbvjMOFhxYoHoLogK3j5yXR7zW4X_qGufXYUV5wxbPOuXtWwJypmvLm66Gou28-e280c9c2a3b763e510ae172b5c07fc4f.png"
               fill
               priority
               sizes="100vw"
@@ -262,7 +263,7 @@ export function LandingClient({
             </div>
             
             <h1 className="motion-reveal text-4xl font-extrabold leading-tight tracking-tight text-[#fff6df] [animation-delay:120ms] md:text-7xl">
-              수원화성의 밤을 걷는 가장 <br />
+              수원화성의 밤을 걷는 <span className="whitespace-nowrap">가장</span> <br />
               <span className="bg-gradient-to-r from-[#ffd700] to-[#fff6df] bg-clip-text text-transparent">로맨틱한 방법</span>
             </h1>
             
@@ -305,7 +306,7 @@ export function LandingClient({
                         className="image-reveal aspect-[16/9] shrink-0 bg-cover bg-center"
                         style={{ backgroundImage: `url(${course.heroImageUrl})` }}
                       />
-                    ) : <div className="flex aspect-[16/9] shrink-0 items-center justify-center bg-[#0b1326] text-xs text-[#8f9bb3]">이미지 준비 중</div>}
+                    ) : <VisualPlaceholder label={course.title} className="aspect-[16/9] shrink-0" />}
                     <div className="flex flex-1 flex-col p-6">
                       <div className="mb-4 flex items-center justify-between gap-3">
                         <span className="rounded-full bg-[#0b1326] px-3 py-1 text-[10px] font-black text-[#ffd700]">추천 코스</span>
@@ -385,7 +386,7 @@ export function LandingClient({
                           style={{ backgroundImage: `url(${spot.heroImageUrl})` }}
                         />
                       ) : (
-                        <div className="flex h-full items-center justify-center text-xs text-[#d0c6ab]">이미지 준비 중</div>
+                        <VisualPlaceholder label={spot.displayName} />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0b1326]/85 via-transparent to-transparent" />
                       <div className="absolute left-4 top-4"><StatusPill level={spot.crowdLevel} /></div>
@@ -444,7 +445,7 @@ export function LandingClient({
                     <Image
                       alt="달빛수원 앱 화면"
                       className="object-cover"
-                      src="/assets/AB6AXuDO7PfXKUckL45tgjSDE65w2LHvcoN6ooDWGQ0K7o1VAkbfcZoPK77GtyQF6a0aVM-QEunw-3i6OlXLUQGADQnqCRVyn-Ao-b6c661e9eafb24fd55b06949a26cb564"
+                      src="/assets/AB6AXuDO7PfXKUckL45tgjSDE65w2LHvcoN6ooDWGQ0K7o1VAkbfcZoPK77GtyQF6a0aVM-QEunw-3i6OlXLUQGADQnqCRVyn-Ao-b6c661e9eafb24fd55b06949a26cb564.png"
                       fill
                       sizes="300px"
                     />
@@ -510,7 +511,7 @@ export function LandingClient({
                     {event.heroImageUrl ? (
                       <div role="img" aria-label={event.eventName} className="aspect-[16/9] shrink-0 bg-cover bg-center" style={{ backgroundImage: `url(${event.heroImageUrl})` }} />
                     ) : (
-                      <div className="flex aspect-[16/9] shrink-0 items-center justify-center bg-[#10182b] text-xs text-[#8f9bb3]">이미지 준비 중</div>
+                      <VisualPlaceholder label={event.eventName} className="aspect-[16/9] shrink-0" />
                     )}
                     <div className="flex flex-1 flex-col p-5">
                       <p className="text-xs font-black tracking-wide text-[#ffd700]">{formatEventDate(event.startDate, event.endDate)}</p>
