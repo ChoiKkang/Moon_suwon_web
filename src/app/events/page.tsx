@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { ArrowLeft, ArrowRight, CalendarDays, Clock, MapPin, Moon } from 'lucide-react';
 import { getAllUpcomingEvents } from '@/lib/events/queries';
+import { VisualPlaceholder } from '@/components/public/visual-placeholder';
 
 export const metadata: Metadata = {
   title: '수원 행사 소식',
@@ -78,9 +79,7 @@ export default async function EventsPage() {
                       style={{ backgroundImage: `url(${event.heroImageUrl})` }}
                     />
                   ) : (
-                    <div className="flex aspect-[16/9] shrink-0 items-center justify-center bg-[#10182b] text-xs text-[#8f9bb3]">
-                      이미지 준비 중
-                    </div>
+                    <VisualPlaceholder label={event.eventName} className="aspect-[16/9] shrink-0" />
                   )}
                   <div className="flex flex-1 flex-col p-5">
                     <p className="inline-flex items-center gap-1.5 text-xs font-black tracking-wide text-[#ffd700]">

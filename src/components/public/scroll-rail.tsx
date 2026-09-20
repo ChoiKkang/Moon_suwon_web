@@ -8,5 +8,13 @@ import type { ReactNode } from 'react';
  * h-full과 flex 배치를 함께 써야 효과가 있다.
  */
 export function ScrollRail({ children, label, className = '' }: { children: ReactNode; label: string; className?: string }) {
-  return <div role="region" aria-label={label} className={`scroll-rail flex snap-x snap-mandatory items-stretch gap-5 overflow-x-auto pb-3 md:grid md:grid-cols-2 md:items-stretch md:overflow-visible xl:grid-cols-4 ${className}`}>{children}</div>;
+  return (
+    <div>
+      <p className="mb-3 flex items-center justify-end gap-2 text-[11px] font-bold text-[#8f9bb3] md:hidden" aria-hidden="true">
+        <span>좌우로 밀어 더 보기</span>
+        <span className="text-sm text-[#ffd700]">↔</span>
+      </p>
+      <div role="region" aria-label={label} className={`scroll-rail flex snap-x snap-mandatory items-stretch gap-5 overflow-x-auto pb-3 md:grid md:grid-cols-2 md:items-stretch md:overflow-visible xl:grid-cols-4 ${className}`}>{children}</div>
+    </div>
+  );
 }

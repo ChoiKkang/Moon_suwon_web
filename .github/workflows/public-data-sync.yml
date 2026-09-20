@@ -70,8 +70,10 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       KTO_SERVICE_KEY: ${{ secrets.KTO_SERVICE_KEY }}
-      KMA_SERVICE_KEY: ${{ secrets.KMA_SERVICE_KEY }}
-      GG_BUS_SERVICE_KEY: ${{ secrets.GG_BUS_SERVICE_KEY }}
+      # 기상청·경기도 키를 별도로 발급받았으면 우선 사용하고,
+      # 승인 포털에서 같은 키를 발급한 경우 KTO_SERVICE_KEY를 재사용한다.
+      KMA_SERVICE_KEY: ${{ secrets.KMA_SERVICE_KEY || secrets.KTO_SERVICE_KEY }}
+      GG_BUS_SERVICE_KEY: ${{ secrets.GG_BUS_SERVICE_KEY || secrets.KTO_SERVICE_KEY }}
       NODE_OPTIONS: --dns-result-order=ipv4first
     steps:
       - uses: actions/checkout@v5
