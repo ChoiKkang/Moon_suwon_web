@@ -145,24 +145,32 @@ export async function runPublicDataJob(options: RunOptions, dependencies: RunDep
 
   if (options.dryRun) return { status: loaded.hold ? 'hold' : 'completed', metadata };
 
-  for (const item of candidates) {
-    try {
-      const result = await dependencies.repository.saveRaw(runId!, item);
-      if (result.changed) {
-        metadata.changed += 1;
-      } else {
-        metadata.unchanged += 1;
+  let nextCandidate = 0;
+  const writeConcurrency = options.job === 'bus_arrival' ? 8 : 1;
+  async function writeNextCandidate() {
+    while (true) {
+      const index = nextCandidate++;
+      if (index >= candidates.length) return;
+      const item = candidates[index];
+      try {
+        const result = await dependencies.repository.saveRaw(runId!, item);
+        if (result.changed) {
+          metadata.changed += 1;
+        } else {
+          metadata.unchanged += 1;
+        }
+        if (item.coreDataset && item.corePayload) {
+          await dependencies.repository.saveCore(item);
+          metadata.upserted += 1;
+        }
+        await dependencies.repository.saveReview(item);
+      } catch (error) {
+        metadata.errors += 1;
+        await dependencies.repository.recordError(runId!, item, error);
       }
-      if (item.coreDataset && item.corePayload) {
-        await dependencies.repository.saveCore(item);
-        metadata.upserted += 1;
-      }
-      await dependencies.repository.saveReview(item);
-    } catch (error) {
-      metadata.errors += 1;
-      await dependencies.repository.recordError(runId!, item, error);
     }
   }
+  await Promise.all(Array.from({ length: Math.min(writeConcurrency, candidates.length) }, () => writeNextCandidate()));
 
   const status = loaded.hold
     ? 'hold'
