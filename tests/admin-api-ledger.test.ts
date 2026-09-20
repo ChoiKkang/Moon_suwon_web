@@ -130,3 +130,13 @@ test('admin guard explains that a session is required instead of showing an OAut
   assert.match(landing, /hasAdminLoginRequired/);
   assert.match(landing, /관리자 로그인이 필요합니다/);
 });
+
+test('public route surfaces distinguish exact navigation from course estimates', () => {
+  const courses = readFileSync(new URL('../src/app/courses/page.tsx', import.meta.url), 'utf8');
+  const place = readFileSync(new URL('../src/app/places/[slug]/page.tsx', import.meta.url), 'utf8');
+  assert.match(courses, /코스 전체 길찾기/);
+  assert.match(courses, /실제 도보 경로는 지도에서 확인/);
+  assert.match(courses, /다음 스팟 길찾기/);
+  assert.match(place, /포함된 코스/);
+  assert.match(place, /buildPlaceNavigationLinks/);
+});

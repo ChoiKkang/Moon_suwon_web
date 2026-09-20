@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Clock, Dog, MapPin, Moon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clock, Dog, ExternalLink, MapPin, Moon, Navigation } from 'lucide-react';
 import { getPublishedCourses } from '@/lib/courses/queries';
 import { ScrollRail } from '@/components/public/scroll-rail';
+import { buildCourseDirectionsUrl, buildPlaceNavigationLinks } from '@/lib/navigation/links';
 
 export default async function CoursesPage() {
   const { courses, error } = await getPublishedCourses();
@@ -56,9 +57,13 @@ export default async function CoursesPage() {
             </div>
           ) : (
             <ScrollRail label="달빛 코스 목록" className="xl:grid-cols-3">
-              {courses.map((course) => (
+              {courses.map((course) => {
+                const courseDirectionsUrl = buildCourseDirectionsUrl(course.places);
+
+                return (
                 <article
                   key={course.id}
+                  id={`course-${course.slug}`}
                   className="group relative flex h-full min-w-[86%] snap-start flex-col overflow-hidden rounded-[2rem] border border-[#3e495d]/40 bg-[#141d32] p-6 shadow-2xl motion-reveal md:min-w-0"
                 >
                   {course.heroImageUrl ? (
@@ -88,6 +93,28 @@ export default async function CoursesPage() {
                     <h2 className="text-2xl font-black text-white">{course.title}</h2>
                     <p className="mt-2 text-sm font-bold text-[#ffd700]">{course.subtitle}</p>
                     <p className="mt-4 line-clamp-4 min-h-24 text-sm leading-relaxed text-[#d0c6ab]">{course.description}</p>
+                    <p className="mt-3 text-[11px] leading-relaxed text-[#8f9bb3]">
+                      거리와 시간은 운영 검수 기준의 참고값입니다. 실제 도보 경로는 지도에서 확인하세요.
+                    </p>
+
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {courseDirectionsUrl ? (
+                        <a
+                          href={courseDirectionsUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 rounded-2xl bg-[#ffd700] px-4 py-3 text-xs font-black text-[#3a3000] transition hover:bg-[#ffe16d]"
+                        >
+                          <Navigation className="h-4 w-4" />
+                          코스 전체 길찾기
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center gap-2 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-xs font-bold text-amber-100">
+                          스팟 좌표 확인 후 길찾기 제공
+                        </span>
+                      )}
+                    </div>
 
                     <div className="mt-6 flex shrink-0 gap-3">
                       <div className="rounded-2xl bg-[#0b1326]/70 px-4 py-3">
@@ -111,30 +138,46 @@ export default async function CoursesPage() {
                     {/* 코스마다 정차지가 3~4곳으로 달라 목록 길이가 차이 난다.
                         정차지 묶음을 아래로 밀어 카드 바닥에 맞춘다. */}
                     <div className="mt-auto space-y-3 pt-7">
-                      {course.places.map((place, index) => (
-                        <Link
-                          key={place.id}
-                          href={`/places/${place.slug}`}
-                          className="group flex items-start gap-3 rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-3 transition hover:border-[#ffd700]/50"
-                        >
-                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ffd700] text-xs font-black text-[#3a3000]">
-                            {index + 1}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-bold text-white">{place.displayName}</span>
-                            {/* The night highlight is the reason this stop is on a
-                                night course, so show it instead of only the name. */}
-                            {place.nightHighlight ? (
-                              <span className="mt-1 block text-xs leading-relaxed text-[#d0c6ab]">{place.nightHighlight}</span>
-                            ) : null}
-                          </span>
-                          <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-[#ffd700] transition group-hover:translate-x-1" />
-                        </Link>
-                      ))}
+                      {course.places.map((place, index) => {
+                        const placeNavigation = buildPlaceNavigationLinks(place);
+
+                        return (
+                          <div key={place.id} className="flex items-stretch gap-2">
+                            <Link
+                              href={`/places/${place.slug}`}
+                              className="group flex min-w-0 flex-1 items-start gap-3 rounded-2xl border border-[#3e495d]/30 bg-[#0b1326]/60 p-3 transition hover:border-[#ffd700]/50"
+                            >
+                              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ffd700] text-xs font-black text-[#3a3000]">
+                                {index + 1}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-bold text-white">{place.displayName}</span>
+                                {/* The night highlight is the reason this stop is on a
+                                    night course, so show it instead of only the name. */}
+                                {place.nightHighlight ? (
+                                  <span className="mt-1 block text-xs leading-relaxed text-[#d0c6ab]">{place.nightHighlight}</span>
+                                ) : null}
+                              </span>
+                              <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-[#ffd700] transition group-hover:translate-x-1" />
+                            </Link>
+                            <a
+                              href={placeNavigation.kakao}
+                              target="_blank"
+                              rel="noreferrer"
+                              aria-label={`${place.displayName} 다음 스팟 길찾기`}
+                              className="inline-flex w-12 shrink-0 items-center justify-center rounded-2xl border border-[#ffd700]/25 bg-[#0b1326]/70 text-[#ffd700] transition hover:bg-[#ffd700] hover:text-[#3a3000]"
+                            >
+                              <Navigation className="h-4 w-4" />
+                              <span className="sr-only">다음 스팟 길찾기</span>
+                            </a>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </article>
-              ))}
+                );
+              })}
             </ScrollRail>
           )}
         </div>

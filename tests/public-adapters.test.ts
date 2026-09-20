@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { mapCoursePlace } from '@/lib/courses/queries';
+import { filterCoursesContainingPlace, mapCoursePlace } from '@/lib/courses/queries';
 import { mapPlace } from '@/lib/places/queries';
 
 test('place adapter preserves the public pet and crowd contract', () => {
@@ -57,4 +57,18 @@ test('course adapter keeps an unknown stop unknown instead of partial', () => {
   assert.equal(place.petDataStatus, 'unknown');
   assert.equal(place.crowdDataStatus, 'stale');
   assert.equal(place.crowdForecast?.rate, 80);
+});
+
+test('filters a published course list to the courses that contain a place', () => {
+  const courses = [
+    { id: 'course-a', places: [{ id: 'place-1' }] },
+    { id: 'course-b', places: [{ id: 'place-2' }] },
+    { id: 'course-c', places: [{ id: 'place-1' }, { id: 'place-3' }] },
+  ] as never[];
+
+  assert.deepEqual(
+    filterCoursesContainingPlace(courses as never, 'place-1').map((course) => course.id),
+    ['course-a', 'course-c'],
+  );
+  assert.deepEqual(filterCoursesContainingPlace(courses as never, 'missing'), []);
 });

@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { Accessibility, ArrowLeft, Camera, Compass, Dog, ExternalLink, Headphones, MapPin, Moon, Phone, Route, Sparkles } from 'lucide-react';
+import { Accessibility, ArrowLeft, Camera, Compass, Dog, ExternalLink, Headphones, MapPin, Moon, Navigation, Phone, Route, Sparkles } from 'lucide-react';
+import { filterCoursesContainingPlace, getPublishedCourses } from '@/lib/courses/queries';
 import { getPlaceAudioStories, getPublishedPlaceBySlug } from '@/lib/places/queries';
 import { groupAccessibility } from '@/lib/places/accessibility';
 import { formatPlayTime, splitAudioStories } from '@/lib/places/audio-stories';
 import { StatusPill } from '@/components/public/status-pill';
+import { buildPlaceNavigationLinks } from '@/lib/navigation/links';
 
 type PlaceDetailPageProps = {
   params: Promise<{
@@ -53,22 +55,22 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
     notFound();
   }
 
-  // Kakao Map resolves a Korean address or place name reliably, and the
-  // coordinate link drops the visitor on the exact spot when we have one.
-  const mapHref = place
-    ? place.lat !== null && place.lng !== null
-      ? `https://map.kakao.com/link/map/${encodeURIComponent(place.displayName)},${place.lat},${place.lng}`
-      : `https://map.kakao.com/link/search/${encodeURIComponent(place.addressFull ?? place.displayName)}`
-    : null;
+  const navigationLinks = place ? buildPlaceNavigationLinks(place) : null;
 
   // 무장애 정보는 값이 있는 항목만 보여준다. KTO가 서술형으로 주는 원문을 그대로
   // 쓰고 등급으로 환산하지 않는다.
   const accessibilityGroups = place ? groupAccessibility(place.accessibility) : [];
 
-  // 오디오 해설은 장소당 여러 건이라 별도 조회다. 없으면 카드를 감춘다.
-  const audioStories = place ? await getPlaceAudioStories(place.id) : [];
+  // 오디오 해설과 공개 코스는 장소 상세에서 함께 사용하는 읽기 데이터다.
+  // 둘 다 실패해도 장소 본문은 유지하고 해당 부가 블록만 안전하게 숨긴다.
+  const [audioStories, publishedCoursesResult] = place
+    ? await Promise.all([getPlaceAudioStories(place.id), getPublishedCourses()])
+    : [[], { courses: [], error: null }];
   const { playable: playableStories, readable: readableStories } = splitAudioStories(audioStories);
   const hasAudioStories = playableStories.length > 0 || readableStories.length > 0;
+  const containingCourses = place && !publishedCoursesResult.error
+    ? filterCoursesContainingPlace(publishedCoursesResult.courses, place.id)
+    : [];
 
   return (
     <main className="min-h-screen bg-[#0b1326] text-[#dae2fd]">
@@ -151,26 +153,52 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
 
               <h2 className="text-2xl font-black text-white">방문 정보</h2>
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                {place.addressFull && mapHref ? (
-                  <a
-                    href={mapHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group rounded-3xl bg-[#0b1326]/70 p-5 transition hover:bg-[#0b1326] md:col-span-2"
-                  >
+                {navigationLinks ? (
+                  <div className="rounded-3xl bg-[#0b1326]/70 p-5 transition hover:bg-[#0b1326] md:col-span-2">
                     <div className="mb-4 flex items-center justify-between">
                       <MapPin className="h-5 w-5 text-[#ffd700]" />
-                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#ffd700]">
-                        길찾기
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </span>
+                      <span className="text-xs font-bold text-[#ffd700]">길찾기</span>
                     </div>
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8f9bb3]">주소</p>
-                    <p className="mt-2 text-sm font-bold text-white underline decoration-[#ffd700]/40 decoration-2 underline-offset-4 group-hover:decoration-[#ffd700]">
-                      {place.addressFull}
+                    <p className="mt-2 text-sm font-bold text-white">{place.addressFull ?? '주소 정보를 준비 중입니다'}</p>
+                    <p className="mt-2 text-[11px] text-[#8f9bb3]">
+                      {navigationLinks.hasExactCoordinates
+                        ? '등록된 좌표를 기준으로 목적지와 도보 길찾기를 엽니다.'
+                        : '좌표가 없어 장소명·주소 검색으로 연결합니다. 방문 전 위치를 확인해 주세요.'}
                     </p>
-                    <p className="mt-2 text-[11px] text-[#8f9bb3]">주소를 누르면 카카오맵에서 위치와 길찾기를 볼 수 있습니다.</p>
-                  </a>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <a
+                        href={navigationLinks.kakao}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-[#ffd700]/30 px-3 py-2 text-xs font-bold text-[#ffd700] transition hover:bg-[#ffd700] hover:text-[#3a3000]"
+                      >
+                        <Navigation className="h-3.5 w-3.5" />
+                        카카오맵 길찾기
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                      <a
+                        href={navigationLinks.google}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-[#3e495d]/60 px-3 py-2 text-xs font-bold text-[#d0c6ab] transition hover:border-[#ffd700]/50 hover:text-white"
+                      >
+                        <Navigation className="h-3.5 w-3.5" />
+                        Google 도보
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                      <a
+                        href={navigationLinks.naver}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-[#3e495d]/60 px-3 py-2 text-xs font-bold text-[#d0c6ab] transition hover:border-[#ffd700]/50 hover:text-white"
+                      >
+                        <MapPin className="h-3.5 w-3.5" />
+                        네이버지도
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </div>
+                  </div>
                 ) : (
                   <div className="rounded-3xl bg-[#0b1326]/70 p-5 md:col-span-2">
                     <MapPin className="mb-4 h-5 w-5 text-[#ffd700]" />
@@ -311,15 +339,35 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
             <aside className="rounded-[2rem] border border-[#ffd700]/25 bg-[#171f33] p-6">
               <Route className="h-8 w-8 text-[#ffd700]" />
               <h2 className="mt-5 text-2xl font-black text-white">이 스팟이 포함된 코스</h2>
-              <p className="mt-3 text-sm leading-relaxed text-[#d0c6ab]">
-                이 장소를 지나는 산책 코스가 있는지 코스 목록에서 확인해 보세요.
-              </p>
-              <Link
-                href="/courses"
-                className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-[#ffd700] px-5 py-4 text-sm font-black text-[#3a3000] transition hover:bg-[#ffe16d]"
-              >
-                코스에서 보기
-              </Link>
+              {publishedCoursesResult.error ? (
+                <p className="mt-3 text-sm leading-relaxed text-amber-100">공개 코스 연결을 확인하지 못했습니다. 전체 코스에서 다시 확인해 주세요.</p>
+              ) : containingCourses.length > 0 ? (
+                <>
+                  <p className="mt-3 text-sm leading-relaxed text-[#d0c6ab]">현재 공개된 코스에서 이 스팟이 포함된 순서를 확인하세요.</p>
+                  <div className="mt-5 space-y-2">
+                    {containingCourses.map((course) => (
+                      <Link
+                        key={course.id}
+                        href={`/courses#course-${course.slug}`}
+                        className="flex items-center justify-between rounded-2xl border border-[#ffd700]/20 bg-[#0b1326]/60 px-4 py-3 text-sm font-bold text-white transition hover:border-[#ffd700]/60"
+                      >
+                        <span>{course.title}</span>
+                        <ExternalLink className="h-4 w-4 text-[#ffd700]" />
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="mt-3 text-sm leading-relaxed text-[#d0c6ab]">현재 공개 코스에는 포함되지 않은 스팟입니다.</p>
+                  <Link
+                    href="/courses"
+                    className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-[#ffd700] px-5 py-4 text-sm font-black text-[#3a3000] transition hover:bg-[#ffe16d]"
+                  >
+                    전체 코스 보기
+                  </Link>
+                </>
+              )}
             </aside>
           </div>
         </section>
