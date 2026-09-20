@@ -27,6 +27,22 @@ export type ApiLedgerRunRow = {
 };
 
 export type ApiReviewRow = { api_key: string; review_status: string };
+export type BusStopReviewRow = { review_status: string };
+
+/**
+ * Bus-stop mappings live in core.place_bus_stops rather than raw.public_api_items.
+ * Keep them in the same review queue so the operations ledger reflects the
+ * mappings that still need live API confirmation and operator approval.
+ */
+export function mergeBusStopReviewRows(
+  reviews: readonly ApiReviewRow[],
+  busStops: readonly BusStopReviewRow[],
+): ApiReviewRow[] {
+  return [
+    ...reviews,
+    ...busStops.map((row) => ({ api_key: 'gg_bus_arrival', review_status: row.review_status })),
+  ];
+}
 
 function metadataRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};

@@ -22,6 +22,7 @@ const targets = [
   ['editorial', 'course_copy'],
   ['editorial', 'course_publish_state'],
   ['core', 'events'],
+  ['core', 'place_bus_stops'],
   ['core', 'place_crowd_forecasts'],
   ['raw', 'sync_runs'],
   ['raw', 'sync_errors'],

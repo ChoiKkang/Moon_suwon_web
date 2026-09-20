@@ -21,7 +21,7 @@ import type {
   CandidateFilter,
   CandidateIngestionStatus,
 } from './types';
-import { buildAdminApiLedger, type ApiRegistryRow, type ApiReviewRow } from './api-ledger';
+import { buildAdminApiLedger, mergeBusStopReviewRows, type ApiRegistryRow, type ApiReviewRow, type BusStopReviewRow } from './api-ledger';
 import { candidateMatchesFilter, normalizeCandidateFilter } from './review';
 import type { DataFreshness, PetPolicy } from '@/lib/pet/policy';
 
@@ -594,15 +594,16 @@ async function buildEnrichmentCoverage(
 
 async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdminClient>, places: AdminPlace[]): Promise<AdminQueryResult<AdminOperationsData>> {
   const today = todayInSeoul();
-  const [crowdResult, runsResult, errorsResult, auditResult, registryResult, reviewsResult] = await Promise.all([
+  const [crowdResult, runsResult, errorsResult, auditResult, registryResult, reviewsResult, busStopsResult] = await Promise.all([
     adminClient.schema('core').from('place_crowd_forecasts').select('place_id, forecast_date, forecast_score, crowd_level, source_updated_at').order('forecast_date', { ascending: false }).limit(500),
     adminClient.schema('raw').from('sync_runs').select('id, source, status, items_fetched, items_upserted, error_count, metadata, started_at, completed_at').order('started_at', { ascending: false }).limit(100),
     adminClient.schema('raw').from('sync_errors').select('id, sync_run_id, endpoint, content_id, error_code, message, created_at').order('created_at', { ascending: false }).limit(50),
     readAuditEvents(adminClient, null, 20),
     adminClient.rpc('sync_list_api_registry'),
     adminClient.schema('raw').from('public_api_items').select('api_key, review_status'),
+    adminClient.schema('core').from('place_bus_stops').select('review_status'),
   ]);
-  const error = firstError(crowdResult.error, runsResult.error, errorsResult.error, registryResult.error, reviewsResult.error);
+  const error = firstError(crowdResult.error, runsResult.error, errorsResult.error, registryResult.error, reviewsResult.error, busStopsResult.error);
   if (error) return { data: emptyOperations(), error };
 
   const crowdRows = (crowdResult.data ?? []) as CrowdRow[];
@@ -640,7 +641,10 @@ async function getAdminOperationsForClient(adminClient: ReturnType<typeof getAdm
   const apiLedger = buildAdminApiLedger(
     (registryResult.data ?? []) as ApiRegistryRow[],
     (runsResult.data ?? []) as SyncRunRow[],
-    (reviewsResult.data ?? []) as ApiReviewRow[],
+    mergeBusStopReviewRows(
+      (reviewsResult.data ?? []) as ApiReviewRow[],
+      (busStopsResult.data ?? []) as BusStopReviewRow[],
+    ),
   );
 
   return {

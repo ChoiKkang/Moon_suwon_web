@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { buildAdminApiLedger, type ApiLedgerRunRow, type ApiRegistryRow } from '@/lib/admin/api-ledger';
+import { buildAdminApiLedger, mergeBusStopReviewRows, type ApiLedgerRunRow, type ApiRegistryRow } from '@/lib/admin/api-ledger';
 import { PUBLIC_API_CATALOG } from '@/lib/public-data/catalog';
 
 const registry: ApiRegistryRow[] = PUBLIC_API_CATALOG.map((item) => ({
@@ -77,6 +77,16 @@ test('labels a completed bus run with no reviewed station mapping as hold', () =
   assert.equal(bus?.zeroResult, true);
 });
 
+test('counts pending bus-stop mappings in the bus API review queue', () => {
+  const reviews = mergeBusStopReviewRows(
+    [{ api_key: 'kto_related', review_status: 'approved' }],
+    [{ review_status: 'pending' }, { review_status: 'pending' }, { review_status: 'approved' }],
+  );
+  const ledger = buildAdminApiLedger(registry, [], reviews, new Date('2026-09-20T00:00:00Z'));
+  const bus = ledger.find((item) => item.apiKey === 'gg_bus_arrival');
+  assert.deepEqual(bus?.reviewCounts, { pending: 2, approved: 1, hold: 0, excluded: 0 });
+});
+
 test('marks past approval expiration', () => {
   const expired = registry.map((row) => row.api_key === 'kto_photo' ? { ...row, expires_at: '2026-09-19' } : row);
   const ledger = buildAdminApiLedger(expired, [], [], new Date('2026-09-20T00:00:00Z'));
@@ -94,6 +104,7 @@ test('operations UI renders the server-provided ledger and Durunubi zero note', 
     assert.match(component, new RegExp("id: '" + job + "'"));
   }
   assert.match(query, /rpc\('sync_list_api_registry'\)/);
+  assert.match(query, /place_bus_stops/);
   assert.doesNotMatch(component, /schema\(['"](?:ops|raw|core)['"]\)/);
   assert.match(workflow, /KMA_SERVICE_KEY/);
   assert.match(workflow, /GG_BUS_SERVICE_KEY/);
