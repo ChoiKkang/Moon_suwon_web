@@ -68,4 +68,3 @@
 2. 5분 이내 `bus_arrival_snapshots`가 다시 생성되고 `data:verify`가 버스까지 통과.
 3. 그 다음에만 버스 도착 블록을 익명 공개.
 4. 실제 도보 경로는 Google 또는 TMAP POC에서 거리·시간·경로선 품질을 비교한 뒤 앱 계약을 additive 방식으로 확장.
-
