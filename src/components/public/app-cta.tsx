@@ -8,6 +8,7 @@ type AppCtaProps = {
 
 export function AppCta({ className = '', context = '현장 미션과 위치 기반 안내' }: AppCtaProps) {
   const target = getAppCtaTarget(process.env.NEXT_PUBLIC_APP_STORE_URL);
+  if (!target) return null;
   const isWebStoreLink = target.href.startsWith('http://') || target.href.startsWith('https://');
 
   return (
@@ -18,9 +19,7 @@ export function AppCta({ className = '', context = '현장 미션과 위치 기�
     >
       <span>
         <span className="block text-sm font-black text-[#fff6df]">{target.label}</span>
-        <span className="mt-1 block text-[11px] leading-relaxed text-[#d0c6ab]">
-          {isWebStoreLink ? context : '출시 일정과 체험 소식을 이메일로 안내받을 수 있습니다.'}
-        </span>
+        <span className="mt-1 block text-[11px] leading-relaxed text-[#d0c6ab]">{context}</span>
       </span>
       <ArrowRight className="h-4 w-4 shrink-0 text-[#ffd700]" aria-hidden="true" />
     </a>

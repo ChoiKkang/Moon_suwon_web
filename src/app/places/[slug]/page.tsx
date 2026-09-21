@@ -10,6 +10,7 @@ import { StatusPill } from '@/components/public/status-pill';
 import { buildPlaceNavigationLinks } from '@/lib/navigation/links';
 import { AppCta } from '@/components/public/app-cta';
 import { shouldShowBusArrivals } from '@/lib/places/public-extras';
+import { formatWeatherValue, getWeatherCategoryLabel } from '@/lib/places/weather-display';
 
 type PlaceDetailPageProps = {
   params: Promise<{
@@ -29,17 +30,6 @@ const missionTypeLabels: Record<string, string> = {
   look: '관찰 미션',
   listen: '청취 미션',
   walk: '걷기 미션',
-};
-
-const weatherCategoryLabels: Record<string, string> = {
-  TMP: '기온',
-  TMN: '최저 기온',
-  TMX: '최고 기온',
-  SKY: '하늘 상태',
-  PTY: '강수',
-  PCP: '강수량',
-  POP: '강수확률',
-  WSD: '풍속',
 };
 
 function freshnessLabel(status: string) {
@@ -425,11 +415,11 @@ export default async function PlaceDetailPage({ params }: PlaceDetailPageProps) 
                     {extras.weatherSummary.items.slice(0, 4).map((item) => (
                       <div key={`${item.forecastAt}-${item.category}`} className="rounded-2xl bg-[#171f33]/70 p-3">
                         <div className="flex items-center justify-between gap-3 text-[11px] text-[#8f9bb3]">
-                          <span>{weatherCategoryLabels[item.category] ?? item.category}</span>
+                          <span>{getWeatherCategoryLabel(item.category)}</span>
                           <span>{formatForecastAt(item.forecastAt)}</span>
                         </div>
                         <p className="mt-2 text-sm font-black text-[#fff6df]">
-                          {item.valueText ?? item.valueNumber}{item.unit ?? ''}
+                          {formatWeatherValue(item.category, item.valueText, item.valueNumber, item.unit)}
                         </p>
                       </div>
                     ))}

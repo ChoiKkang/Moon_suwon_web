@@ -1,7 +1,5 @@
 import type { PublicDataBlock } from '@/lib/places/public-extras';
 
-const APP_RELEASE_CONTACT = 'mailto:hynjni7890@gmail.com?subject=%EB%8B%AC%EB%B9%9B%EC%88%98%EC%9B%90%20%EC%95%B1%20%EC%B6%9C%EC%8B%9C%20%EC%86%8C%EC%8B%9D';
-
 export type AppCtaTarget = {
   href: string;
   label: string;
@@ -10,20 +8,21 @@ export type AppCtaTarget = {
 
 /**
  * Store URLs are configuration, not content. Only absolute http(s) URLs are
- * accepted; the fallback is a real support contact and never pretends the app
- * is downloadable before a store listing exists.
+ * accepted. Until a real store listing exists, the CTA stays hidden rather
+ * than exposing a placeholder contact action.
  */
-export function getAppCtaTarget(value: string | null | undefined): AppCtaTarget {
+export function getAppCtaTarget(value: string | null | undefined): AppCtaTarget | null {
   const candidate = value?.trim() ?? '';
+  if (!candidate) return null;
   try {
     const url = new URL(candidate);
     if (url.protocol === 'https:' || url.protocol === 'http:') {
       return { href: url.toString(), label: '앱에서 미션 이어가기', external: true };
     }
   } catch {
-    // Use the support fallback below for empty or malformed configuration.
+    // Invalid store configuration stays hidden until a real listing is configured.
   }
-  return { href: APP_RELEASE_CONTACT, label: '앱 출시 소식 문의하기', external: true };
+  return null;
 }
 export function shouldShowPublicBlock<T>(block: PublicDataBlock<T>): boolean {
   return block.items.length > 0 && block.dataStatus !== 'expired';
